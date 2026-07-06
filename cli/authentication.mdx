@@ -1,0 +1,49 @@
+---
+title: "CLI authentication"
+description: "Log in and manage Orca CLI contexts."
+---
+
+The CLI authenticates with tenant API keys.
+
+## Browser login
+
+```bash
+orca auth login
+orca auth status
+orca auth logout --revoke
+```
+
+For self-hosted or local deployments:
+
+```bash
+orca auth login \
+  --api-url http://localhost:8080 \
+  --dashboard-url http://localhost:5173
+```
+
+## Token login
+
+Use token login for scripts, SSH sessions, or environments without a browser.
+
+```bash
+orca auth login --api-url https://api.example.com --with-token ao_...
+```
+
+Or set environment variables:
+
+```bash
+ORCA_API_KEY=ao_... ORCA_API_URL=https://api.example.com orca agents list --json
+```
+
+## Environment variables
+
+| Variable | Purpose |
+| --- | --- |
+| `ORCA_API_KEY` | Tenant API key |
+| `ORCA_API_URL` | Control-plane API URL |
+| `ORCA_DASHBOARD_URL` | Dashboard URL used by browser login |
+| `ORCA_GATEWAY_URL` | Public chat gateway URL |
+| `ORCA_CHAT_KEY` | Published-agent chat key |
+| `ORCA_TENANT` | Tenant slug for chat |
+| `ORCA_CONTEXT` | Active context name |
+| `ORCA_CONFIG_DIR` | Config directory |

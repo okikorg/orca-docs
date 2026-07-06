@@ -1,0 +1,73 @@
+---
+title: "CLI commands"
+description: "Common Orca CLI command groups."
+---
+
+## Agents and runs
+
+```bash
+orca agents list|get <name>
+orca agents create -f agent.yaml
+orca agents update [name] -f agent.yaml
+orca agents delete <name> --yes
+
+orca run <agent> "prompt"
+orca runs list --agent <name>
+orca runs get <id>
+orca runs tail <id>
+orca runs cancel <id>
+```
+
+## Publishing and chat
+
+```bash
+orca agents publish <name> --slug <slug>
+orca agents unpublish <name> --yes
+orca agents keys list|create|revoke <agent> [id]
+
+orca chat <agent> --tenant <tenant>
+orca chat <agent> "message" --tenant <tenant>
+```
+
+## Keys, usage, and sessions
+
+```bash
+orca keys list|create [name]|revoke <id>
+orca usage --window 24h
+orca sessions list --agent <name>
+orca sessions get <id>
+```
+
+## Tools and resources
+
+```bash
+orca mcp list
+orca mcp add --name docs --url https://mcp.example.com/docs
+orca skills list
+orca skills import ./skills/researcher
+orca pools list
+orca secrets list
+orca storage ls
+orca memory bank stats
+```
+
+## Health and observability
+
+```bash
+orca doctor
+orca ping
+orca stats
+orca topology
+orca bundles
+orca apps
+```
+
+## Workflows
+
+```bash
+orca workflows list
+orca workflows start <definition-id>
+orca workflows runs
+orca workflows tail <run-id>
+orca workflows cancel <run-id> --yes
+```

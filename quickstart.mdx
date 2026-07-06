@@ -1,0 +1,117 @@
+---
+title: "Quickstart"
+description: "Create your first Orca agent and stream a run."
+---
+
+This quickstart uses the CLI first because it is the fastest way to touch the same surfaces used by the SDKs and API.
+
+## Prerequisites
+
+- An Orca account or self-hosted Orca base URL.
+- A tenant API key, or access to browser login through the dashboard.
+- For the CLI install path, macOS or Linux shell access. Windows users can download release archives from GitHub.
+
+## Install the CLI
+
+```bash
+curl -fsSL https://orca-landing-woad.vercel.app/install.sh | sh
+```
+
+The installer downloads a standalone `orca` binary and installs it to `~/.local/bin/orca` by default.
+
+Pin a release or change the install directory when needed:
+
+```bash
+ORCA_VERSION=cli-v0.1.0 curl -fsSL https://orca-landing-woad.vercel.app/install.sh | sh
+ORCA_INSTALL_DIR=/usr/local/bin curl -fsSL https://orca-landing-woad.vercel.app/install.sh | sh
+```
+
+## Authenticate
+
+```bash
+orca auth login
+orca auth status
+```
+
+For a local or self-hosted Orca deployment, pass the API and dashboard URLs:
+
+```bash
+orca auth login \
+  --api-url http://localhost:8080 \
+  --dashboard-url http://localhost:5173
+```
+
+For CI or scripts:
+
+```bash
+ORCA_API_KEY=ao_... ORCA_API_URL=https://api.example.com orca agents list --json
+```
+
+## Create an agent
+
+Create `researcher.yaml`:
+
+```yaml
+name: researcher
+runtime: general
+model: anthropic:claude-opus-4-6
+systemPrompt: You are a research assistant. Be concise and cite sources when available.
+tools:
+  - "@default"
+```
+
+Create the agent:
+
+```bash
+orca agents create -f researcher.yaml
+```
+
+## Submit a run
+
+```bash
+orca run researcher "Explain agent orchestration in three concise bullets."
+```
+
+The CLI streams the run output and detaches locally on `Ctrl-C`. The run continues server-side unless you cancel it:
+
+```bash
+orca runs cancel run_...
+```
+
+## Stream with HTTP
+
+```bash
+curl -X POST "$ORCA_API_URL/api/runs" \
+  -H "Authorization: Bearer $ORCA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "profile": "researcher",
+    "title": "Quickstart",
+    "prompt": "Explain Orca in one sentence."
+  }'
+```
+
+Then stream events:
+
+```bash
+curl -N "$ORCA_API_URL/api/runs/run_.../stream" \
+  -H "Authorization: Bearer $ORCA_API_KEY" \
+  -H "Accept: text/event-stream"
+```
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Create an agent" icon="user-round-plus" href="/get-started/create-an-agent">
+    Learn the profile fields that define agent behavior.
+  </Card>
+  <Card title="Stream a run" icon="radio" href="/get-started/stream-a-run">
+    Handle run events from SDKs and raw HTTP.
+  </Card>
+  <Card title="CLI commands" icon="terminal" href="/cli/commands">
+    See the supported terminal command groups.
+  </Card>
+  <Card title="SDKs" icon="braces" href="/sdk/overview">
+    Use Orca from TypeScript, Python, or Go.
+  </Card>
+</CardGroup>

@@ -1,0 +1,33 @@
+---
+title: "Workflows"
+description: "Run multi-step agent work."
+---
+
+Workflows coordinate multi-step agent work. Use them when a single prompt should become a repeatable process with separate steps, dependencies, and status tracking.
+
+## Common commands
+
+```bash
+orca workflows list
+orca workflows get workflow_...
+orca workflows start workflow_... --prompt "Prepare a launch checklist"
+orca workflows runs
+orca workflows runs get wfr_...
+orca workflows tail wfr_...
+orca workflows cancel wfr_... --yes
+```
+
+## When to use workflows
+
+Use workflows for:
+
+- Multi-agent processes.
+- Repeatable research, review, or operations flows.
+- Work that should expose step-level progress.
+- Scheduled or repairable jobs.
+
+Use a single run for:
+
+- One-off tasks.
+- Short chats.
+- Simple actions against one agent.

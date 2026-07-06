@@ -1,0 +1,4326 @@
+---
+openapi: 3.1.0
+info:
+  title: Orca Control Plane API
+  version: 0.1.0
+  description: HTTP API for managing Orca agents, runs, sessions, skills, MCP servers,
+    storage, memory, keys, publishing, billing, and workflows. Operations are tenant-scoped
+    via the X-Tenant-ID header when tenant selection is required.
+x-fern-global-headers:
+- header: X-Tenant-ID
+  name: tenantId
+  optional: true
+  x-fern-default: default
+servers:
+- url: http://localhost:8080
+  description: Local Orca API
+- url: "{baseUrl}"
+  description: Custom
+  variables:
+    baseUrl:
+      default: http://localhost:8080
+security:
+- BearerAuth: []
+tags:
+- name: Profiles
+- name: Pools
+- name: Sessions
+- name: Runs
+- name: Workflows
+- name: Skills
+- name: MCP
+- name: Storage
+- name: Memory
+- name: Tenants
+- name: Secrets
+- name: Stats
+- name: Billing
+- name: Sandbox
+- name: ConnectedApps
+- name: Publishing
+- name: Misc
+paths:
+  "/healthz":
+    get:
+      tags:
+      - Misc
+      x-fern-sdk-group-name: misc
+      operationId: health
+      x-fern-sdk-method-name: health
+      summary: Liveness probe
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: ok
+  "/api/profiles":
+    get:
+      tags:
+      - Profiles
+      x-fern-sdk-group-name: profiles
+      operationId: listProfiles
+      x-fern-sdk-method-name: list
+      summary: List agent profiles
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      responses:
+        '200':
+          description: All profiles registered for the active tenant.
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ProfileList"
+    post:
+      tags:
+      - Profiles
+      x-fern-sdk-group-name: profiles
+      operationId: createProfile
+      x-fern-sdk-method-name: create
+      summary: Create a profile
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/Profile"
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Profile"
+        '400':
+          "$ref": "#/components/responses/BadRequest"
+        '409':
+          "$ref": "#/components/responses/Error"
+  "/api/profiles/{name}":
+    get:
+      tags:
+      - Profiles
+      x-fern-sdk-group-name: profiles
+      operationId: getProfile
+      x-fern-sdk-method-name: get
+      summary: Get a profile by name
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: The profile
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Profile"
+        '404':
+          "$ref": "#/components/responses/NotFound"
+    put:
+      tags:
+      - Profiles
+      x-fern-sdk-group-name: profiles
+      operationId: updateProfile
+      x-fern-sdk-method-name: update
+      summary: Update or rename a profile
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/Profile"
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Profile"
+        '400':
+          "$ref": "#/components/responses/BadRequest"
+        '404':
+          "$ref": "#/components/responses/NotFound"
+        '409':
+          "$ref": "#/components/responses/Error"
+    delete:
+      tags:
+      - Profiles
+      x-fern-sdk-group-name: profiles
+      operationId: deleteProfile
+      x-fern-sdk-method-name: delete
+      summary: Delete a profile
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '204':
+          "$ref": "#/components/responses/NoContent"
+        '404':
+          "$ref": "#/components/responses/NotFound"
+  "/api/profiles/{name}/changes":
+    get:
+      tags:
+      - Profiles
+      x-fern-sdk-group-name: profiles
+      operationId: listProfileChanges
+      x-fern-sdk-method-name: listChanges
+      summary: List profile change-history entries (newest first)
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Audit-style log of create / update / delete events.
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ProfileChangeList"
+  "/api/pools":
+    get:
+      tags:
+      - Pools
+      x-fern-sdk-group-name: pools
+      operationId: listPools
+      x-fern-sdk-method-name: list
+      summary: List agent pools
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      responses:
+        '200':
+          description: All pools registered for the active tenant.
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/PoolList"
+    post:
+      tags:
+      - Pools
+      x-fern-sdk-group-name: pools
+      operationId: createPool
+      x-fern-sdk-method-name: create
+      summary: Create a pool
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/Pool"
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Pool"
+        '400':
+          "$ref": "#/components/responses/BadRequest"
+        '409':
+          "$ref": "#/components/responses/Error"
+  "/api/pools/{name}":
+    patch:
+      tags:
+      - Pools
+      x-fern-sdk-group-name: pools
+      operationId: updatePool
+      x-fern-sdk-method-name: update
+      summary: Patch a pool (partial update)
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/Pool"
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Pool"
+        '400':
+          "$ref": "#/components/responses/BadRequest"
+        '404':
+          "$ref": "#/components/responses/NotFound"
+    delete:
+      tags:
+      - Pools
+      x-fern-sdk-group-name: pools
+      operationId: deletePool
+      x-fern-sdk-method-name: delete
+      summary: Delete a pool
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '204':
+          "$ref": "#/components/responses/NoContent"
+        '404':
+          "$ref": "#/components/responses/NotFound"
+  "/api/pools/{name}/members/{profile}":
+    post:
+      tags:
+      - Pools
+      x-fern-sdk-group-name: pools
+      operationId: addPoolMember
+      x-fern-sdk-method-name: addMember
+      summary: Add a profile to a pool (idempotent)
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: profile
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: role
+        in: query
+        required: false
+        description: 'Pool role: lead | member | observer (default member).'
+        schema:
+          type: string
+      responses:
+        '204':
+          "$ref": "#/components/responses/NoContent"
+        '404':
+          "$ref": "#/components/responses/NotFound"
+    delete:
+      tags:
+      - Pools
+      x-fern-sdk-group-name: pools
+      operationId: removePoolMember
+      x-fern-sdk-method-name: removeMember
+      summary: Remove a profile from a pool (idempotent)
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: profile
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '204':
+          "$ref": "#/components/responses/NoContent"
+        '404':
+          "$ref": "#/components/responses/NotFound"
+  "/api/sessions":
+    get:
+      tags:
+      - Sessions
+      x-fern-sdk-group-name: sessions
+      operationId: listSessions
+      x-fern-sdk-method-name: list
+      summary: List sessions
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      responses:
+        '200':
+          description: Sessions visible to the active tenant.
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/SessionList"
+    post:
+      tags:
+      - Sessions
+      x-fern-sdk-group-name: sessions
+      operationId: createSession
+      x-fern-sdk-method-name: create
+      summary: Create a session for a profile
+      description: |
+        Mints a runtime session bound to the named profile. Used by the
+        public chat-gateway's "first turn of a new conversation" path:
+        the gateway needs a sess_... id before dispatching the run so
+        the conversations row can be inserted with a real session_id.
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - profile
+              properties:
+                profile:
+                  type: string
+                  description: AgentProfile.Name to bind the session to.
+      responses:
+        '201':
+          description: Session minted.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - sessionId
+                - profile
+                properties:
+                  sessionId:
+                    type: string
+                  profile:
+                    type: string
+        '400':
+          "$ref": "#/components/responses/BadRequest"
+  "/api/sessions/{id}":
+    get:
+      tags:
+      - Sessions
+      x-fern-sdk-group-name: sessions
+      operationId: retrieveSession
+      x-fern-sdk-method-name: retrieve
+      summary: Get a session by id
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Session detail
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Session"
+        '404':
+          "$ref": "#/components/responses/NotFound"
+    delete:
+      tags:
+      - Sessions
+      x-fern-sdk-group-name: sessions
+      operationId: deleteSession
+      x-fern-sdk-method-name: delete
+      summary: Shut a session down
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '204':
+          "$ref": "#/components/responses/NoContent"
+        '404':
+          "$ref": "#/components/responses/NotFound"
+  "/api/sessions/{id}/runs":
+    get:
+      tags:
+      - Sessions
+      x-fern-sdk-group-name: sessions
+      operationId: listSessionRuns
+      x-fern-sdk-method-name: listRuns
+      summary: List runs for a session (newest first)
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Run summaries for the session.
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/RunSummaryList"
+  "/api/profiles/{name}/runs":
+    get:
+      tags:
+      - Profiles
+      x-fern-sdk-group-name: profiles
+      operationId: listProfileRuns
+      x-fern-sdk-method-name: listRuns
+      summary: List runs for a profile (newest first)
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Run summaries for the profile.
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/RunSummaryList"
+  "/api/orca/seed":
+    post:
+      tags:
+      - Misc
+      x-fern-sdk-group-name: misc
+      operationId: seedOrca
+      x-fern-sdk-method-name: seedOrca
+      summary: Idempotently re-create the canonical "orca" helper profile
+      description: |
+        Used by the dashboard's Quickstart "Restore Orca" button. The
+        endpoint is safe to call repeatedly; it has no body and
+        always returns the resulting profile snapshot.
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      responses:
+        '200':
+          description: Orca profile state after the call.
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Object"
+  "/api/runs":
+    get:
+      tags:
+      - Runs
+      x-fern-sdk-group-name: runs
+      operationId: listRuns
+      x-fern-sdk-method-name: list
+      summary: List runs (newest first)
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      responses:
+        '200':
+          description: Run summaries.
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/RunSummaryList"
+    post:
+      tags:
+      - Runs
+      x-fern-sdk-group-name: runs
+      operationId: createRun
+      x-fern-sdk-method-name: create
+      summary: Start a run
+      description: |
+        Accepts a SubTask, mints a sessionId when missing, and kicks off a
+        background run. Returns 202 with the assigned `runId` and
+        `sessionId` immediately; events stream via the SSE endpoints.
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/RunCreateRequest"
+      responses:
+        '202':
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - runId
+                - sessionId
+                properties:
+                  runId:
+                    type: string
+                  sessionId:
+                    type: string
+        '400':
+          "$ref": "#/components/responses/BadRequest"
+        '500':
+          "$ref": "#/components/responses/Error"
+  "/api/runs/{id}":
+    get:
+      tags:
+      - Runs
+      x-fern-sdk-group-name: runs
+      operationId: retrieveRun
+      x-fern-sdk-method-name: retrieve
+      summary: Get a run with its buffered event tail
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Run detail (summary + events).
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/RunDetail"
+        '404':
+          "$ref": "#/components/responses/NotFound"
+    delete:
+      tags:
+      - Runs
+      x-fern-sdk-group-name: runs
+      operationId: cancelRun
+      x-fern-sdk-method-name: cancel
+      summary: Cancel an in-flight run
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '202':
+          description: Cancellation requested
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Object"
+        '404':
+          "$ref": "#/components/responses/NotFound"
+  "/api/runs/{id}/events":
+    get:
+      tags:
+      - Runs
+      x-fern-sdk-group-name: runs
+      operationId: replayRunEvents
+      x-fern-sdk-method-name: replayEvents
+      summary: Replay a run's events as newline-delimited JSON
+      description: |
+        Newline-delimited JSON. First line is a header object; subsequent
+        lines are run events; final line is a finish marker. See
+        `runtime/httpapi/run_events_handler.go` for the frame shape.
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: |
+            Newline-delimited JSON. First line is a header object;
+            subsequent lines are run events; final line is a finish
+            marker. See `runtime/httpapi/run_events_handler.go` for the
+            frame shape.
+          content:
+            application/x-ndjson:
+              schema:
+                type: string
+        '404':
+          "$ref": "#/components/responses/NotFound"
+  "/api/runs/{id}/stream":
+    get:
+      tags:
+      - Runs
+      x-fern-sdk-group-name: runs
+      operationId: streamRun
+      x-fern-sdk-method-name: stream
+      summary: Subscribe to a live run (SSE)
+      description: |
+        Server-sent events stream. Replays buffered events first, then
+        fans out new events as they arrive. Each frame is `data: <json>\n\n`
+        where the body is a single `Event`. Heartbeat lines (`: ping`)
+        every ~15s keep proxies from buffering. The connection closes
+        once the run reaches a terminal status.
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: SSE stream of `Event` JSON frames.
+          content:
+            text/event-stream:
+              schema:
+                type: string
+        '404':
+          "$ref": "#/components/responses/NotFound"
+  "/api/workflows/runs":
+    post:
+      tags:
+      - Workflows
+      operationId: createWorkflowRun
+      summary: Create a workflow run
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/PlanCreateRequest"
+      responses:
+        '202':
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Object"
+        '400':
+          "$ref": "#/components/responses/BadRequest"
+        '503':
+          "$ref": "#/components/responses/ServiceUnavailable"
+    get:
+      tags:
+      - Workflows
+      operationId: listWorkflowRuns
+      summary: List workflow runs
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      - name: orchestratorRunId
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: since
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date-time
+      responses:
+        '200':
+          description: Matching workflow runs.
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/PlanList"
+        '400':
+          "$ref": "#/components/responses/BadRequest"
+        '503':
+          "$ref": "#/components/responses/ServiceUnavailable"
+  "/api/workflows/runs/{id}":
+    get:
+      tags:
+      - Workflows
+      operationId: retrieveWorkflowRun
+      summary: Get a workflow run snapshot
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Workflow run
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Plan"
+        '404':
+          "$ref": "#/components/responses/NotFound"
+        '503':
+          "$ref": "#/components/responses/ServiceUnavailable"
+  "/api/workflows/runs/{id}/start":
+    post:
+      tags:
+      - Workflows
+      operationId: startWorkflowRun
+      summary: Start a workflow run
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '202':
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Object"
+        '404':
+          "$ref": "#/components/responses/NotFound"
+        '503':
+          "$ref": "#/components/responses/ServiceUnavailable"
+  "/api/workflows/runs/{id}/cancel":
+    post:
+      tags:
+      - Workflows
+      operationId: cancelWorkflowRun
+      summary: Cancel a workflow run
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '202':
+          description: Cancellation accepted
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Object"
+        '503':
+          "$ref": "#/components/responses/ServiceUnavailable"
+  "/api/workflows/runs/{id}/repair":
+    post:
+      tags:
+      - Workflows
+      operationId: repairWorkflowRun
+      summary: Repair a paused workflow run
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/RepairAction"
+      responses:
+        '202':
+          description: Repair accepted
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Object"
+        '400':
+          "$ref": "#/components/responses/BadRequest"
+        '404':
+          "$ref": "#/components/responses/NotFound"
+        '409':
+          "$ref": "#/components/responses/Error"
+        '503':
+          "$ref": "#/components/responses/ServiceUnavailable"
+  "/api/workflows/runs/{id}/stream":
+    get:
+      tags:
+      - Workflows
+      operationId: streamWorkflowRun
+      summary: Subscribe to workflow run status changes
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: SSE stream of workflow-run status frames.
+          content:
+            text/event-stream:
+              schema:
+                type: string
+        '404':
+          "$ref": "#/components/responses/NotFound"
+        '503':
+          "$ref": "#/components/responses/ServiceUnavailable"
+  "/api/workflows/definitions":
+    post:
+      tags:
+      - Workflows
+      operationId: createWorkflowDefinition
+      summary: Create a workflow definition
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/Object"
+      responses:
+        '201':
+          description: Created workflow definition.
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Object"
+        '400':
+          "$ref": "#/components/responses/BadRequest"
+    get:
+      tags:
+      - Workflows
+      operationId: listWorkflowDefinitions
+      summary: List workflow definitions
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      responses:
+        '200':
+          description: Workflow definitions.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  "$ref": "#/components/schemas/Object"
+  "/api/workflows/definitions/{id}":
+    get:
+      tags:
+      - Workflows
+      operationId: retrieveWorkflowDefinition
+      summary: Get a workflow definition
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Workflow definition.
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Object"
+        '404':
+          "$ref": "#/components/responses/NotFound"
+    patch:
+      tags:
+      - Workflows
+      operationId: updateWorkflowDefinition
+      summary: Update a workflow definition
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/Object"
+      responses:
+        '200':
+          description: Updated workflow definition.
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Object"
+        '400':
+          "$ref": "#/components/responses/BadRequest"
+        '404':
+          "$ref": "#/components/responses/NotFound"
+    delete:
+      tags:
+      - Workflows
+      operationId: deleteWorkflowDefinition
+      summary: Delete a workflow definition
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '204':
+          "$ref": "#/components/responses/NoContent"
+        '404':
+          "$ref": "#/components/responses/NotFound"
+  "/api/workflows/schedules":
+    post:
+      tags:
+      - Workflows
+      operationId: createWorkflowSchedule
+      summary: Create a workflow schedule
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/Object"
+      responses:
+        '201':
+          description: Created workflow schedule.
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Object"
+        '400':
+          "$ref": "#/components/responses/BadRequest"
+        '404':
+          "$ref": "#/components/responses/NotFound"
+    get:
+      tags:
+      - Workflows
+      operationId: listWorkflowSchedules
+      summary: List workflow schedules
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      responses:
+        '200':
+          description: Workflow schedules.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  "$ref": "#/components/schemas/Object"
+  "/api/workflows/schedules/{id}":
+    get:
+      tags:
+      - Workflows
+      operationId: retrieveWorkflowSchedule
+      summary: Get a workflow schedule
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Workflow schedule.
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Object"
+        '404':
+          "$ref": "#/components/responses/NotFound"
+    delete:
+      tags:
+      - Workflows
+      operationId: deleteWorkflowSchedule
+      summary: Delete a workflow schedule
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '204':
+          "$ref": "#/components/responses/NoContent"
+        '404':
+          "$ref": "#/components/responses/NotFound"
+  "/api/workflows/schedules/{id}/pause":
+    post:
+      tags:
+      - Workflows
+      operationId: pauseWorkflowSchedule
+      summary: Pause a workflow schedule
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Paused workflow schedule.
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Object"
+        '404':
+          "$ref": "#/components/responses/NotFound"
+  "/api/workflows/schedules/{id}/resume":
+    post:
+      tags:
+      - Workflows
+      operationId: resumeWorkflowSchedule
+      summary: Resume a workflow schedule
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Resumed workflow schedule.
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Object"
+        '404':
+          "$ref": "#/components/responses/NotFound"
+  "/api/skills":
+    get:
+      tags:
+      - Skills
+      x-fern-sdk-group-name: skills
+      operationId: listSkills
+      x-fern-sdk-method-name: list
+      summary: List skills
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      responses:
+        '200':
+          description: All skills in the catalog.
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/SkillList"
+    post:
+      tags:
+      - Skills
+      x-fern-sdk-group-name: skills
+      operationId: createSkill
+      x-fern-sdk-method-name: create
+      summary: Create a skill
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/Skill"
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Skill"
+        '400':
+          "$ref": "#/components/responses/BadRequest"
+        '409':
+          "$ref": "#/components/responses/Error"
+  "/api/skills/{name}":
+    get:
+      tags:
+      - Skills
+      x-fern-sdk-group-name: skills
+      operationId: retrieveSkill
+      x-fern-sdk-method-name: retrieve
+      summary: Get a skill by name
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Skill detail
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Skill"
+        '404':
+          "$ref": "#/components/responses/NotFound"
+    put:
+      tags:
+      - Skills
+      x-fern-sdk-group-name: skills
+      operationId: updateSkill
+      x-fern-sdk-method-name: update
+      summary: Update or rename a skill
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/Skill"
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Skill"
+        '400':
+          "$ref": "#/components/responses/BadRequest"
+        '404':
+          "$ref": "#/components/responses/NotFound"
+        '409':
+          "$ref": "#/components/responses/Error"
+    delete:
+      tags:
+      - Skills
+      x-fern-sdk-group-name: skills
+      operationId: deleteSkill
+      x-fern-sdk-method-name: delete
+      summary: Delete a skill
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '204':
+          "$ref": "#/components/responses/NoContent"
+        '404':
+          "$ref": "#/components/responses/NotFound"
+  "/api/skills/{name}/resources/{path}":
+    get:
+      tags:
+      - Skills
+      x-fern-sdk-group-name: skills
+      operationId: getSkillResource
+      x-fern-sdk-method-name: getResource
+      summary: Read a skill resource file (raw bytes)
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: path
+        in: path
+        required: true
+        description: |
+          Resource path under the skill root, e.g. `scripts/run.sh`. The
+          registered route uses Go 1.22's `{path...}` wildcard so the
+          path may include nested directories. Bruno and other clients
+          should pass the full multi-segment value verbatim.
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Resource bytes (Content-Type derived from the file extension).
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '404':
+          "$ref": "#/components/responses/NotFound"
+    put:
+      tags:
+      - Skills
+      x-fern-sdk-group-name: skills
+      operationId: putSkillResource
+      x-fern-sdk-method-name: putResource
+      summary: Upload or replace a skill resource file
+      description: |
+        Bytes are stored under the tenant prefix in the artifact bucket;
+        a `skill_resources` row is inserted/updated with size and content
+        type. Returns 503 when DB+S3 are not wired.
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: path
+        in: path
+        required: true
+        description: Multi-segment resource path (Go 1.22 `{path...}` wildcard).
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '200':
+          description: Resource metadata
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/SkillResource"
+        '400':
+          "$ref": "#/components/responses/BadRequest"
+        '404':
+          "$ref": "#/components/responses/NotFound"
+        '413':
+          "$ref": "#/components/responses/Error"
+        '503':
+          "$ref": "#/components/responses/ServiceUnavailable"
+    delete:
+      tags:
+      - Skills
+      x-fern-sdk-group-name: skills
+      operationId: deleteSkillResource
+      x-fern-sdk-method-name: deleteResource
+      summary: Delete a skill resource file
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: path
+        in: path
+        required: true
+        description: Multi-segment resource path (Go 1.22 `{path...}` wildcard).
+        schema:
+          type: string
+      responses:
+        '204':
+          "$ref": "#/components/responses/NoContent"
+        '404':
+          "$ref": "#/components/responses/NotFound"
+        '503':
+          "$ref": "#/components/responses/ServiceUnavailable"
+  "/api/capability-bundles":
+    get:
+      tags:
+      - Misc
+      x-fern-sdk-group-name: misc
+      operationId: listCapabilityBundles
+      x-fern-sdk-method-name: listCapabilityBundles
+      summary: List capability-bundle metadata
+      description: |
+        Returns the static toolkit-bundle catalog (id, label, description,
+        member tools). Used by the dashboard's capability picker.
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      responses:
+        '200':
+          description: Bundles
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Object"
+  "/api/mcp-servers":
+    get:
+      tags:
+      - MCP
+      x-fern-sdk-group-name: mcp
+      operationId: listMcpServers
+      x-fern-sdk-method-name: list
+      summary: List MCP catalog entries
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      responses:
+        '200':
+          description: All catalog entries.
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/MCPServerList"
+    post:
+      tags:
+      - MCP
+      x-fern-sdk-group-name: mcp
+      operationId: createMcpServer
+      x-fern-sdk-method-name: create
+      summary: Register a new MCP catalog entry
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/MCPServer"
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/MCPServer"
+        '400':
+          "$ref": "#/components/responses/BadRequest"
+        '409':
+          "$ref": "#/components/responses/Error"
+  "/api/mcp-servers/test":
+    post:
+      tags:
+      - MCP
+      x-fern-sdk-group-name: mcp
+      operationId: testMcpServer
+      x-fern-sdk-method-name: test
+      summary: Probe an MCP server (does not persist)
+      description: |
+        Resolves header references (`${VAR}` env, `secret://name`) when
+        a secrets manager is wired, then opens a short-lived MCP probe
+        and reports tool count + latency.
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/MCPServer"
+      responses:
+        '200':
+          description: Probe result
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/MCPTestResult"
+        '400':
+          "$ref": "#/components/responses/BadRequest"
+  "/api/mcp-servers/{name}":
+    get:
+      tags:
+      - MCP
+      x-fern-sdk-group-name: mcp
+      operationId: retrieveMcpServer
+      x-fern-sdk-method-name: retrieve
+      summary: Get an MCP catalog entry by name
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Catalog entry
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/MCPServer"
+        '404':
+          "$ref": "#/components/responses/NotFound"
+    put:
+      tags:
+      - MCP
+      x-fern-sdk-group-name: mcp
+      operationId: updateMcpServer
+      x-fern-sdk-method-name: update
+      summary: Update or rename an MCP catalog entry
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/MCPServer"
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/MCPServer"
+        '400':
+          "$ref": "#/components/responses/BadRequest"
+        '404':
+          "$ref": "#/components/responses/NotFound"
+        '409':
+          "$ref": "#/components/responses/Error"
+    delete:
+      tags:
+      - MCP
+      x-fern-sdk-group-name: mcp
+      operationId: deleteMcpServer
+      x-fern-sdk-method-name: delete
+      summary: Delete an MCP catalog entry
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '204':
+          "$ref": "#/components/responses/NoContent"
+        '404':
+          "$ref": "#/components/responses/NotFound"
+  "/api/storage/info":
+    get:
+      tags:
+      - Storage
+      x-fern-sdk-group-name: storage
+      operationId: getStorageInfo
+      x-fern-sdk-method-name: info
+      summary: Storage health, capacity, and per-prefix usage
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      responses:
+        '200':
+          description: Bucket-wide stats and breakdown.
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/StorageInfo"
+  "/api/storage/objects":
+    get:
+      tags:
+      - Storage
+      x-fern-sdk-group-name: storage
+      operationId: listStorageObjects
+      x-fern-sdk-method-name: list
+      summary: List artefact objects under a prefix
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      - name: prefix
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: limit
+        in: query
+        required: false
+        description: Defaults to 100; capped at 1000.
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: Listing
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/StorageObjectList"
+        '503':
+          "$ref": "#/components/responses/ServiceUnavailable"
+  "/api/storage/objects/{key}":
+    get:
+      tags:
+      - Storage
+      x-fern-sdk-group-name: storage
+      operationId: retrieveStorageObject
+      x-fern-sdk-method-name: retrieve
+      summary: Read a single object inline
+      description: |
+        Returns the bytes inline. Text bodies are returned UTF-8; non-UTF-8
+        bodies are base64-encoded in the response (the `encoding` field
+        signals which).
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      - name: key
+        in: path
+        required: true
+        description: Multi-segment object key (Go 1.22 `{key...}` wildcard).
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Object body
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/StorageObject"
+        '404':
+          "$ref": "#/components/responses/NotFound"
+        '503':
+          "$ref": "#/components/responses/ServiceUnavailable"
+    put:
+      tags:
+      - Storage
+      x-fern-sdk-group-name: storage
+      operationId: putStorageObject
+      x-fern-sdk-method-name: put
+      summary: Upload (or overwrite) an object
+      description: |
+        The raw request body is stored under the key from the path; the
+        `Content-Type` request header, when present, is preserved. Inline
+        cap mirrors the artefact client's `MaxInlineSize`.
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      - name: key
+        in: path
+        required: true
+        description: Multi-segment object key (Go 1.22 `{key...}` wildcard).
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '200':
+          description: Upload metadata
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/StoragePutResult"
+        '400':
+          "$ref": "#/components/responses/BadRequest"
+        '413':
+          "$ref": "#/components/responses/Error"
+        '503':
+          "$ref": "#/components/responses/ServiceUnavailable"
+    delete:
+      tags:
+      - Storage
+      x-fern-sdk-group-name: storage
+      operationId: deleteStorageObject
+      x-fern-sdk-method-name: delete
+      summary: Delete an object (or prefix when key ends with `/`)
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      - name: key
+        in: path
+        required: true
+        description: Multi-segment object key (Go 1.22 `{key...}` wildcard). When
+          trailing `/`, treated as a prefix and every object under it is deleted (capped
+          at 1000).
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Delete result
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/StorageDeleteResult"
+        '503':
+          "$ref": "#/components/responses/ServiceUnavailable"
+  "/api/profiles/{name}/memories":
+    get:
+      tags:
+      - Memory
+      x-fern-sdk-group-name: memory
+      operationId: listProfileMemories
+      x-fern-sdk-method-name: list
+      summary: List memories for a profile
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+      - name: offset
+        in: query
+        required: false
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: Page of memories.
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/MemoryListResponse"
+        '503':
+          "$ref": "#/components/responses/ServiceUnavailable"
+    post:
+      tags:
+      - Memory
+      x-fern-sdk-group-name: memory
+      operationId: createProfileMemory
+      x-fern-sdk-method-name: create
+      summary: Save a new memory under a profile
+      description: |
+        `rawInput` alone triggers LLM-driven extraction of
+        `processedContent`, `summary`, `category`, and `confidence`.
+        Supplying `processedContent` skips the LLM path.
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/MemoryCreateRequest"
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Memory"
+        '400':
+          "$ref": "#/components/responses/BadRequest"
+        '404':
+          "$ref": "#/components/responses/NotFound"
+        '503':
+          "$ref": "#/components/responses/ServiceUnavailable"
+  "/api/profiles/{name}/memories/search":
+    get:
+      tags:
+      - Memory
+      x-fern-sdk-group-name: memory
+      operationId: searchProfileMemories
+      x-fern-sdk-method-name: search
+      summary: Search memories by relevance
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: q
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: limit
+        in: query
+        required: false
+        description: Defaults to 8.
+        schema:
+          type: integer
+      - name: minScore
+        in: query
+        required: false
+        description: Defaults to 0.05.
+        schema:
+          type: number
+      responses:
+        '200':
+          description: Scored results.
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/MemorySearchResponse"
+        '503':
+          "$ref": "#/components/responses/ServiceUnavailable"
+  "/api/profiles/{name}/memories/{id}":
+    get:
+      tags:
+      - Memory
+      x-fern-sdk-group-name: memory
+      operationId: retrieveProfileMemory
+      x-fern-sdk-method-name: retrieve
+      summary: Get a single memory by id
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Memory
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Memory"
+        '404':
+          "$ref": "#/components/responses/NotFound"
+        '503':
+          "$ref": "#/components/responses/ServiceUnavailable"
+    delete:
+      tags:
+      - Memory
+      x-fern-sdk-group-name: memory
+      operationId: deleteProfileMemory
+      x-fern-sdk-method-name: delete
+      summary: Delete a memory
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Delete acknowledgement.
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Object"
+        '503':
+          "$ref": "#/components/responses/ServiceUnavailable"
+  "/api/memory-bank":
+    get:
+      tags:
+      - Memory
+      x-fern-sdk-group-name: memory
+      operationId: getMemoryBank
+      x-fern-sdk-method-name: getBank
+      summary: Cross-profile snapshot of every memory in the bank
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      responses:
+        '200':
+          description: All memories grouped by profile.
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/MemoryBankSnapshot"
+        '503':
+          "$ref": "#/components/responses/ServiceUnavailable"
+  "/api/memory-bank/stats":
+    get:
+      tags:
+      - Memory
+      x-fern-sdk-group-name: memory
+      operationId: getMemoryBankStats
+      x-fern-sdk-method-name: getBankStats
+      summary: Bank-wide totals + per-profile counts
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      responses:
+        '200':
+          description: Stats
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/MemoryBankStats"
+        '503':
+          "$ref": "#/components/responses/ServiceUnavailable"
+  "/api/secrets":
+    get:
+      tags:
+      - Secrets
+      x-fern-sdk-group-name: secrets
+      operationId: listSecrets
+      x-fern-sdk-method-name: list
+      summary: List secret metadata for the active tenant
+      description: |
+        Plaintext is NEVER returned. The list is a metadata-only
+        projection (name, description, algorithm, timestamps).
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      responses:
+        '200':
+          description: Secret metadata listing.
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/SecretList"
+        '503':
+          "$ref": "#/components/responses/ServiceUnavailable"
+    post:
+      tags:
+      - Secrets
+      x-fern-sdk-group-name: secrets
+      operationId: createSecret
+      x-fern-sdk-method-name: create
+      summary: Create a secret (envelope-encrypted server-side)
+      description: |
+        Plaintext is encrypted under the active tenant's master key and
+        persisted; only metadata is returned. Plaintext is never logged.
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/SecretCreateRequest"
+      responses:
+        '201':
+          description: Created (metadata only — never plaintext).
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Secret"
+        '400':
+          "$ref": "#/components/responses/BadRequest"
+        '503':
+          "$ref": "#/components/responses/ServiceUnavailable"
+  "/api/secrets/{name}":
+    put:
+      tags:
+      - Secrets
+      x-fern-sdk-group-name: secrets
+      operationId: updateSecret
+      x-fern-sdk-method-name: update
+      summary: Replace a secret's plaintext (envelope-encrypted server-side)
+      description: |
+        Same shape as POST. The body's `name`, when present, must match
+        the path. Plaintext is never returned on the response.
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/SecretCreateRequest"
+      responses:
+        '200':
+          description: Updated (metadata only — never plaintext).
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Secret"
+        '400':
+          "$ref": "#/components/responses/BadRequest"
+        '503':
+          "$ref": "#/components/responses/ServiceUnavailable"
+    delete:
+      tags:
+      - Secrets
+      x-fern-sdk-group-name: secrets
+      operationId: deleteSecret
+      x-fern-sdk-method-name: delete
+      summary: Delete a secret
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Delete acknowledgement.
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Object"
+        '400':
+          "$ref": "#/components/responses/BadRequest"
+        '404':
+          "$ref": "#/components/responses/NotFound"
+        '503':
+          "$ref": "#/components/responses/ServiceUnavailable"
+  "/api/connected-apps/providers":
+    get:
+      tags:
+      - ConnectedApps
+      x-fern-sdk-group-name: connectedApps
+      operationId: listConnectedAppsProviders
+      x-fern-sdk-method-name: listProviders
+      summary: List Connected Apps providers (Composio, Pipedream, ...)
+      description: |
+        Routes always register; unconfigured providers still appear in
+        the list (so the UI can show a setup hint) but the catalog and
+        connect endpoints below return 503 for them.
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      responses:
+        '200':
+          description: Provider list.
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ConnectedAppProviderList"
+        '503':
+          "$ref": "#/components/responses/ServiceUnavailable"
+  "/api/connected-apps/providers/{provider}/apps":
+    get:
+      tags:
+      - ConnectedApps
+      x-fern-sdk-group-name: connectedApps
+      operationId: listConnectedApps
+      x-fern-sdk-method-name: listApps
+      summary: List apps available from a provider
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      - name: provider
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: search
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: category
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: cursor
+        in: query
+        required: false
+        description: Provider-supplied opaque pagination cursor.
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Provider-shaped paged listing.
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Object"
+        '404':
+          "$ref": "#/components/responses/NotFound"
+        '502':
+          "$ref": "#/components/responses/Error"
+        '503':
+          "$ref": "#/components/responses/ServiceUnavailable"
+  "/api/connected-apps/providers/{provider}/connect":
+    post:
+      tags:
+      - ConnectedApps
+      x-fern-sdk-group-name: connectedApps
+      operationId: connectConnectedApp
+      x-fern-sdk-method-name: connect
+      summary: Initiate an app connection (returns a redirect URL when applicable)
+      description: |
+        Mints an `AppConnection` row and asks the provider to begin the
+        OAuth/credentials handshake. When the provider returns a
+        deterministic MCP server URL (Composio) and the connection lands
+        ACTIVE in the same call, the catalog is upserted immediately.
+        Otherwise the row stays PENDING until the next GET on the
+        connection picks up the post-redirect status.
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      - name: provider
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/ConnectAppRequest"
+      responses:
+        '201':
+          description: Connection initiated
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/InitiateConnectResult"
+        '400':
+          "$ref": "#/components/responses/BadRequest"
+        '404':
+          "$ref": "#/components/responses/NotFound"
+        '502':
+          "$ref": "#/components/responses/Error"
+        '503':
+          "$ref": "#/components/responses/ServiceUnavailable"
+  "/api/connected-apps/connections":
+    get:
+      tags:
+      - ConnectedApps
+      x-fern-sdk-group-name: connectedApps
+      operationId: listAppConnections
+      x-fern-sdk-method-name: listConnections
+      summary: List existing app connections for the active tenant
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      responses:
+        '200':
+          description: Connections
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/AppConnectionList"
+  "/api/connected-apps/connections/{id}":
+    get:
+      tags:
+      - ConnectedApps
+      x-fern-sdk-group-name: connectedApps
+      operationId: retrieveAppConnection
+      x-fern-sdk-method-name: retrieveConnection
+      summary: Get a connection (polls the provider for fresh status)
+      description: |
+        Reads the persisted row, then polls the provider for the current
+        status (when configured). Status / metadata changes are persisted
+        and the managed `mcp_servers` row is upserted when the
+        connection flips ACTIVE.
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: AppConnection
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/AppConnection"
+        '400':
+          "$ref": "#/components/responses/BadRequest"
+        '404':
+          "$ref": "#/components/responses/NotFound"
+        '503':
+          "$ref": "#/components/responses/ServiceUnavailable"
+    delete:
+      tags:
+      - ConnectedApps
+      x-fern-sdk-group-name: connectedApps
+      operationId: deleteAppConnection
+      x-fern-sdk-method-name: deleteConnection
+      summary: Revoke a connection (provider + mcp_servers row)
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Delete acknowledgement.
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Object"
+        '400':
+          "$ref": "#/components/responses/BadRequest"
+        '404':
+          "$ref": "#/components/responses/NotFound"
+        '503':
+          "$ref": "#/components/responses/ServiceUnavailable"
+  "/api/connected-apps/connections/{id}/repair":
+    post:
+      tags:
+      - ConnectedApps
+      x-fern-sdk-group-name: connectedApps
+      operationId: repairAppConnection
+      x-fern-sdk-method-name: repairConnection
+      summary: Re-run auth_config + MCP server provisioning for an active connection
+      description: |
+        Heals the runtime "Auth config(s) X bound to this MCP server
+        could not be resolved" failure mode without forcing the user to
+        disconnect and reconnect. Provider must implement the
+        `Repairer` interface; otherwise returns 400.
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Repair succeeded.
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/RepairConnectionResult"
+        '400':
+          "$ref": "#/components/responses/BadRequest"
+        '404':
+          "$ref": "#/components/responses/NotFound"
+        '502':
+          "$ref": "#/components/responses/Error"
+        '503':
+          "$ref": "#/components/responses/ServiceUnavailable"
+  "/api/spend-cap":
+    get:
+      tags:
+      - SpendCap
+      x-fern-sdk-group-name: spendCap
+      operationId: getSpendCap
+      x-fern-sdk-method-name: retrieve
+      summary: Get the tenant's spend cap and accrued spend
+      description: Returns the calling tenant's effective daily/monthly spend limits
+        (tenant-set value or system default), accrued spend in each window, remaining
+        budget, reset times, and the billing email.
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      responses:
+        '200':
+          description: Spend cap and accrued spend.
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Object"
+    put:
+      tags:
+      - SpendCap
+      x-fern-sdk-group-name: spendCap
+      operationId: updateSpendCap
+      x-fern-sdk-method-name: update
+      summary: Set the tenant's monthly spend budget
+      description: Sets the calling tenant's self-serve monthly spend budget and/or
+        billing email. Omitted fields are left unchanged; an explicit null monthly_cap_usd_cents
+        clears the override and reverts to the system default. The daily cap is an
+        ops runaway guard and is not settable here.
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/Object"
+      responses:
+        '200':
+          description: Updated spend cap and accrued spend.
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Object"
+  "/api/billing/wallet":
+    get:
+      tags:
+      - Billing
+      x-fern-sdk-group-name: billing
+      operationId: getBillingWallet
+      x-fern-sdk-method-name: wallet
+      summary: Credit wallet balance
+      description: |
+        The tenant's live credit balance (Polar is the source of truth) plus the
+        purchasable top-up packs. Returns 503 when billing is not configured.
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      responses:
+        '200':
+          description: Wallet balance and purchasable packs.
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/BillingWallet"
+        '502':
+          "$ref": "#/components/responses/Error"
+        '503':
+          "$ref": "#/components/responses/ServiceUnavailable"
+  "/api/billing/checkout":
+    post:
+      tags:
+      - Billing
+      x-fern-sdk-group-name: billing
+      operationId: startBillingCheckout
+      x-fern-sdk-method-name: checkout
+      summary: Start a credit-pack checkout
+      description: |
+        Opens a Polar checkout for a credit pack and returns its URL for the
+        browser to redirect to. Admin-only. Returns 503 when billing is not
+        configured.
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/BillingCheckoutRequest"
+      responses:
+        '200':
+          description: Checkout URL to redirect the browser to.
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/BillingCheckoutResponse"
+        '400':
+          "$ref": "#/components/responses/BadRequest"
+        '502':
+          "$ref": "#/components/responses/Error"
+        '503':
+          "$ref": "#/components/responses/ServiceUnavailable"
+  "/api/stats/summary":
+    get:
+      tags:
+      - Stats
+      x-fern-sdk-group-name: stats
+      operationId: getStatsSummary
+      x-fern-sdk-method-name: summary
+      summary: Aggregate stats summary
+      description: Aggregate run/usage statistics for the active tenant.
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      responses:
+        '200':
+          description: Aggregate statistics summary.
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Object"
+  "/api/stats/agents":
+    get:
+      tags:
+      - Stats
+      x-fern-sdk-group-name: stats
+      operationId: getStatsAgents
+      x-fern-sdk-method-name: agents
+      summary: Per-agent stats
+      description: Per-agent statistics breakdown.
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      responses:
+        '200':
+          description: Per-agent statistics breakdown.
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Object"
+  "/api/stats/timeseries":
+    get:
+      tags:
+      - Stats
+      x-fern-sdk-group-name: stats
+      operationId: getStatsTimeseries
+      x-fern-sdk-method-name: timeseries
+      summary: Time-series stats
+      description: Time-series statistics bucketed over a configurable window.
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      responses:
+        '200':
+          description: Time-series statistics buckets.
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Object"
+  "/api/stats/hotspots":
+    get:
+      tags:
+      - Stats
+      x-fern-sdk-group-name: stats
+      operationId: getStatsHotspots
+      x-fern-sdk-method-name: hotspots
+      summary: Hotspot stats
+      description: Top contributors (profiles, sessions) by activity over a window.
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      responses:
+        '200':
+          description: Hotspot statistics.
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Object"
+  "/api/profiles/{name}/skills/{skill}":
+    post:
+      tags:
+      - Profiles
+      x-fern-sdk-group-name: profiles
+      operationId: attachSkillToProfile
+      x-fern-sdk-method-name: attachSkill
+      summary: Attach a skill to a profile (idempotent)
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: skill
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '204':
+          "$ref": "#/components/responses/NoContent"
+        '404':
+          "$ref": "#/components/responses/NotFound"
+        '501':
+          "$ref": "#/components/responses/Error"
+    delete:
+      tags:
+      - Profiles
+      x-fern-sdk-group-name: profiles
+      operationId: detachSkillFromProfile
+      x-fern-sdk-method-name: detachSkill
+      summary: Detach a skill from a profile (idempotent)
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: skill
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '204':
+          "$ref": "#/components/responses/NoContent"
+        '404':
+          "$ref": "#/components/responses/NotFound"
+        '501':
+          "$ref": "#/components/responses/Error"
+  "/api/published":
+    get:
+      tags:
+      - Publishing
+      x-fern-sdk-group-name: publishing
+      operationId: listPublishedAgents
+      x-fern-sdk-method-name: list
+      summary: List active published agents for the tenant
+      description: |
+        Returns every published_agents row that is currently active
+        (not soft-deleted). Each row carries the derived `publicUrl`
+        when `CHAT_GATEWAY_PUBLIC_HOST` is wired; the field is omitted
+        otherwise.
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      responses:
+        '200':
+          description: All active published rows for the tenant.
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/PublishedAgentList"
+        '503':
+          "$ref": "#/components/responses/ServiceUnavailable"
+  "/api/profiles/{name}/published":
+    get:
+      tags:
+      - Publishing
+      x-fern-sdk-group-name: publishing
+      operationId: getPublishedAgent
+      x-fern-sdk-method-name: get
+      summary: Fetch the active published row for a profile
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: The active published row.
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/PublishedAgentWithURL"
+        '404':
+          "$ref": "#/components/responses/NotFound"
+        '503':
+          "$ref": "#/components/responses/ServiceUnavailable"
+    patch:
+      tags:
+      - Publishing
+      x-fern-sdk-group-name: publishing
+      operationId: updatePublishedAgent
+      x-fern-sdk-method-name: update
+      summary: Partial update over the active published row
+      description: |
+        Slug is intentionally not patchable; slug rotation requires
+        unpublish + republish. All other fields are optional and only
+        the supplied ones are persisted.
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/PublishUpdateRequest"
+      responses:
+        '200':
+          description: The updated row.
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/PublishedAgentWithURL"
+        '400':
+          "$ref": "#/components/responses/BadRequest"
+        '404':
+          "$ref": "#/components/responses/NotFound"
+        '503':
+          "$ref": "#/components/responses/ServiceUnavailable"
+    delete:
+      tags:
+      - Publishing
+      x-fern-sdk-group-name: publishing
+      operationId: unpublishAgent
+      x-fern-sdk-method-name: unpublish
+      summary: Soft-delete the active published row
+      description: |
+        Sets `unpublished_at = now()` and `enabled = false`. The slug
+        is released for re-use immediately; republishing under the
+        same slug creates a fresh row with a new id.
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '204':
+          "$ref": "#/components/responses/NoContent"
+        '404':
+          "$ref": "#/components/responses/NotFound"
+        '503':
+          "$ref": "#/components/responses/ServiceUnavailable"
+  "/api/profiles/{name}/publish":
+    post:
+      tags:
+      - Publishing
+      x-fern-sdk-group-name: publishing
+      operationId: publishAgent
+      x-fern-sdk-method-name: publish
+      summary: Publish a profile (create the published_agents row)
+      description: |
+        Every body field is optional. When `slug` is omitted, the slug
+        is derived from the profile name by lowercasing and replacing
+        runs of non-`[a-z0-9]` with `-`. When the derived value fails
+        slug validation, returns 400 `profile_name_not_slug_safe` and
+        the caller must supply `slug` explicitly.
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/PublishRequest"
+      responses:
+        '201':
+          description: Created (row + derived publicUrl).
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/PublishedAgentWithURL"
+        '400':
+          "$ref": "#/components/responses/BadRequest"
+        '404':
+          "$ref": "#/components/responses/NotFound"
+        '409':
+          description: Slug already in use for this tenant.
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '503':
+          "$ref": "#/components/responses/ServiceUnavailable"
+  "/api/profiles/{name}/keys":
+    get:
+      tags:
+      - Publishing
+      x-fern-sdk-group-name: publishing
+      operationId: listAgentKeys
+      x-fern-sdk-method-name: listKeys
+      summary: List API keys for the published agent
+      description: |
+        Returns every key (active and revoked) belonging to the
+        active published row. The hash is never included in the
+        response.
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Key metadata.
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/APIKeyList"
+        '404':
+          "$ref": "#/components/responses/NotFound"
+        '503':
+          "$ref": "#/components/responses/ServiceUnavailable"
+    post:
+      tags:
+      - Publishing
+      x-fern-sdk-group-name: publishing
+      operationId: issueAgentKey
+      x-fern-sdk-method-name: issueKey
+      summary: Mint a new API key (plaintext token returned once)
+      description: |
+        The plaintext token (`ao_<env>_<random>`) is returned in the
+        `token` field. This is the only call that ever returns it; the
+        server stores only HMAC-SHA256(token, pepper). Subsequent GETs
+        list metadata without the token.
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/IssueKeyRequest"
+      responses:
+        '201':
+          description: Key issued — plaintext token shown once.
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/APIKeyIssued"
+        '400':
+          "$ref": "#/components/responses/BadRequest"
+        '404':
+          "$ref": "#/components/responses/NotFound"
+        '503':
+          "$ref": "#/components/responses/ServiceUnavailable"
+  "/api/profiles/{name}/keys/{id}":
+    delete:
+      tags:
+      - Publishing
+      x-fern-sdk-group-name: publishing
+      operationId: revokeAgentKey
+      x-fern-sdk-method-name: revokeKey
+      summary: Revoke an API key (idempotent)
+      description: |
+        Sets `revoked_at = now()` on the row. Returns 404 when the key
+        does not belong to the named profile (or does not exist) so
+        cross-profile probes cannot enumerate ids.
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '204':
+          "$ref": "#/components/responses/NoContent"
+        '404':
+          "$ref": "#/components/responses/NotFound"
+        '503':
+          "$ref": "#/components/responses/ServiceUnavailable"
+  "/api/api-keys":
+    get:
+      tags:
+      - ApiKeys
+      x-fern-sdk-group-name: apiKeys
+      operationId: listApiKeys
+      x-fern-sdk-method-name: list
+      summary: List the caller's tenant API keys
+      description: |
+        Returns the caller's control-plane API keys. Admins and owners
+        see every key in the tenant; members see only their own. Tokens
+        and hashes are never included.
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      responses:
+        '200':
+          description: Key metadata.
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/TenantAPIKeyList"
+        '403':
+          "$ref": "#/components/responses/Error"
+        '503':
+          "$ref": "#/components/responses/ServiceUnavailable"
+    post:
+      tags:
+      - ApiKeys
+      x-fern-sdk-group-name: apiKeys
+      operationId: issueApiKey
+      x-fern-sdk-method-name: issue
+      summary: Mint a tenant API key (plaintext token returned once)
+      description: |
+        Mints a durable, tenant-scoped control-plane API key
+        (`ao_<env>_<random>`) for tenant-to-server access (SDKs, CI). The
+        key inherits the caller's RBAC role. The plaintext token is
+        returned once in the `token` field; the server stores only
+        HMAC-SHA256(token, pepper).
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/IssueTenantKeyRequest"
+      responses:
+        '201':
+          description: Key issued — plaintext token shown once.
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/TenantAPIKeyIssued"
+        '400':
+          "$ref": "#/components/responses/BadRequest"
+        '403':
+          "$ref": "#/components/responses/Error"
+        '503':
+          "$ref": "#/components/responses/ServiceUnavailable"
+  "/api/api-keys/{id}":
+    delete:
+      tags:
+      - ApiKeys
+      x-fern-sdk-group-name: apiKeys
+      operationId: revokeApiKey
+      x-fern-sdk-method-name: revoke
+      summary: Revoke a tenant API key
+      description: |
+        Revokes one key. Members can revoke only their own keys;
+        admins and owners can revoke any key in the tenant.
+      parameters:
+      - "$ref": "#/components/parameters/TenantId"
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '204':
+          "$ref": "#/components/responses/NoContent"
+        '404':
+          "$ref": "#/components/responses/NotFound"
+        '503':
+          "$ref": "#/components/responses/ServiceUnavailable"
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: |
+        Tenant-scoped API key as a bearer token (format `ao_<env>_<random>`),
+        minted in the dashboard under Settings -> API Keys. The key inherits
+        the minter's role. Send as `Authorization: Bearer <token>`.
+      x-fern-bearer:
+        name: token
+        env: AGENT_ORC_API_KEY
+  parameters:
+    TenantId:
+      name: X-Tenant-ID
+      in: header
+      required: false
+      schema:
+        type: string
+        default: default
+      description: Tenant slug. Omit for the `default` tenant.
+  schemas:
+    Error:
+      type: object
+      required:
+      - error
+      properties:
+        error:
+          type: string
+    Object:
+      type: object
+      additionalProperties: true
+    BillingPack:
+      type: object
+      description: One purchasable credit top-up.
+      required:
+      - cents
+      - usd
+      properties:
+        cents:
+          type: integer
+          description: Pack price in USD cents.
+        usd:
+          type: number
+          format: double
+    BillingWallet:
+      type: object
+      description: The tenant's credit wallet as the dashboard sees it.
+      required:
+      - configured
+      - balanceMicroUSD
+      - balanceUSD
+      - packs
+      properties:
+        configured:
+          type: boolean
+          description: False when the tenant has no wallet yet (no credits granted).
+        balanceMicroUSD:
+          type: number
+          format: double
+        balanceUSD:
+          type: number
+          format: double
+        packs:
+          type: array
+          items:
+            "$ref": "#/components/schemas/BillingPack"
+    BillingCheckoutRequest:
+      type: object
+      required:
+      - cents
+      properties:
+        cents:
+          type: integer
+          description: A known pack amount in USD cents.
+    BillingCheckoutResponse:
+      type: object
+      required:
+      - url
+      properties:
+        url:
+          type: string
+          description: Polar checkout URL to redirect the browser to.
+    Profile:
+      type: object
+      required:
+      - name
+      - runtime
+      description: |
+        Reusable agent definition. Binds a runtime (claude, codex, ...) to a
+        system prompt, skills, tools, and an optional sandbox/FS policy.
+      properties:
+        id:
+          type: string
+          description: Auto-assigned on registration ("agent-<hex>") when empty.
+        name:
+          type: string
+        runtime:
+          type: string
+          description: Runtime label (e.g. claude, codex).
+        systemPrompt:
+          type: string
+        skills:
+          type: array
+          items:
+            type: string
+        tools:
+          type: array
+          items:
+            type: string
+          description: |
+            Tool selectors. Names, globs ("web.*"), or @-sentinels
+            (@default, @fs, @pool, @orchestration, @artifacts).
+        mcpServers:
+          type: array
+          items:
+            "$ref": "#/components/schemas/MCPServerSpec"
+        model:
+          type: string
+        fs:
+          "$ref": "#/components/schemas/FSPolicy"
+        sandbox:
+          "$ref": "#/components/schemas/SandboxSpec"
+    ProfileList:
+      type: array
+      items:
+        "$ref": "#/components/schemas/Profile"
+    MCPServerSpec:
+      type: object
+      required:
+      - name
+      - transport
+      - url
+      properties:
+        name:
+          type: string
+        transport:
+          type: string
+          description: '"http" or "sse".'
+        url:
+          type: string
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+          description: |
+            Header values support literal strings, "${VAR}" env expansion,
+            or "secret://name" references resolved via the secrets manager.
+    FSPolicy:
+      type: object
+      description: |
+        Per-profile filesystem access policy. Glob patterns may use
+        `*`, `**`, and the tokens `{self}`, `{pool}`, `{role}`. The
+        agent's home (`/agents/{self}/**`) is always granted implicitly.
+      properties:
+        read:
+          type: array
+          items:
+            type: string
+        write:
+          type: array
+          items:
+            type: string
+        delete:
+          type: array
+          items:
+            type: string
+        deny:
+          type: array
+          items:
+            type: string
+    SandboxSpec:
+      type: object
+      required:
+      - provider
+      properties:
+        provider:
+          type: string
+        template:
+          type: string
+        resources:
+          "$ref": "#/components/schemas/SandboxResources"
+        env:
+          type: object
+          additionalProperties:
+            type: string
+        idleTimeout:
+          type: integer
+          description: Idle TTL in nanoseconds (Go time.Duration).
+    SandboxResources:
+      type: object
+      properties:
+        cpu:
+          type: integer
+          description: Millicores.
+        memoryMB:
+          type: integer
+        diskMB:
+          type: integer
+        timeout:
+          type: integer
+          description: Wall-clock cap in nanoseconds (Go time.Duration).
+    ProfileChange:
+      type: object
+      required:
+      - id
+      - profile
+      - action
+      - at
+      properties:
+        id:
+          type: string
+        profile:
+          type: string
+        action:
+          type: string
+          description: '"created", "updated", or "deleted".'
+        at:
+          type: string
+          format: date-time
+        fields:
+          type: array
+          items:
+            type: string
+        before:
+          "$ref": "#/components/schemas/Profile"
+        after:
+          "$ref": "#/components/schemas/Profile"
+    ProfileChangeList:
+      type: array
+      items:
+        "$ref": "#/components/schemas/ProfileChange"
+    Pool:
+      type: object
+      required:
+      - name
+      - members
+      description: |
+        Named group of profiles that share an FS workspace under
+        `/pools/{name}/**`. Layered on top of each member's profile
+        sandbox; never replaces or shrinks per-profile access.
+      properties:
+        id:
+          type: string
+          description: Auto-assigned on registration ("pool-<hex>") when empty.
+        name:
+          type: string
+        description:
+          type: string
+        members:
+          type: array
+          items:
+            "$ref": "#/components/schemas/PoolMember"
+        fs:
+          "$ref": "#/components/schemas/PoolFSPolicy"
+    PoolMember:
+      type: object
+      required:
+      - profile
+      properties:
+        profile:
+          type: string
+        role:
+          type: string
+          description: lead | member | observer (defaults to member).
+    PoolFSPolicy:
+      type: object
+      description: |
+        Extra FS glob lists contributed by the pool to every member's
+        effective policy. Read/Write/Delete are additive; Deny subtracts.
+      properties:
+        read:
+          type: array
+          items:
+            type: string
+        write:
+          type: array
+          items:
+            type: string
+        delete:
+          type: array
+          items:
+            type: string
+        deny:
+          type: array
+          items:
+            type: string
+    PoolList:
+      type: array
+      items:
+        "$ref": "#/components/schemas/Pool"
+    Session:
+      type: object
+      required:
+      - id
+      - profile
+      - runtime
+      - status
+      - createdAt
+      - lastUsedAt
+      - runCount
+      description: |
+        Live agent instance bound to a profile. The lastRun* / lastPrompt
+        fields are populated from the run registry so callers (especially
+        orchestrators) can decide whether an existing session matches the
+        current episode before spawning a new one.
+      properties:
+        id:
+          type: string
+        profile:
+          type: string
+        runtime:
+          type: string
+        status:
+          type: string
+          description: idle | running | errored | shutdown.
+        createdAt:
+          type: string
+          format: date-time
+        lastUsedAt:
+          type: string
+          format: date-time
+        lastPrompt:
+          type: string
+        lastRunStartedAt:
+          type: string
+          format: date-time
+        lastRunFinishedAt:
+          type: string
+          format: date-time
+        lastRunStatus:
+          type: string
+        runCount:
+          type: integer
+    SessionList:
+      type: array
+      items:
+        "$ref": "#/components/schemas/Session"
+    SubTask:
+      type: object
+      required:
+      - id
+      - profile
+      - sessionId
+      - title
+      description: Unit of work the planner emits and an AgentRuntime consumes.
+      properties:
+        id:
+          type: string
+        parentId:
+          type: string
+        profile:
+          type: string
+        sessionId:
+          type: string
+        title:
+          type: string
+        prompt:
+          type: string
+        files:
+          type: array
+          items:
+            type: string
+    RunSummary:
+      type: object
+      required:
+      - id
+      - subTask
+      - status
+      - startedAt
+      properties:
+        id:
+          type: string
+        subTask:
+          "$ref": "#/components/schemas/SubTask"
+        status:
+          type: string
+          description: running | ok | error | cancelled.
+        startedAt:
+          type: string
+          format: date-time
+        finishedAt:
+          type: string
+          format: date-time
+    RunSummaryList:
+      type: array
+      items:
+        "$ref": "#/components/schemas/RunSummary"
+    RunCreateRequest:
+      allOf:
+      - "$ref": "#/components/schemas/SubTask"
+      description: |
+        SubTask body for POST /api/runs. `profile` is required; `sessionId`
+        and `id` are minted server-side when omitted.
+    Usage:
+      type: object
+      description: Token-and-cache accounting reported by the underlying SDK.
+      properties:
+        inputTokens:
+          type: integer
+        outputTokens:
+          type: integer
+        cacheReadTokens:
+          type: integer
+        cacheCreateTokens:
+          type: integer
+    Event:
+      type: object
+      required:
+      - type
+      description: |
+        Single event in a run's stream. `type` selects which fields apply:
+          - progress / result / error / assistant: `message`.
+          - tool_call: `toolCallId`, `toolName`, `input`.
+          - tool_result: `toolCallId`, `output`, `isError`.
+          - usage: `usage`.
+      properties:
+        type:
+          type: string
+          description: progress | result | error | assistant | tool_call | tool_result
+            | usage.
+        message:
+          type: string
+        ts:
+          type: string
+          format: date-time
+        toolCallId:
+          type: string
+        toolName:
+          type: string
+        input:
+          "$ref": "#/components/schemas/Object"
+        output:
+          "$ref": "#/components/schemas/Object"
+        isError:
+          type: boolean
+        usage:
+          "$ref": "#/components/schemas/Usage"
+    RunDetail:
+      allOf:
+      - "$ref": "#/components/schemas/RunSummary"
+      - type: object
+        required:
+        - events
+        properties:
+          events:
+            type: array
+            items:
+              "$ref": "#/components/schemas/Event"
+    PlanNode:
+      type: object
+      required:
+      - id
+      - title
+      - profile
+      - promptTemplate
+      - status
+      - attempt
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        profile:
+          type: string
+        sessionId:
+          type: string
+        promptTemplate:
+          type: string
+        dependsOn:
+          type: array
+          items:
+            type: string
+        outputSchema:
+          "$ref": "#/components/schemas/Object"
+          description: Optional JSON Schema used to parse structured output.
+        status:
+          type: integer
+          description: |
+            NodeStatus enum value (pending=0, ready=1, running=2, ok=3,
+            error=4, skipped=5, cancelled=6).
+        runId:
+          type: string
+        output:
+          type: string
+        fields:
+          "$ref": "#/components/schemas/Object"
+          description: Structured fields parsed via outputSchema, if any.
+        error:
+          type: string
+        attempt:
+          type: integer
+        startedAt:
+          type: string
+          format: date-time
+        finishedAt:
+          type: string
+          format: date-time
+    Plan:
+      type: object
+      required:
+      - id
+      - userPrompt
+      - status
+      - autoStart
+      - nodes
+      - createdAt
+      - repairCount
+      properties:
+        id:
+          type: string
+        userPrompt:
+          type: string
+        orchestratorRunId:
+          type: string
+        orchestratorSessionId:
+          type: string
+        status:
+          type: integer
+          description: |
+            PlanStatus enum value (pending=0, running=1, paused=2,
+            completed=3, failed=4, cancelled=5).
+        autoStart:
+          type: boolean
+        nodes:
+          type: array
+          items:
+            "$ref": "#/components/schemas/PlanNode"
+        createdAt:
+          type: string
+          format: date-time
+        startedAt:
+          type: string
+          format: date-time
+        finishedAt:
+          type: string
+          format: date-time
+        repairCount:
+          type: integer
+        deadline:
+          type: string
+          format: date-time
+          description: Absolute wall-clock cutoff. Zero (omitted) means no overall
+            timeout.
+        delegationDepth:
+          type: integer
+    PlanList:
+      type: array
+      items:
+        "$ref": "#/components/schemas/Plan"
+    PlanCreateRequest:
+      type: object
+      required:
+      - userPrompt
+      - nodes
+      properties:
+        userPrompt:
+          type: string
+        nodes:
+          type: array
+          items:
+            "$ref": "#/components/schemas/PlanNode"
+          description: Inbound `status` fields are ignored — the engine drives transitions.
+        autoStart:
+          type: boolean
+          description: Defaults to true.
+        orchestratorRunId:
+          type: string
+        orchestratorSessionId:
+          type: string
+        deadline:
+          type: string
+          format: date-time
+        delegationDepth:
+          type: integer
+    NodeStatusUpdate:
+      type: object
+      required:
+      - status
+      properties:
+        status:
+          type: string
+          description: ok | error | skipped | cancelled.
+        output:
+          type: string
+        error:
+          type: string
+    Skill:
+      type: object
+      required:
+      - name
+      - body
+      description: |
+        Named, versioned instruction body managed by the skill catalog.
+        `body` is the SKILL.md content; `resources` carries supporting
+        files (scripts/, references/, assets/) per the Agent Skills spec.
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        body:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        source:
+          type: string
+          description: '"user" | "imported".'
+        resources:
+          type: array
+          items:
+            "$ref": "#/components/schemas/SkillResource"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    SkillResource:
+      type: object
+      required:
+      - path
+      properties:
+        path:
+          type: string
+          description: Path relative to the skill root, e.g. `scripts/run.sh`.
+        content:
+          type: string
+          description: Raw bytes, base64-encoded on the wire.
+          format: byte
+        size:
+          type: integer
+        description:
+          type: string
+    SkillList:
+      type: array
+      items:
+        "$ref": "#/components/schemas/Skill"
+    MCPServer:
+      type: object
+      required:
+      - name
+      - transport
+      - url
+      description: |
+        MCPServerCatalogEntry — flattened MCPServerSpec plus an optional
+        human-readable description. Profiles copy entries from this
+        catalog into AgentProfile.MCPServers at authoring time.
+      properties:
+        name:
+          type: string
+        transport:
+          type: string
+          description: '"http" or "sse".'
+        url:
+          type: string
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+          description: |
+            Header values support literal strings, "${VAR}" env expansion,
+            or "secret://name" references resolved via the secrets manager.
+        description:
+          type: string
+    MCPServerList:
+      type: array
+      items:
+        "$ref": "#/components/schemas/MCPServer"
+    MCPTestResult:
+      type: object
+      required:
+      - ok
+      - latencyMs
+      properties:
+        ok:
+          type: boolean
+        error:
+          type: string
+        latencyMs:
+          type: integer
+        toolCount:
+          type: integer
+        tools:
+          type: array
+          items:
+            type: string
+    StorageInfo:
+      type: object
+      required:
+      - configured
+      - usedBytes
+      - objectCount
+      properties:
+        configured:
+          type: boolean
+        bucket:
+          type: string
+        usedBytes:
+          type: integer
+        objectCount:
+          type: integer
+        capacityBytes:
+          type: integer
+          description: Optional; sourced from S3_CAPACITY_BYTES.
+        breakdown:
+          type: array
+          items:
+            type: object
+            required:
+            - prefix
+            - bytes
+            - count
+            properties:
+              prefix:
+                type: string
+              bytes:
+                type: integer
+              count:
+                type: integer
+    StorageObjectEntry:
+      type: object
+      required:
+      - key
+      - size
+      - lastModified
+      properties:
+        key:
+          type: string
+        size:
+          type: integer
+        lastModified:
+          type: string
+          format: date-time
+        etag:
+          type: string
+    StorageObjectList:
+      type: object
+      required:
+      - prefix
+      - bucket
+      - entries
+      - count
+      properties:
+        prefix:
+          type: string
+        bucket:
+          type: string
+        entries:
+          type: array
+          items:
+            "$ref": "#/components/schemas/StorageObjectEntry"
+        count:
+          type: integer
+    StorageObject:
+      type: object
+      required:
+      - key
+      - size
+      - encoding
+      - content
+      properties:
+        key:
+          type: string
+        contentType:
+          type: string
+        size:
+          type: integer
+        etag:
+          type: string
+        encoding:
+          type: string
+          description: '"text" (UTF-8 inline) or "base64" (binary).'
+        content:
+          type: string
+    StoragePutResult:
+      type: object
+      required:
+      - key
+      - size
+      properties:
+        key:
+          type: string
+        contentType:
+          type: string
+        size:
+          type: integer
+        etag:
+          type: string
+    StorageDeleteResult:
+      type: object
+      required:
+      - key
+      - deleted
+      properties:
+        key:
+          type: string
+        deleted:
+          type: integer
+          description: Object count removed (1 for a leaf, N for a prefix).
+    Memory:
+      type: object
+      required:
+      - id
+      - profileName
+      - rawInput
+      - processedContent
+      - summary
+      - category
+      - source
+      - confidence
+      - createdAt
+      - lastAccessedAt
+      - accessCount
+      - stalenessScore
+      - isActive
+      - version
+      properties:
+        id:
+          type: string
+        profileName:
+          type: string
+        rawInput:
+          type: string
+        processedContent:
+          type: string
+        summary:
+          type: string
+        category:
+          type: string
+          description: preference | fact | behavior | context | general.
+        source:
+          type: string
+          description: '"explicit" (agent-saved) or "inferred" (post-run extraction).'
+        confidence:
+          type: number
+        createdAt:
+          type: string
+          format: date-time
+        lastAccessedAt:
+          type: string
+          format: date-time
+        accessCount:
+          type: integer
+        stalenessScore:
+          type: number
+        isActive:
+          type: boolean
+        version:
+          type: integer
+    MemoryCreateRequest:
+      type: object
+      required:
+      - rawInput
+      properties:
+        rawInput:
+          type: string
+        processedContent:
+          type: string
+        summary:
+          type: string
+        category:
+          type: string
+        source:
+          type: string
+        confidence:
+          type: number
+    MemoryRelevance:
+      type: object
+      required:
+      - score
+      - recency
+      - usage
+      - topic
+      properties:
+        score:
+          type: number
+        recency:
+          type: number
+        usage:
+          type: number
+        topic:
+          type: number
+    ScoredMemory:
+      type: object
+      required:
+      - memory
+      - relevance
+      properties:
+        memory:
+          "$ref": "#/components/schemas/Memory"
+        relevance:
+          "$ref": "#/components/schemas/MemoryRelevance"
+    MemoryListResponse:
+      type: object
+      required:
+      - total
+      - memories
+      properties:
+        profile:
+          type: string
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+        memories:
+          type: array
+          items:
+            "$ref": "#/components/schemas/Memory"
+    MemorySearchResponse:
+      type: object
+      required:
+      - profile
+      - query
+      - count
+      - results
+      properties:
+        profile:
+          type: string
+        query:
+          type: string
+        count:
+          type: integer
+        results:
+          type: array
+          items:
+            "$ref": "#/components/schemas/ScoredMemory"
+    MemoryBankSnapshot:
+      type: object
+      required:
+      - total
+      - profilesWithMemory
+      - memories
+      properties:
+        total:
+          type: integer
+        profilesWithMemory:
+          type: integer
+        memories:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              "$ref": "#/components/schemas/Memory"
+    MemoryBankStats:
+      type: object
+      required:
+      - totalMemories
+      - profilesWithMemory
+      - perProfile
+      properties:
+        totalMemories:
+          type: integer
+        profilesWithMemory:
+          type: integer
+        perProfile:
+          type: object
+          additionalProperties:
+            type: integer
+    Tenant:
+      type: object
+      required:
+      - id
+      - displayName
+      - status
+      - createdAt
+      - updatedAt
+      properties:
+        id:
+          type: string
+          description: Tenant slug (`default`, `acme`, `zenith`, ...).
+        displayName:
+          type: string
+        status:
+          type: string
+        metadata:
+          type: object
+          additionalProperties: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    TenantList:
+      type: object
+      required:
+      - total
+      - tenants
+      properties:
+        total:
+          type: integer
+        tenants:
+          type: array
+          items:
+            "$ref": "#/components/schemas/Tenant"
+    TenantCreateRequest:
+      type: object
+      required:
+      - id
+      properties:
+        id:
+          type: string
+        displayName:
+          type: string
+          description: Defaults to `id` when empty.
+        metadata:
+          type: object
+          additionalProperties: true
+    TenantUpdateRequest:
+      type: object
+      description: |
+        Empty strings mean "no change"; nil metadata means "no change".
+        Sending an explicit empty object for metadata replaces the value
+        with `{}`.
+      properties:
+        displayName:
+          type: string
+        status:
+          type: string
+        metadata:
+          type: object
+          additionalProperties: true
+    Secret:
+      type: object
+      required:
+      - name
+      - algorithm
+      - createdAt
+      - updatedAt
+      description: |
+        Metadata-only projection of a secrets row. Plaintext and
+        ciphertext are never present on the wire — list/read endpoints
+        never return them. Plaintext is only valid on the request body of
+        POST/PUT.
+      properties:
+        name:
+          type: string
+        key:
+          type: string
+          description: |
+            Canonical variable name the secret's value is meant to
+            populate (e.g. `AWS_ACCESS_KEY_ID`, `ANTHROPIC_API_KEY`).
+            Free-text; empty for legacy/untyped rows.
+        description:
+          type: string
+        algorithm:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    SecretList:
+      type: object
+      required:
+      - total
+      - secrets
+      properties:
+        total:
+          type: integer
+        secrets:
+          type: array
+          items:
+            "$ref": "#/components/schemas/Secret"
+    SecretCreateRequest:
+      type: object
+      required:
+      - plaintext
+      description: |
+        Body shape for POST /api/secrets and PUT /api/secrets/{name}.
+        Plaintext is required on writes; it is NEVER returned on reads,
+        never logged, and never round-tripped.
+      properties:
+        name:
+          type: string
+        key:
+          type: string
+          description: |
+            Optional canonical variable name (e.g. `AWS_ACCESS_KEY_ID`).
+            Free-text; empty means untyped.
+        plaintext:
+          type: string
+        description:
+          type: string
+    ConnectedAppProvider:
+      type: object
+      required:
+      - name
+      - configured
+      properties:
+        name:
+          type: string
+        configured:
+          type: boolean
+    ConnectedAppProviderList:
+      type: object
+      required:
+      - providers
+      properties:
+        providers:
+          type: array
+          items:
+            "$ref": "#/components/schemas/ConnectedAppProvider"
+    ConnectAppRequest:
+      type: object
+      required:
+      - appSlug
+      properties:
+        appSlug:
+          type: string
+        scope:
+          type: string
+          description: '"tenant" (default) or "end_user".'
+        endUserId:
+          type: string
+          description: Required when `scope` is `end_user`.
+        callbackUrl:
+          type: string
+    InitiateConnectResult:
+      type: object
+      required:
+      - connectionId
+      - status
+      properties:
+        connectionId:
+          type: string
+        externalId:
+          type: string
+        redirectUrl:
+          type: string
+        status:
+          type: string
+          description: pending | active | revoked | error.
+    AppConnection:
+      type: object
+      required:
+      - id
+      - tenantId
+      - provider
+      - appSlug
+      - scope
+      - externalId
+      - status
+      - createdAt
+      - updatedAt
+      properties:
+        id:
+          type: string
+        tenantId:
+          type: string
+        provider:
+          type: string
+        appSlug:
+          type: string
+        scope:
+          type: string
+        endUserId:
+          type: string
+        externalId:
+          type: string
+        status:
+          type: string
+        mcpServerName:
+          type: string
+        redirectUrl:
+          type: string
+        metadata:
+          type: object
+          additionalProperties: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    AppConnectionList:
+      type: object
+      required:
+      - connections
+      properties:
+        connections:
+          type: array
+          items:
+            "$ref": "#/components/schemas/AppConnection"
+    RepairConnectionResult:
+      type: object
+      required:
+      - id
+      properties:
+        id:
+          type: string
+        mcpServerUrl:
+          type: string
+        mcpServerName:
+          type: string
+    SkillImportResult:
+      type: object
+      required:
+      - imported
+      - skipped
+      properties:
+        imported:
+          type: array
+          items:
+            "$ref": "#/components/schemas/Skill"
+        skipped:
+          type: array
+          items:
+            type: object
+            required:
+            - name
+            - reason
+            properties:
+              name:
+                type: string
+              reason:
+                type: string
+    RepairAction:
+      type: object
+      required:
+      - type
+      description: |
+        Body for POST /api/workflows/runs/{id}/repair. Type drives behaviour:
+        retry_node (reset to pending), replace_node (overwrite profile /
+        prompt / schema), add_dependency (insert prep node), or abort.
+      properties:
+        type:
+          type: string
+          description: retry_node | replace_node | add_dependency | abort.
+        nodeId:
+          type: string
+        replacement:
+          "$ref": "#/components/schemas/PlanNode"
+        dependsOn:
+          type: array
+          items:
+            type: string
+    PublishedAgent:
+      type: object
+      required:
+      - id
+      - tenantId
+      - profileName
+      - slug
+      - visibility
+      - authMode
+      - allowedOrigins
+      - rateLimitRpm
+      - syncMaxDurationSeconds
+      - exposeToolEvents
+      - enabled
+      - createdAt
+      - updatedAt
+      description: Published-agent configuration exposed through the control-plane
+        API.
+      properties:
+        id:
+          type: string
+          description: "`pub_<22 base32 chars>`."
+        tenantId:
+          type: string
+        profileName:
+          type: string
+        slug:
+          type: string
+        visibility:
+          type: string
+          description: "`private` | `org` | `public`."
+        authMode:
+          type: string
+          description: "`api_key` | `jwt`."
+        allowedOrigins:
+          type: array
+          items:
+            type: string
+        rateLimitRpm:
+          type: integer
+        syncMaxDurationSeconds:
+          type: integer
+          description: 1-270 inclusive.
+        conversationTtlDays:
+          type:
+          - integer
+          - 'null'
+          description: Null means keep history forever.
+        exposeToolEvents:
+          type: boolean
+        enabled:
+          type: boolean
+        unpublishedAt:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    PublishedAgentWithURL:
+      allOf:
+      - "$ref": "#/components/schemas/PublishedAgent"
+      - type: object
+        properties:
+          publicUrl:
+            type: string
+            description: |
+              Externally-visible chat endpoint URL. Empty / omitted
+              when `CHAT_GATEWAY_PUBLIC_HOST` is unset.
+    PublishedAgentList:
+      type: object
+      required:
+      - total
+      - publishedAgents
+      properties:
+        total:
+          type: integer
+        publishedAgents:
+          type: array
+          items:
+            "$ref": "#/components/schemas/PublishedAgentWithURL"
+    PublishRequest:
+      type: object
+      description: |
+        Body for POST /api/profiles/{name}/publish. Every field is
+        optional; defaults are filled in server-side. When `slug` is
+        omitted it is derived from the profile name (lowercase, runs
+        of non-`[a-z0-9]` collapse to `-`, leading/trailing dashes
+        trimmed). When the derived value fails slug validation, the
+        endpoint returns 400 `profile_name_not_slug_safe`.
+      properties:
+        slug:
+          type: string
+        visibility:
+          type: string
+          description: "`private` (default) | `org` | `public`."
+        authMode:
+          type: string
+          description: "`api_key` (default) | `jwt`."
+        allowedOrigins:
+          type: array
+          items:
+            type: string
+        rateLimitRpm:
+          type: integer
+        syncMaxDurationSeconds:
+          type: integer
+          description: 1-270 inclusive. Defaults to 60.
+        conversationTtlDays:
+          type:
+          - integer
+          - 'null'
+          description: Null means keep forever (default).
+        exposeToolEvents:
+          type: boolean
+    PublishUpdateRequest:
+      type: object
+      description: |
+        Body for PATCH /api/profiles/{name}/published. Same shape as
+        PublishRequest minus the (immutable) `slug`; adds `enabled` so
+        the dashboard can pause without unpublishing. Only fields that
+        are present in the body are persisted.
+      properties:
+        visibility:
+          type: string
+        authMode:
+          type: string
+        allowedOrigins:
+          type: array
+          items:
+            type: string
+        rateLimitRpm:
+          type: integer
+        syncMaxDurationSeconds:
+          type: integer
+        conversationTtlDays:
+          type:
+          - integer
+          - 'null'
+        exposeToolEvents:
+          type: boolean
+        enabled:
+          type: boolean
+    APIKeyMetadata:
+      type: object
+      required:
+      - id
+      - tenantId
+      - publishedId
+      - label
+      - createdAt
+      description: |
+        API key metadata. The plaintext token is NEVER present in this
+        shape — that field is only returned by POST /keys.
+      properties:
+        id:
+          type: string
+          description: "`key_<22 base32 chars>`."
+        tenantId:
+          type: string
+        publishedId:
+          type: string
+        label:
+          type: string
+        lastUsedAt:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        revokedAt:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        expiresAt:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+    APIKeyList:
+      type: object
+      required:
+      - total
+      - keys
+      properties:
+        total:
+          type: integer
+        keys:
+          type: array
+          items:
+            "$ref": "#/components/schemas/APIKeyMetadata"
+    APIKeyIssued:
+      allOf:
+      - "$ref": "#/components/schemas/APIKeyMetadata"
+      - type: object
+        required:
+        - token
+        properties:
+          token:
+            type: string
+            description: |
+              Plaintext API key (`ao_<env>_<22 base32 chars>`).
+              Returned exactly once; subsequent GETs omit it.
+    IssueKeyRequest:
+      type: object
+      description: |
+        Body for POST /api/profiles/{name}/keys. Both fields are
+        optional. Empty `label` is allowed; nil `expiresAt` means the
+        key never expires.
+      properties:
+        label:
+          type: string
+        expiresAt:
+          type:
+          - string
+          - 'null'
+          format: date-time
+    TenantAPIKeyMetadata:
+      type: object
+      description: |
+        A tenant-scoped control-plane API key. The plaintext token and
+        the stored hash are never included.
+      required:
+      - id
+      - tenantId
+      - name
+      - role
+      - createdBy
+      - createdAt
+      properties:
+        id:
+          type: string
+          description: "`key_<22 base32 chars>` identifier."
+        tenantId:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+          enum:
+          - owner
+          - admin
+          - member
+          - viewer
+          description: RBAC role the key acts with (inherited from the minter).
+        createdBy:
+          type: string
+          description: Minter id — a Clerk user id, or `key:<id>` if minted via a
+            key.
+        createdAt:
+          type: string
+          format: date-time
+        lastUsedAt:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        revokedAt:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        expiresAt:
+          type:
+          - string
+          - 'null'
+          format: date-time
+    TenantAPIKeyList:
+      type: object
+      required:
+      - keys
+      properties:
+        keys:
+          type: array
+          items:
+            "$ref": "#/components/schemas/TenantAPIKeyMetadata"
+    TenantAPIKeyIssued:
+      allOf:
+      - "$ref": "#/components/schemas/TenantAPIKeyMetadata"
+      - type: object
+        required:
+        - token
+        properties:
+          token:
+            type: string
+            description: |
+              Plaintext API key (`ao_<env>_<22 base32 chars>`).
+              Returned exactly once; subsequent GETs omit it.
+    IssueTenantKeyRequest:
+      type: object
+      description: |
+        Body for POST /api/api-keys. Both fields are optional. Empty
+        `name` is allowed; nil `expiresAt` means the key never expires.
+      properties:
+        name:
+          type: string
+        expiresAt:
+          type:
+          - string
+          - 'null'
+          format: date-time
+  responses:
+    Error:
+      description: Error response
+      content:
+        application/json:
+          schema:
+            "$ref": "#/components/schemas/Error"
+    NoContent:
+      description: Success, no body
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            "$ref": "#/components/schemas/Error"
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema:
+            "$ref": "#/components/schemas/Error"
+    ServiceUnavailable:
+      description: Dependency not wired (e.g. DB, S3, secrets)
+      content:
+        application/json:
+          schema:
+            "$ref": "#/components/schemas/Error"

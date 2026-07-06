@@ -1,0 +1,50 @@
+---
+title: "Orca"
+description: "Build, run, and publish AI agents from one control surface."
+---
+
+Orca is an agent platform for teams that need reusable agents, typed APIs, streaming runs, terminal workflows, and published chat experiences.
+
+Use Orca to define an agent once, run it from the dashboard, CLI, SDKs, or API, then connect it to tools, skills, memory, storage, and MCP servers as your workflow grows.
+
+<CardGroup cols={2}>
+  <Card title="Start quickly" icon="rocket" href="/quickstart">
+    Create an agent, submit a run, and stream the result.
+  </Card>
+  <Card title="Use the CLI" icon="terminal" href="/cli/overview">
+    Manage agents, runs, publishing, storage, memory, and usage from the terminal.
+  </Card>
+  <Card title="Build with SDKs" icon="code" href="/sdk/overview">
+    Use TypeScript, Python, or Go clients against the public control-plane API.
+  </Card>
+  <Card title="Publish an agent" icon="messages-square" href="/concepts/published-agents">
+    Expose a safe chat surface for apps and end users.
+  </Card>
+</CardGroup>
+
+## What you can build
+
+- Product features that submit agent work and stream progress to users.
+- Internal automation that creates profiles, launches runs, and reads usage.
+- Support, research, operations, coding, and workflow agents with reusable configuration.
+- Public chat endpoints for selected published agents.
+
+## Main surfaces
+
+| Surface | Use it for |
+| --- | --- |
+| Dashboard | Create and manage agents visually |
+| CLI | Operate Orca from a terminal or script |
+| SDKs | Integrate Orca into product code and services |
+| Control plane API | Manage agents, runs, sessions, skills, tools, storage, memory, keys, and workflows |
+| Chat gateway API | Send end-user chat messages to published agents |
+
+## Concepts at a glance
+
+**Agents** are reusable profiles: runtime, model, instructions, tools, skills, and optional MCP servers.
+
+**Runs** are units of work submitted to an agent. They stream progress, assistant output, tool activity, usage, and terminal results.
+
+**Sessions** preserve continuity across related runs when you pass the same session ID.
+
+**Published agents** expose a stable chat API without exposing the authoring or control-plane surface.

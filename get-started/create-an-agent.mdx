@@ -1,0 +1,74 @@
+---
+title: "Create an agent"
+description: "Define a reusable Orca agent profile."
+---
+
+An Orca agent is a named profile that describes how work should run: model, runtime, instructions, tools, skills, MCP servers, and optional resource settings.
+
+## Minimal profile
+
+```yaml
+name: support-bot
+runtime: general
+model: anthropic:claude-opus-4-6
+systemPrompt: You answer support questions clearly and ask for missing context.
+tools:
+  - "@default"
+```
+
+Create it with the CLI:
+
+```bash
+orca agents create -f support-bot.yaml
+```
+
+Or with HTTP:
+
+```bash
+curl -X POST "$ORCA_API_URL/api/profiles" \
+  -H "Authorization: Bearer $ORCA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "support-bot",
+    "runtime": "general",
+    "model": "anthropic:claude-opus-4-6",
+    "systemPrompt": "You answer support questions clearly and ask for missing context.",
+    "tools": ["@default"]
+  }'
+```
+
+## Runtime and model
+
+| Runtime | Model format | Use for |
+| --- | --- | --- |
+| `general` | `anthropic:...`, `openai:...`, `google:...`, `groq:...` | Multi-provider agents |
+| `claude` | Claude model names | Claude-specific behavior |
+| `codex` | Codex or OpenAI coding model names | Coding-focused agents |
+
+## Add tools and skills
+
+Tools give agents callable capabilities. Skills package instructions and resources that can be reused across agents.
+
+```yaml
+name: docs-researcher
+runtime: general
+model: openai:gpt-5.5
+systemPrompt: You research product documentation and return actionable answers.
+tools:
+  - "@default"
+skills:
+  - orca-docs
+```
+
+## Attach MCP servers
+
+MCP servers connect agents to external systems through a standard tool interface.
+
+```yaml
+mcpServers:
+  - name: docs
+    transport: http
+    url: https://mcp.example.com/docs
+```
+
+Use secret references for sensitive headers instead of embedding raw values in agent files.

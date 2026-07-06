@@ -1,0 +1,46 @@
+---
+title: "CLI"
+description: "Manage Orca from the terminal."
+---
+
+The `orca` CLI manages agents, runs, publishing, chat, keys, usage, sessions, MCP servers, skills, pools, secrets, billing, storage, memory, stats, topology, connected apps, and workflows.
+
+The public CLI source and release binaries live at [github.com/okikorg/orca-cli](https://github.com/okikorg/orca-cli).
+
+## Install
+
+```bash
+curl -fsSL https://orca-landing-woad.vercel.app/install.sh | sh
+```
+
+The installer downloads the matching standalone binary, verifies its SHA-256 checksum, and installs it to `~/.local/bin/orca`.
+
+## First commands
+
+```bash
+orca auth login
+orca doctor
+orca agents list
+orca run researcher "Explain Orca in one sentence."
+```
+
+## Output modes
+
+Every list and get command supports `--json`.
+
+```bash
+orca agents list --json
+orca runs tail run_... --json
+```
+
+When stdout is not a TTY, table output becomes plain tab-separated output for shell pipelines.
+
+## Contexts
+
+Contexts work like kubectl contexts:
+
+```bash
+orca context list
+orca context use prod
+orca --context prod agents list
+```

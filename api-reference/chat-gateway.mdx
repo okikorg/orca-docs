@@ -1,0 +1,38 @@
+---
+title: "Chat gateway API"
+description: "Send end-user chat messages to published Orca agents."
+---
+
+The chat gateway is the public API for published agents. It is intentionally separate from the control-plane API.
+
+Use it when:
+
+- A product needs to embed a chat experience backed by a published Orca agent.
+- You want a scoped key for one public agent instead of a tenant-wide control-plane key.
+- You need streaming or synchronous chat responses.
+
+## Authentication
+
+Use a published-agent chat key:
+
+```bash
+Authorization: Bearer ao_...
+```
+
+Chat keys are created from the publishing surface:
+
+```bash
+orca agents keys create support
+```
+
+## Route shape
+
+```text
+/v1/chat/{tenant}/{agent}
+```
+
+`tenant` is the tenant slug and `agent` is the published-agent slug.
+
+## Generated reference
+
+The endpoint reference in this section is generated from `api-reference/chat-openapi.yaml`.

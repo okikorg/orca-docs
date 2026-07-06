@@ -1,0 +1,664 @@
+---
+openapi: 3.1.0
+info:
+  title: Orca Chat Gateway API
+  version: 0.1.0
+  description: Public chat API for published Orca agents. Use this API from end-user
+    applications that need synchronous or streaming chat with a published agent.
+servers:
+- url: https://agents.example.com
+  description: Production
+- url: http://localhost:8090
+  description: Local dev gateway
+security:
+- bearerAuth: []
+tags:
+- name: Chat
+  description: |
+    Public chat operations against a published agent. Synchronous JSON
+    and Server-Sent Events transports plus resume-by-id endpoints.
+- name: Conversations
+  description: |
+    Read-only conversation history for a published agent. The gateway
+    is the source of truth for chat history — it is not affected by
+    run-event retention.
+paths:
+  "/v1/chat/{tenant}/{agent}":
+    post:
+      tags:
+      - Chat
+      x-fern-sdk-group-name: chat
+      x-fern-sdk-method-name: create
+      operationId: chatCreate
+      summary: Send a chat message (synchronous)
+      description: |
+        Send a single message to a published agent and wait for the
+        terminal assistant reply. The call blocks up to
+        `syncMaxDurationSeconds` (per published agent, default 60s, hard
+        cap 270s). If the run exceeds the window the gateway returns
+        `504 sync_timeout` with the `public_run_id`, and the caller can
+        retrieve the eventual result via
+        `GET /v1/chat/{tenant}/{agent}/runs/{public_run_id}`.
+
+        Omit `conversation_id` to start a new conversation; the gateway
+        mints one and returns it on the response. Subsequent calls with
+        the same `conversation_id` continue the same conversation, which
+        maps 1:1 to an chat session.
+      parameters:
+      - "$ref": "#/components/parameters/TenantPath"
+      - "$ref": "#/components/parameters/AgentPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/ChatRequest"
+      responses:
+        '200':
+          description: Terminal assistant reply.
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ChatResponse"
+        '400':
+          "$ref": "#/components/responses/BadRequest"
+        '401':
+          "$ref": "#/components/responses/Unauthorized"
+        '403':
+          "$ref": "#/components/responses/Forbidden"
+        '404':
+          "$ref": "#/components/responses/NotFound"
+        '429':
+          "$ref": "#/components/responses/RateLimited"
+        '502':
+          "$ref": "#/components/responses/Upstream"
+        '504':
+          "$ref": "#/components/responses/SyncTimeout"
+  "/v1/chat/{tenant}/{agent}/stream":
+    post:
+      tags:
+      - Chat
+      x-fern-sdk-group-name: chat
+      x-fern-sdk-method-name: stream
+      operationId: chatStream
+      summary: Send a chat message (Server-Sent Events stream)
+      description: |
+        Same semantics as the synchronous endpoint but the response is a
+        Server-Sent Events stream of public events emitted as the run
+        progresses. Each frame carries an `id:` of the form
+        `<public_run_id>:<seq>` so clients can correlate frames.
+
+        The connection stays open until a terminal `done` or `error`
+        event. A comment-frame `: ping` heartbeat is emitted every ~15s
+        so reverse proxies do not idle-close the connection.
+
+        If the public stream drops mid-run the underlying run continues
+        and the terminal write to history still happens. Re-attach via
+        `GET /v1/chat/{tenant}/{agent}/runs/{public_run_id}/stream` —
+        the runtime replays buffered events on subscribe.
+
+        ### Public event set
+
+        ```
+        event: delta
+        data: {"text":"Here is the "}
+
+        event: tool
+        data: {"id":"tc_abc","name":"web_search","status":"running"}
+
+        event: done
+        data: {"public_run_id":"prun_8x4k2p6n9wq3vt7y2m4r5b","conversation_id":"conv_123","message":"Here is the summary..."}
+
+        event: error
+        data: {"code":"upstream","message":"run failed mid-stream","public_run_id":"prun_..."}
+
+        : ping
+        ```
+
+        - `delta` — incremental assistant text chunk. Concatenate
+          `data.text` in order to reconstruct the final message.
+        - `tool` — tool-call lifecycle. Only emitted when the published
+          agent has `exposeToolEvents=true`. `status` is one of
+          `running`, `ok`, `error`. Tool output payloads are never
+          surfaced on the public stream (they may contain secrets).
+        - `done` — terminal success. Always the last event.
+        - `error` — terminal failure. Always the last event; the
+          connection closes immediately after.
+        - `: ping` — comment-frame heartbeat. Has no event name and is
+          safe to ignore.
+
+        ### Backpressure
+
+        Per-stream bounded buffer. If the client lags, older non-terminal
+        `delta` events may be dropped — the terminal `done` / `error`
+        frame is never dropped.
+      parameters:
+      - "$ref": "#/components/parameters/TenantPath"
+      - "$ref": "#/components/parameters/AgentPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/ChatRequest"
+      responses:
+        '200':
+          description: |
+            Server-Sent Events stream of public events. The MIME type is
+            `text/event-stream`. See the operation description for the
+            full event set.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                example: no-cache
+            Connection:
+              schema:
+                type: string
+                example: keep-alive
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                description: |
+                  SSE frames. Each frame is a sequence of `event:` /
+                  `data:` / `id:` lines terminated by a blank line.
+                  Heartbeats are emitted as `: ping` comment frames.
+                example: |
+                  id: prun_8x4k2p6n9wq3vt7y2m4r5b:0
+                  event: delta
+                  data: {"text":"Here is "}
+
+                  id: prun_8x4k2p6n9wq3vt7y2m4r5b:1
+                  event: delta
+                  data: {"text":"the summary..."}
+
+                  id: prun_8x4k2p6n9wq3vt7y2m4r5b:2
+                  event: done
+                  data: {"public_run_id":"prun_8x4k2p6n9wq3vt7y2m4r5b","conversation_id":"conv_123","message":"Here is the summary..."}
+        '400':
+          "$ref": "#/components/responses/BadRequest"
+        '401':
+          "$ref": "#/components/responses/Unauthorized"
+        '403':
+          "$ref": "#/components/responses/Forbidden"
+        '404':
+          "$ref": "#/components/responses/NotFound"
+        '429':
+          "$ref": "#/components/responses/RateLimited"
+        '502':
+          "$ref": "#/components/responses/Upstream"
+  "/v1/chat/{tenant}/{agent}/runs/{public_run_id}":
+    get:
+      tags:
+      - Chat
+      x-fern-sdk-group-name: chat
+      x-fern-sdk-method-name: getRun
+      operationId: chatGetRun
+      summary: Fetch a previously dispatched run by public_run_id
+      description: |
+        Returns the terminal assistant message for a run previously
+        dispatched via `POST /v1/chat/{tenant}/{agent}` or its
+        `/stream` variant. Used after a `504 sync_timeout` or a dropped
+        connection to retrieve the eventual answer.
+
+        - `200` — the run finished successfully; the body is the same
+          shape as a synchronous chat response.
+        - `202` — the run is still in flight; retry shortly.
+        - `404` — unknown `public_run_id` or the bearer key does not
+          own this run.
+        - `410` — the run was dropped (gateway crash beyond the recovery
+          window); the answer is permanently unavailable.
+        - `502` — the run terminated with an upstream error.
+      parameters:
+      - "$ref": "#/components/parameters/TenantPath"
+      - "$ref": "#/components/parameters/AgentPath"
+      - "$ref": "#/components/parameters/PublicRunId"
+      responses:
+        '200':
+          description: Terminal assistant reply.
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ChatResponse"
+        '202':
+          description: Run still in flight; caller should retry.
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/RunStatus"
+        '401':
+          "$ref": "#/components/responses/Unauthorized"
+        '403':
+          "$ref": "#/components/responses/Forbidden"
+        '404':
+          "$ref": "#/components/responses/NotFound"
+        '410':
+          "$ref": "#/components/responses/Lost"
+        '502':
+          "$ref": "#/components/responses/Upstream"
+  "/v1/chat/{tenant}/{agent}/runs/{public_run_id}/stream":
+    get:
+      tags:
+      - Chat
+      x-fern-sdk-group-name: chat
+      x-fern-sdk-method-name: resumeStream
+      operationId: chatResumeStream
+      summary: Resume an SSE stream for an in-flight or recent run
+      description: |
+        Re-attaches to the public SSE stream for an existing run. The
+        runtime replays its buffered events on subscribe so a recent
+        reconnect catches up without loss. Use after a network drop on
+        the original `/stream` call, or to "tail" a run that began life
+        as a synchronous call.
+
+        The `Last-Event-ID` request header is accepted for forward
+        compatibility but is ignored in v1 — clients dedupe by frame
+        `id` (`<public_run_id>:<seq>`).
+
+        Event semantics are identical to `POST .../stream`.
+      parameters:
+      - "$ref": "#/components/parameters/TenantPath"
+      - "$ref": "#/components/parameters/AgentPath"
+      - "$ref": "#/components/parameters/PublicRunId"
+      - name: Last-Event-ID
+        in: header
+        required: false
+        schema:
+          type: string
+        description: |
+          Accepted for forward compatibility; ignored in v1. Clients
+          should dedupe by frame `id` instead.
+      responses:
+        '200':
+          description: Server-Sent Events stream; see `POST .../stream`.
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                example: |
+                  id: prun_8x4k2p6n9wq3vt7y2m4r5b:2
+                  event: done
+                  data: {"public_run_id":"prun_8x4k2p6n9wq3vt7y2m4r5b","conversation_id":"conv_123","message":"Here is the summary..."}
+        '401':
+          "$ref": "#/components/responses/Unauthorized"
+        '403':
+          "$ref": "#/components/responses/Forbidden"
+        '404':
+          "$ref": "#/components/responses/NotFound"
+        '410':
+          "$ref": "#/components/responses/Lost"
+  "/v1/chat/{tenant}/{agent}/conversations/{id}":
+    get:
+      tags:
+      - Conversations
+      x-fern-sdk-group-name: conversations
+      x-fern-sdk-method-name: get
+      operationId: conversationsGet
+      summary: Fetch conversation history
+      description: |
+        Returns the message history for a conversation, oldest first.
+
+        - Paginate by passing `before=msg_xxx` to fetch messages older
+          than the supplied id. `limit` defaults to 50 and is capped at
+          200.
+        - `role='error'` rows are excluded by default. Pass
+          `include=errors` to surface them in history (useful for
+          debugging UIs).
+        - Cross-agent reuse — a conversation that belongs to a different
+          published agent — returns `404`, not `403`, to avoid leaking
+          the existence of unrelated conversations.
+      parameters:
+      - "$ref": "#/components/parameters/TenantPath"
+      - "$ref": "#/components/parameters/AgentPath"
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          example: conv_123
+        description: Conversation identifier.
+      - name: before
+        in: query
+        required: false
+        schema:
+          type: string
+          example: msg_01HZ8X4K2P6N9WQ3VT7Y2M4R5B
+        description: |
+          Return only messages strictly older than this message id.
+          Use the `id` of the oldest message in the previous page.
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 200
+          default: 50
+        description: Maximum number of messages to return.
+      - name: include
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - errors
+        description: |
+          Set to `errors` to include `role='error'` rows in the
+          response. Omitted by default.
+      responses:
+        '200':
+          description: Conversation history.
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Conversation"
+        '401':
+          "$ref": "#/components/responses/Unauthorized"
+        '403':
+          "$ref": "#/components/responses/Forbidden"
+        '404':
+          "$ref": "#/components/responses/NotFound"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: apiKey
+      description: |
+        Bearer API key of the form `ao_<env>_<random32>`, issued via the
+        control plane and scoped to a single published agent. The
+        tenant is derived from the validated key — there is no
+        `X-Tenant-ID` header on the public API.
+  parameters:
+    TenantPath:
+      name: tenant
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: "^[a-z0-9-]{1,64}$"
+        example: acme
+      description: |
+        Tenant slug. Must match the tenant the bearer key was issued
+        for; mismatch returns `403`.
+    AgentPath:
+      name: agent
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: "^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$"
+        example: support
+      description: Published agent slug chosen at publish time. Profile identifiers
+        are never exposed publicly.
+    PublicRunId:
+      name: public_run_id
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: "^prun_[a-z0-9]{22}$"
+        example: prun_8x4k2p6n9wq3vt7y2m4r5b
+      description: Gateway-minted public run identifier for retrieving or resuming
+        a chat response.
+  schemas:
+    ChatRequest:
+      type: object
+      required:
+      - message
+      description: A single turn from the end-user.
+      properties:
+        message:
+          type: string
+          minLength: 1
+          description: The user's message text.
+          example: Can you summarize this document?
+        conversation_id:
+          type: string
+          description: |
+            Existing conversation to continue. Omit to start a new one;
+            the server mints a fresh id and returns it on the response.
+          example: conv_123
+        metadata:
+          "$ref": "#/components/schemas/ChatRequestMetadata"
+    ChatRequestMetadata:
+      type: object
+      description: |
+        Optional per-call metadata. Surfaces in usage events and is
+        denormalised onto stored messages for audit / GDPR purposes.
+      properties:
+        end_user_id:
+          type: string
+          description: |
+            Stable identifier for the tenant's end-user (their
+            customer). Opaque to the platform; never displayed.
+          example: user_456
+    ChatResponse:
+      type: object
+      required:
+      - conversation_id
+      - message
+      - public_run_id
+      properties:
+        conversation_id:
+          type: string
+          example: conv_123
+        message:
+          type: string
+          description: Terminal assistant message text.
+          example: Here is the summary...
+        public_run_id:
+          type: string
+          pattern: "^prun_[a-z0-9]{22}$"
+          example: prun_8x4k2p6n9wq3vt7y2m4r5b
+    RunStatus:
+      type: object
+      required:
+      - status
+      - public_run_id
+      description: Status payload for an in-flight run.
+      properties:
+        status:
+          type: string
+          enum:
+          - dispatching
+          - running
+          example: running
+        public_run_id:
+          type: string
+          pattern: "^prun_[a-z0-9]{22}$"
+          example: prun_8x4k2p6n9wq3vt7y2m4r5b
+        conversation_id:
+          type: string
+          example: conv_123
+    Conversation:
+      type: object
+      required:
+      - conversation_id
+      - messages
+      properties:
+        conversation_id:
+          type: string
+          example: conv_123
+        messages:
+          type: array
+          items:
+            "$ref": "#/components/schemas/Message"
+    Message:
+      type: object
+      required:
+      - role
+      - content
+      - at
+      properties:
+        id:
+          type: string
+          description: Stable message id; usable as a `before=` cursor.
+          example: msg_01HZ8X4K2P6N9WQ3VT7Y2M4R5B
+        role:
+          type: string
+          enum:
+          - user
+          - assistant
+          - error
+          description: |
+            `user` for end-user turns, `assistant` for terminal model
+            replies, `error` for terminal upstream failures (excluded
+            from history by default; pass `include=errors` to opt in).
+        content:
+          type: string
+          description: |
+            For `user`, the original message. For `assistant`, the
+            rendered terminal text. For `error`, a human-readable
+            description of the upstream failure.
+        public_run_id:
+          type: string
+          pattern: "^prun_[a-z0-9]{22}$"
+          description: |
+            Present on `assistant` and `error` messages. Absent on
+            `user` messages.
+          example: prun_8x4k2p6n9wq3vt7y2m4r5b
+        end_user_id:
+          type: string
+          description: |
+            Denormalised from the request `metadata.end_user_id`.
+            Present when supplied by the caller.
+          example: user_456
+        at:
+          type: string
+          format: date-time
+          description: RFC 3339 timestamp the message was written.
+    Error:
+      type: object
+      required:
+      - error
+      description: |
+        Common error envelope. `public_run_id` is included on errors
+        tied to a specific run (e.g. `sync_timeout`, `upstream`) so the
+        caller can retrieve the eventual result.
+      properties:
+        error:
+          type: string
+          description: |
+            Machine-readable error code. One of `invalid_request`,
+            `unauthorized`, `forbidden`, `not_found`, `lost`,
+            `rate_limited`, `upstream`, `sync_timeout`.
+          example: sync_timeout
+        message:
+          type: string
+          description: Human-readable description, safe to surface in UIs.
+          example: Run exceeded syncMaxDurationSeconds; fetch result via /runs/{public_run_id}.
+        public_run_id:
+          type: string
+          pattern: "^prun_[a-z0-9]{22}$"
+          description: 'Present on errors tied to a specific run.
+
+'
+          example: prun_8x4k2p6n9wq3vt7y2m4r5b
+  responses:
+    BadRequest:
+      description: |
+        `invalid_request` — the request body was malformed or failed
+        validation (missing `message`, oversized payload, etc.).
+      content:
+        application/json:
+          schema:
+            "$ref": "#/components/schemas/Error"
+          example:
+            error: invalid_request
+            message: 'message: required'
+    Unauthorized:
+      description: |
+        `unauthorized` — the bearer token is missing, malformed,
+        unknown, revoked, or expired.
+      content:
+        application/json:
+          schema:
+            "$ref": "#/components/schemas/Error"
+          example:
+            error: unauthorized
+            message: invalid or revoked API key
+    Forbidden:
+      description: |
+        `forbidden` — the bearer is valid but scoped to a different
+        published agent or tenant than the URL targets.
+      content:
+        application/json:
+          schema:
+            "$ref": "#/components/schemas/Error"
+          example:
+            error: forbidden
+            message: API key is not authorized for this published agent
+    NotFound:
+      description: |
+        `not_found` — the tenant, published agent, conversation, or run
+        does not exist (or, in the case of conversations, belongs to a
+        different published agent — returned as 404 to avoid leaking
+        existence).
+      content:
+        application/json:
+          schema:
+            "$ref": "#/components/schemas/Error"
+          example:
+            error: not_found
+            message: published agent not found
+    Lost:
+      description: |
+        `lost` — the run was dropped (gateway crash beyond the recovery
+        window). The answer is permanently unavailable; the caller
+        should re-issue the original request as a new run.
+      content:
+        application/json:
+          schema:
+            "$ref": "#/components/schemas/Error"
+          example:
+            error: lost
+            message: run was dropped beyond the recovery window
+            public_run_id: prun_8x4k2p6n9wq3vt7y2m4r5b
+    RateLimited:
+      description: |
+        `rate_limited` — the per-key or per-published-agent
+        `requestsPerMinute` ceiling was exceeded. The `Retry-After`
+        header indicates how many seconds to wait before retrying.
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+            minimum: 1
+          description: Seconds to wait before retrying.
+      content:
+        application/json:
+          schema:
+            "$ref": "#/components/schemas/Error"
+          example:
+            error: rate_limited
+            message: requestsPerMinute exceeded
+    Upstream:
+      description: |
+        `upstream` — the upstream service returned an error mid-run, or the
+        gateway could not reach the upstream service.
+      content:
+        application/json:
+          schema:
+            "$ref": "#/components/schemas/Error"
+          example:
+            error: upstream
+            message: run failed mid-stream
+            public_run_id: prun_8x4k2p6n9wq3vt7y2m4r5b
+    SyncTimeout:
+      description: |
+        `sync_timeout` — the run exceeded `syncMaxDurationSeconds`. The
+        body carries the `public_run_id`; fetch the eventual answer
+        via `GET /v1/chat/{tenant}/{agent}/runs/{public_run_id}`. The
+        run continues executing and the terminal
+        write to history still happens.
+      content:
+        application/json:
+          schema:
+            "$ref": "#/components/schemas/Error"
+          example:
+            error: sync_timeout
+            message: run exceeded syncMaxDurationSeconds; fetch via /runs/{public_run_id}
+            public_run_id: prun_8x4k2p6n9wq3vt7y2m4r5b
+            conversation_id: conv_123

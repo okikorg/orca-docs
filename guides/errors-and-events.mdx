@@ -1,0 +1,39 @@
+---
+title: "Errors and events"
+description: "Handle run status, stream events, and CLI exit codes."
+---
+
+## Run events
+
+Run streams use Server-Sent Events. Each event body is JSON.
+
+```text
+data: {"type":"assistant","message":"..."}
+```
+
+Treat `result` as successful terminal output and `error` as a failed run.
+
+## HTTP errors
+
+Common response classes:
+
+| Status | Meaning |
+| --- | --- |
+| `400` | Invalid request body or parameter |
+| `401` | Missing or invalid credentials |
+| `403` | Credentials do not allow the requested action |
+| `404` | Resource not found |
+| `409` | Resource already exists or conflicts |
+| `429` | Rate limited |
+| `500` | Server error |
+
+## CLI exit codes
+
+| Code | Meaning |
+| --- | --- |
+| `0` | Success |
+| `1` | API, network, or failed run error |
+| `2` | Usage or validation error |
+| `3` | Missing, invalid, or insufficient auth |
+| `4` | Named resource not found |
+| `130` | Detached or interrupted with `Ctrl-C` |

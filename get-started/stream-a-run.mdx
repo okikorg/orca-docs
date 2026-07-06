@@ -1,0 +1,64 @@
+---
+title: "Stream a run"
+description: "Subscribe to live Orca run events."
+---
+
+Runs stream as Server-Sent Events. Each `data:` payload is a JSON event.
+
+## Create a run
+
+```bash
+curl -X POST "$ORCA_API_URL/api/runs" \
+  -H "Authorization: Bearer $ORCA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "profile": "researcher",
+    "title": "Streaming example",
+    "prompt": "Write a short onboarding checklist."
+  }'
+```
+
+The response includes a `runId` and `sessionId`.
+
+## Stream events
+
+```bash
+curl -N "$ORCA_API_URL/api/runs/run_.../stream" \
+  -H "Authorization: Bearer $ORCA_API_KEY" \
+  -H "Accept: text/event-stream"
+```
+
+Common event types:
+
+| Type | Meaning |
+| --- | --- |
+| `progress` | The run moved to a new stage |
+| `session_init` | A session is ready |
+| `assistant` | Assistant text is available |
+| `tool_call` | The agent is calling a tool |
+| `tool_result` | A tool returned output |
+| `usage` | Token or usage data was reported |
+| `result` | The run completed successfully |
+| `error` | The run failed |
+
+## Resume from stored events
+
+Use the replay endpoint when you need the persisted event log instead of a live stream:
+
+```bash
+curl "$ORCA_API_URL/api/runs/run_.../events" \
+  -H "Authorization: Bearer $ORCA_API_KEY"
+```
+
+## Session continuity
+
+Reuse the `sessionId` from a previous run to continue context with the same agent:
+
+```json
+{
+  "profile": "researcher",
+  "sessionId": "sess_...",
+  "title": "Follow-up",
+  "prompt": "Now turn that into release-note copy."
+}
+```

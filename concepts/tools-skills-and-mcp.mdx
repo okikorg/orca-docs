@@ -1,0 +1,41 @@
+---
+title: "Tools, skills, and MCP"
+description: "Give agents controlled capabilities."
+---
+
+Orca agents can use built-in tools, reusable skills, and external MCP servers.
+
+## Tools
+
+Tools are callable capabilities. Tool bundles such as `@default` give agents a curated set of common actions.
+
+## Skills
+
+Skills package instructions and optional resources. They are useful when many agents need the same procedure, domain rules, or task-specific guidance.
+
+Common CLI commands:
+
+```bash
+orca skills list
+orca skills get orca-docs
+orca skills import ./skills/researcher --dry-run
+orca skills attach researcher orca-docs
+```
+
+## MCP servers
+
+MCP servers expose external systems as tools. Register a server once, test it, then attach it to profiles.
+
+```bash
+orca mcp add --name docs --url https://mcp.example.com/docs --transport http
+orca mcp test docs
+orca mcp attach researcher docs
+```
+
+## Secrets
+
+Do not put sensitive values in profile files. Store secrets in Orca and reference them from MCP headers or runtime configuration.
+
+```bash
+orca secrets set ANTHROPIC_API_KEY --key ANTHROPIC_API_KEY
+```

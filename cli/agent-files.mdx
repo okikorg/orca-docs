@@ -1,0 +1,50 @@
+---
+title: "Agent files"
+description: "Create or update agents from YAML or JSON."
+---
+
+`orca agents create -f` and `orca agents update -f` accept YAML or JSON.
+
+```yaml
+name: support-bot
+runtime: claude
+model: claude-sonnet-5
+systemPrompt: |
+  You answer support questions clearly and concisely.
+skills:
+  - orca-docs
+tools:
+  - "@orchestration"
+mcpServers:
+  - name: docs
+    transport: http
+    url: https://mcp.example.com/docs
+fs:
+  read:
+    - /agents/self
+sandbox:
+  provider: e2b
+  resources:
+    cpu: 2
+    memoryMB: 1024
+```
+
+Create from a file:
+
+```bash
+orca agents create -f support-bot.yaml
+```
+
+Update an existing agent:
+
+```bash
+orca agents update support-bot -f support-bot.yaml
+```
+
+Read from stdin:
+
+```bash
+cat support-bot.yaml | orca agents create -f -
+```
+
+Unknown keys warn by default. Use `--strict` when warnings should fail the command.

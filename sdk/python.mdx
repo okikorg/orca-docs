@@ -1,0 +1,80 @@
+---
+title: "Python SDK"
+description: "Use Orca from Python services and scripts."
+---
+
+## Install
+
+```bash
+pip install agentorc
+```
+
+## Client setup
+
+```python
+import os
+from agentorc import AgentOrcClient
+
+client = AgentOrcClient(
+    base_url=os.environ["ORCA_BASE_URL"],
+    token=os.environ["ORCA_API_KEY"],
+    tenant_id=os.getenv("ORCA_TENANT_ID", "default"),
+    timeout=120.0,
+)
+```
+
+## Create a profile
+
+```python
+client.profiles.create(
+    name="researcher",
+    runtime="general",
+    model="anthropic:claude-opus-4-6",
+    system_prompt="You are a research assistant. Be concise and cite sources.",
+    tools=["@default"],
+)
+```
+
+## Submit a run
+
+```python
+created = client.runs.create(
+    id="",
+    profile="researcher",
+    session_id="",
+    title="SDK onboarding",
+    prompt="Explain Orca profiles and runs in three bullets.",
+)
+
+print(created.run_id, created.session_id)
+```
+
+## Stream events
+
+The run stream is Server-Sent Events where each `data:` payload is JSON.
+
+```python
+import json
+import os
+import httpx
+
+with httpx.stream(
+    "GET",
+    f"{os.environ['ORCA_BASE_URL']}/api/runs/{created.run_id}/stream",
+    headers={
+        "Authorization": f"Bearer {os.environ['ORCA_API_KEY']}",
+        "Accept": "text/event-stream",
+        "X-Tenant-ID": os.getenv("ORCA_TENANT_ID", "default"),
+    },
+    timeout=300.0,
+) as response:
+    response.raise_for_status()
+    for line in response.iter_lines():
+        if not line.startswith("data:"):
+            continue
+        event = json.loads(line.removeprefix("data:").strip())
+        if event["type"] in {"assistant", "result"}:
+            print(event.get("message", ""), end="")
+        elif event["type"] == "error":
+            raise RuntimeError(event.get("message", "run failed"))
+```

@@ -1,0 +1,65 @@
+---
+title: "TypeScript SDK"
+description: "Create profiles, submit runs, and stream events from TypeScript."
+---
+
+The TypeScript SDK exposes a generated `AgentOrcClient`.
+
+## Client setup
+
+```typescript
+import { AgentOrcClient } from "@okik/orca";
+
+const client = new AgentOrcClient({
+  baseUrl: process.env.ORCA_BASE_URL,
+  token: process.env.ORCA_API_KEY,
+  tenantId: process.env.ORCA_TENANT_ID ?? "default",
+  timeoutInSeconds: 120,
+});
+```
+
+## Create a profile
+
+```typescript
+await client.profiles.create({
+  name: "researcher",
+  runtime: "general",
+  model: "anthropic:claude-opus-4-6",
+  systemPrompt: "You are a research assistant. Be concise and cite sources.",
+  tools: ["@default"],
+});
+```
+
+## Submit a run
+
+```typescript
+const created = await client.runs.create({
+  id: "",
+  profile: "researcher",
+  sessionId: "",
+  title: "SDK onboarding",
+  prompt: "Explain Orca profiles and runs in three bullets.",
+});
+
+console.log(created.runId, created.sessionId);
+```
+
+## Stream events
+
+```typescript
+const stream = await client.runs.stream(
+  { id: created.runId },
+  { timeoutInSeconds: 300 },
+);
+
+for await (const event of stream as AsyncIterable<{ type: string; message?: string }>) {
+  if (event.type === "assistant" || event.type === "result") {
+    process.stdout.write(event.message ?? "");
+  }
+  if (event.type === "error") {
+    throw new Error(event.message ?? "run failed");
+  }
+}
+```
+
+Use the API reference for the generated method surface.

@@ -1,0 +1,41 @@
+---
+title: "Memory and storage"
+description: "Persist knowledge and files for agents."
+---
+
+Orca provides two user-facing persistence surfaces: memory and storage.
+
+## Memory
+
+Memory stores useful knowledge associated with agents and the workspace. Use it for facts, preferences, summaries, and reusable context that should survive a single run.
+
+CLI examples:
+
+```bash
+orca memory list researcher
+orca memory search researcher "billing policy"
+orca memory show researcher mem_...
+orca memory bank stats
+```
+
+## Storage
+
+Storage holds tenant-scoped files that agents and users can read or write through approved surfaces.
+
+CLI examples:
+
+```bash
+orca storage info
+orca storage ls docs/
+orca storage put docs/faq.md ./faq.md
+orca storage get docs/faq.md --output faq.md
+orca storage rm docs/old.md --yes
+```
+
+## When to use each
+
+| Need | Use |
+| --- | --- |
+| Searchable knowledge and summaries | Memory |
+| Files, artifacts, documents, and binary content | Storage |
+| External systems of record | MCP server |

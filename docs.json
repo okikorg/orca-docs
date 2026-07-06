@@ -1,0 +1,144 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "Orca",
+  "description": "Build, run, and publish AI agents with Orca.",
+  "logo": {
+    "light": "/logo/light.svg",
+    "dark": "/logo/dark.svg"
+  },
+  "favicon": "/favicon.svg",
+  "colors": {
+    "primary": "#FF775C",
+    "light": "#CC4B32",
+    "dark": "#FF775C"
+  },
+  "topbar": {
+    "links": [
+      {
+        "name": "CLI",
+        "url": "https://github.com/okikorg/orca-cli"
+      },
+      {
+        "name": "GitHub",
+        "url": "https://github.com/okikorg"
+      }
+    ],
+    "primary": {
+      "name": "Get started",
+      "url": "/quickstart"
+    }
+  },
+  "tabs": [
+    {
+      "tab": "Docs",
+      "groups": [
+        "Get started",
+        "Core concepts",
+        "Guides"
+      ]
+    },
+    {
+      "tab": "CLI",
+      "groups": [
+        "CLI"
+      ]
+    },
+    {
+      "tab": "SDKs",
+      "groups": [
+        "SDKs"
+      ]
+    },
+    {
+      "tab": "API Reference",
+      "groups": [
+        "API reference"
+      ]
+    }
+  ],
+  "navigation": {
+    "groups": [
+      {
+        "group": "Get started",
+        "pages": [
+          "introduction",
+          "quickstart",
+          "get-started/create-an-agent",
+          "get-started/stream-a-run"
+        ]
+      },
+      {
+        "group": "Core concepts",
+        "pages": [
+          "concepts/agents",
+          "concepts/runs-and-sessions",
+          "concepts/tools-skills-and-mcp",
+          "concepts/memory-and-storage",
+          "concepts/published-agents"
+        ]
+      },
+      {
+        "group": "Guides",
+        "pages": [
+          "guides/authentication",
+          "guides/errors-and-events",
+          "guides/workflows"
+        ]
+      },
+      {
+        "group": "CLI",
+        "pages": [
+          "cli/overview",
+          "cli/authentication",
+          "cli/commands",
+          "cli/agent-files"
+        ]
+      },
+      {
+        "group": "SDKs",
+        "pages": [
+          "sdk/overview",
+          "sdk/typescript",
+          "sdk/python",
+          "sdk/go"
+        ]
+      },
+      {
+        "group": "API reference",
+        "pages": [
+          "api-reference/control-plane",
+          {
+            "group": "Control plane API",
+            "openapi": "/api-reference/orca-openapi.yaml"
+          },
+          "api-reference/chat-gateway",
+          {
+            "group": "Chat gateway API",
+            "openapi": "/api-reference/chat-openapi.yaml"
+          }
+        ]
+      }
+    ]
+  },
+  "api": {
+    "playground": {
+      "display": "interactive"
+    },
+    "params": {
+      "expanded": "all"
+    },
+    "url": "full",
+    "examples": {
+      "languages": [
+        "curl",
+        "javascript",
+        "python",
+        "go"
+      ],
+      "defaults": "required",
+      "prefill": true,
+      "autogenerate": true
+    }
+  }
+}

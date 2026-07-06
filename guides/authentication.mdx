@@ -1,0 +1,52 @@
+---
+title: "Authentication"
+description: "Use tenant API keys and published-agent chat keys."
+---
+
+Orca uses different keys for different surfaces.
+
+## Tenant API keys
+
+Tenant API keys authenticate control-plane operations such as managing agents, runs, skills, storage, memory, billing, and workflows.
+
+Use them with the CLI:
+
+```bash
+ORCA_API_KEY=ao_... ORCA_API_URL=https://api.example.com orca agents list
+```
+
+Use them with HTTP:
+
+```bash
+curl "$ORCA_API_URL/api/profiles" \
+  -H "Authorization: Bearer $ORCA_API_KEY"
+```
+
+## Chat keys
+
+Published-agent chat keys authenticate the chat gateway. They are scoped to a published agent.
+
+```bash
+orca agents keys create support
+```
+
+Use them with chat:
+
+```bash
+curl -X POST "https://agents.example.com/v1/chat/acme/support" \
+  -H "Authorization: Bearer $ORCA_CHAT_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"message":"Hello"}'
+```
+
+## Tenant header
+
+The control-plane API is tenant-scoped. SDKs send `X-Tenant-ID` for you when configured. For raw HTTP, include it when your deployment requires explicit tenant selection.
+
+```bash
+curl "$ORCA_API_URL/api/runs" \
+  -H "Authorization: Bearer $ORCA_API_KEY" \
+  -H "X-Tenant-ID: acme"
+```
+
+The chat gateway derives tenant access from the published-agent route and key.

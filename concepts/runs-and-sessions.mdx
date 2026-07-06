@@ -1,0 +1,46 @@
+---
+title: "Runs and sessions"
+description: "How Orca handles work and continuity."
+---
+
+A **run** is one task submitted to an agent. A **session** is the continuity layer that lets related runs share context.
+
+## Runs
+
+Create a run with a profile name and prompt:
+
+```json
+{
+  "profile": "researcher",
+  "title": "Competitive scan",
+  "prompt": "Compare these three products for onboarding quality."
+}
+```
+
+Runs stream events while work is in progress and retain event history for later inspection.
+
+## Sessions
+
+When you omit `sessionId`, Orca creates one. Pass an existing `sessionId` to continue a conversation or workflow with the same agent.
+
+Use a new session when:
+
+- The task is unrelated to prior work.
+- You want a clean context boundary.
+- You are running independent jobs in parallel.
+
+Reuse a session when:
+
+- The user is asking follow-up questions.
+- A workflow needs shared context across steps.
+- You want memory and recent interaction context to line up.
+
+## Cancellation
+
+Cancel a run from the CLI or API:
+
+```bash
+orca runs cancel run_...
+```
+
+Cancellation stops the server-side run. Detaching a local stream does not cancel the run.

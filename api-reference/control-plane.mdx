@@ -1,0 +1,32 @@
+---
+title: "Control plane API"
+description: "Manage Orca agents, runs, sessions, skills, MCP, storage, memory, keys, publishing, billing, and workflows."
+---
+
+The control-plane API is the tenant-scoped API used by the dashboard, CLI, and SDKs.
+
+Use it for:
+
+- Agent profile management.
+- Run creation, streaming, cancellation, and replay.
+- Session lookup.
+- Skills, MCP servers, memory, storage, secrets, and pools.
+- API keys, published-agent configuration, billing, usage, stats, and workflows.
+
+## Authentication
+
+Send a tenant API key as a bearer token:
+
+```bash
+Authorization: Bearer ao_...
+```
+
+When your deployment uses explicit tenant selection, also send:
+
+```bash
+X-Tenant-ID: acme
+```
+
+## Generated reference
+
+The endpoint reference in this section is generated from `api-reference/orca-openapi.yaml`, the public SDK OpenAPI contract. Internal operator, webhook, maintenance, and service-callback routes are not included.

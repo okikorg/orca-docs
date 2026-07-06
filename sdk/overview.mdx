@@ -1,0 +1,41 @@
+---
+title: "SDKs"
+description: "Use Orca from TypeScript, Python, and Go."
+---
+
+Orca SDKs target the public control-plane API. Use them to create profiles, submit runs, stream events, manage platform resources, and build product workflows.
+
+<CardGroup cols={3}>
+  <Card title="TypeScript" icon="js" href="/sdk/typescript">
+    Use Orca from browser, Node.js, or service code.
+  </Card>
+  <Card title="Python" icon="python" href="/sdk/python">
+    Use sync or async clients in Python services.
+  </Card>
+  <Card title="Go" icon="go" href="/sdk/go">
+    Use Orca from Go services and automation.
+  </Card>
+</CardGroup>
+
+## Configuration
+
+All SDKs use the same core settings:
+
+| Setting | Purpose |
+| --- | --- |
+| Base URL | The Orca control-plane API URL |
+| API key | Bearer token for authenticated deployments |
+| Tenant ID | Tenant scope for workspace resources |
+| Timeout | Request or stream timeout |
+| Retries | SDK retry behavior |
+
+## Core flow
+
+1. Create or retrieve an agent profile.
+2. Submit a run.
+3. Stream run events.
+4. Reuse the returned session ID for follow-up work.
+
+## Resources
+
+SDKs expose generated clients for profiles, pools, sessions, runs, workflows, skills, MCP, storage, memory, secrets, API keys, publishing, billing, connected apps, topology, stats, and health checks.

@@ -1,0 +1,34 @@
+---
+title: "Agents"
+description: "Understand Orca agent profiles."
+---
+
+Agents are reusable profiles. A profile tells Orca which runtime and model to use, what instructions to follow, and which capabilities the agent can access.
+
+## Profile fields
+
+| Field | Purpose |
+| --- | --- |
+| `name` | Stable identifier used by CLI, SDKs, and API calls |
+| `runtime` | Agent execution mode, such as `general`, `claude`, or `codex` |
+| `model` | Provider-specific model name |
+| `systemPrompt` | Base instructions for the agent |
+| `tools` | Built-in tool bundles or named tools |
+| `skills` | Reusable skill packages attached to the agent |
+| `mcpServers` | External MCP servers available to the agent |
+
+## Agent lifecycle
+
+1. Create a profile.
+2. Update its instructions, model, tools, or skills as needed.
+3. Submit runs against the profile.
+4. Review run history, usage, memories, and events.
+5. Publish the agent when it should be reachable through the chat gateway.
+
+## Good profile design
+
+- Give each agent a narrow, memorable name.
+- Put durable behavior in `systemPrompt`.
+- Attach only the tools and MCP servers needed for the job.
+- Use skills for repeatable procedures or domain knowledge.
+- Keep secrets in Orca secrets and reference them indirectly.

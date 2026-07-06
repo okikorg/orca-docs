@@ -1,0 +1,89 @@
+---
+title: "Go SDK"
+description: "Use Orca from Go services and automation."
+---
+
+## Client setup
+
+```go
+package main
+
+import (
+	"net/http"
+	"os"
+	"time"
+
+	orcclient "github.com/okikorg/orca/sdks/go/client"
+	"github.com/okikorg/orca/sdks/go/option"
+)
+
+func newClient() *orcclient.Client {
+	return orcclient.NewClient(
+		option.WithBaseURL(os.Getenv("ORCA_BASE_URL")),
+		option.WithBearerToken(os.Getenv("ORCA_API_KEY")),
+		option.WithTenantID(ptr(os.Getenv("ORCA_TENANT_ID"))),
+		option.WithHTTPClient(&http.Client{Timeout: 120 * time.Second}),
+	)
+}
+
+func ptr[T any](v T) *T {
+	return &v
+}
+```
+
+## Create a profile
+
+```go
+_, err := client.Profiles.Create(ctx, &api.Profile{
+	Name:         "researcher",
+	Runtime:      "general",
+	Model:        api.String("anthropic:claude-opus-4-6"),
+	SystemPrompt: api.String("You are a research assistant. Be concise and cite sources."),
+	Tools:        []string{"@default"},
+})
+```
+
+## Submit a run
+
+```go
+created, err := client.Runs.Create(ctx, &api.SubTask{
+	Profile: "researcher",
+	Title:   "SDK onboarding",
+	Prompt:  api.String("Explain Orca profiles and runs in three bullets."),
+})
+if err != nil {
+	return err
+}
+
+fmt.Println(created.RunID, created.SessionID)
+```
+
+## Stream events
+
+```go
+stream, err := client.Runs.Stream(ctx, &api.StreamRunsRequest{ID: created.RunID})
+if err != nil {
+	return err
+}
+defer stream.Close()
+
+for {
+	raw, err := stream.RecvRaw()
+	if err == io.EOF {
+		break
+	}
+	if err != nil {
+		return err
+	}
+
+	var event api.Event
+	if err := json.Unmarshal(raw, &event); err != nil {
+		return err
+	}
+	if event.Type == "assistant" || event.Type == "result" {
+		if event.Message != nil {
+			fmt.Print(*event.Message)
+		}
+	}
+}
+```

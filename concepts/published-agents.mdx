@@ -1,0 +1,41 @@
+---
+title: "Published agents"
+description: "Expose selected agents through a public chat API."
+---
+
+Publishing creates a stable chat surface for an agent. End-user applications call the chat gateway, not the full control-plane API.
+
+## Publish an agent
+
+```bash
+orca agents publish support --slug support
+orca agents keys create support
+```
+
+The key created for a published agent is scoped to chat for that agent. Keep it separate from tenant control-plane API keys.
+
+## Chat from the CLI
+
+```bash
+export ORCA_GATEWAY_URL=https://agents.example.com
+export ORCA_CHAT_KEY=ao_...
+
+orca chat support --tenant acme
+orca chat support "Can you summarize my order status?" --tenant acme
+```
+
+## Chat from HTTP
+
+```bash
+curl -X POST "https://agents.example.com/v1/chat/acme/support" \
+  -H "Authorization: Bearer $ORCA_CHAT_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "message": "Help me troubleshoot my setup.",
+    "stream": false
+  }'
+```
+
+## Public surface
+
+The chat gateway exposes conversation and chat operations only. It does not expose profile authoring, secrets, raw sessions, internal run IDs, or workspace administration.
