@@ -1,0 +1,130 @@
+<svg width="1120" height="760" viewBox="0 0 1120 760" role="img" aria-label="High-level Orca architecture diagram" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="arrow-coral" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 Z" fill="#FF775C"/>
+    </marker>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 Z" fill="#57C76B"/>
+    </marker>
+    <style>
+      .plane-label{fill:#57C76B;font:600 14px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.03em}
+      .box{fill:#151515;stroke:#3a3a3a;stroke-width:1.2}
+      .box-strong{fill:#171717;stroke:#6a6a6a;stroke-width:1.3}
+      .box-dashed{fill:#151515;stroke:#3a3a3a;stroke-width:1.1;stroke-dasharray:4 4}
+      .title{fill:#f7f7f7;font:650 13px Switzer,Inter,ui-sans-serif,system-ui}
+      .label{fill:#c8c8c8;font:12px "Geist Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+      .muted{fill:#8f8f8f;font:11px "Geist Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+      .tiny{fill:#8f8f8f;font:10px "Geist Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+      .line{stroke:#2f6f3b;stroke-width:1.5;fill:none;marker-end:url(#arrow-green)}
+      .line-coral{stroke:#FF775C;stroke-width:1.5;fill:none;marker-end:url(#arrow-coral)}
+      .line-muted{stroke:#505050;stroke-width:1.1;fill:none;stroke-dasharray:4 5}
+      .separator{stroke:#333;stroke-width:1;stroke-dasharray:3 5}
+    </style>
+  </defs>
+
+  <rect width="1120" height="760" fill="#0b0b0b"/>
+
+  <text x="48" y="82" class="plane-label">Interface plane</text>
+  <text x="48" y="304" class="plane-label">Orca control plane</text>
+  <text x="48" y="566" class="plane-label">Agent execution plane</text>
+
+  <line x1="36" y1="232" x2="1084" y2="232" class="separator"/>
+  <line x1="36" y1="494" x2="1084" y2="494" class="separator"/>
+
+  <rect x="210" y="54" width="700" height="132" rx="4" class="box-strong"/>
+  <rect x="210" y="54" width="700" height="34" rx="4" fill="#1f1f1f" stroke="#6a6a6a" stroke-width="1.3"/>
+  <text x="226" y="76" class="label">Users, developers, and applications</text>
+
+  <rect x="234" y="112" width="132" height="42" class="box-dashed"/>
+  <text x="254" y="137" class="label">Dashboard</text>
+  <rect x="386" y="112" width="132" height="42" class="box-dashed"/>
+  <text x="425" y="137" class="label">CLI</text>
+  <rect x="538" y="112" width="132" height="42" class="box-dashed"/>
+  <text x="569" y="137" class="label">SDKs</text>
+  <rect x="690" y="112" width="188" height="42" class="box-dashed"/>
+  <text x="722" y="137" class="label">Product backend</text>
+
+  <rect x="930" y="92" width="142" height="74" class="box"/>
+  <text x="957" y="122" class="title">End users</text>
+  <text x="953" y="145" class="muted">chat clients</text>
+
+  <path d="M300 154 V250" class="line"/>
+  <path d="M452 154 V250" class="line"/>
+  <path d="M604 154 V250" class="line"/>
+  <path d="M784 154 V250" class="line"/>
+  <path d="M1001 166 V250" class="line-coral"/>
+
+  <rect x="172" y="252" width="776" height="182" rx="4" class="box-strong"/>
+  <rect x="172" y="252" width="776" height="34" rx="4" fill="#1f1f1f" stroke="#6a6a6a" stroke-width="1.3"/>
+  <text x="188" y="274" class="label">Orca API and workspace services</text>
+
+  <rect x="198" y="312" width="172" height="46" class="box-dashed"/>
+  <text x="238" y="339" class="label">Agents</text>
+  <text x="242" y="375" class="tiny">profiles, models, prompts</text>
+
+  <rect x="390" y="312" width="172" height="46" class="box-dashed"/>
+  <text x="432" y="339" class="label">Runs</text>
+  <text x="420" y="375" class="tiny">tasks, events, sessions</text>
+
+  <rect x="582" y="312" width="172" height="46" class="box-dashed"/>
+  <text x="622" y="339" class="label">Workflows</text>
+  <text x="612" y="375" class="tiny">multi-step agent work</text>
+
+  <rect x="774" y="312" width="148" height="46" class="box-dashed"/>
+  <text x="806" y="339" class="label">Access</text>
+  <text x="794" y="375" class="tiny">keys, publishing</text>
+
+  <rect x="198" y="382" width="172" height="36" class="box-dashed"/>
+  <text x="221" y="405" class="label">Skills and tools</text>
+  <rect x="390" y="382" width="172" height="36" class="box-dashed"/>
+  <text x="430" y="405" class="label">MCP apps</text>
+  <rect x="582" y="382" width="172" height="36" class="box-dashed"/>
+  <text x="615" y="405" class="label">Memory</text>
+  <rect x="774" y="382" width="148" height="36" class="box-dashed"/>
+  <text x="809" y="405" class="label">Storage</text>
+
+  <rect x="976" y="280" width="106" height="126" class="box"/>
+  <text x="1000" y="322" class="title">Chat</text>
+  <text x="994" y="344" class="title">gateway</text>
+  <line x1="976" y1="360" x2="1082" y2="360" stroke="#3a3a3a"/>
+  <text x="994" y="386" class="muted">published agents</text>
+  <path d="M1001 250 V280" class="line-coral"/>
+  <path d="M976 342 H922" class="line-coral"/>
+
+  <path d="M476 434 V520" class="line"/>
+  <path d="M668 434 V520" class="line"/>
+  <path d="M848 434 V520" class="line"/>
+
+  <rect x="350" y="520" width="420" height="74" rx="4" class="box"/>
+  <text x="485" y="551" class="title">Agent session</text>
+  <text x="424" y="574" class="muted">instructions + selected tools + workspace context</text>
+
+  <rect x="172" y="624" width="182" height="58" class="box-dashed"/>
+  <text x="221" y="650" class="label">Models</text>
+  <text x="198" y="671" class="tiny">Anthropic, OpenAI, Google</text>
+
+  <rect x="390" y="624" width="182" height="58" class="box-dashed"/>
+  <text x="438" y="650" class="label">Tools</text>
+  <text x="420" y="671" class="tiny">built-in, skills, MCP</text>
+
+  <rect x="608" y="624" width="182" height="58" class="box-dashed"/>
+  <text x="659" y="650" class="label">Data</text>
+  <text x="640" y="671" class="tiny">memory and files</text>
+
+  <rect x="826" y="624" width="182" height="58" class="box-dashed"/>
+  <text x="862" y="650" class="label">Events</text>
+  <text x="854" y="671" class="tiny">streamed back to callers</text>
+
+  <path d="M560 594 V624" class="line"/>
+  <path d="M560 594 C560 610 263 604 263 624" class="line"/>
+  <path d="M560 594 C560 610 699 604 699 624" class="line"/>
+  <path d="M770 558 C884 558 917 594 917 624" class="line-coral"/>
+  <path d="M917 624 C1018 594 1032 454 1032 406" class="line-coral"/>
+  <path d="M826 650 C760 716 386 716 318 434" class="line-muted"/>
+
+  <rect x="64" y="704" width="988" height="34" class="box"/>
+  <rect x="82" y="716" width="8" height="8" fill="#FF775C"/>
+  <text x="102" y="724" class="tiny">Requests enter through dashboard, CLI, SDKs, direct API calls, or published chat endpoints.</text>
+  <rect x="608" y="716" width="8" height="8" fill="#57C76B"/>
+  <text x="628" y="724" class="tiny">Results, tool activity, and usage stream back as events.</text>
+</svg>

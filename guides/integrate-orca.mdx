@@ -1,0 +1,45 @@
+---
+title: "Integrate Orca into your app"
+description: "Add agent runs, streaming progress, and session continuity to a product workflow."
+---
+
+Use Orca when your product needs agents as a real feature, not a one-off script. Your application creates or selects an agent, submits a run, streams events to the user, and stores the session ID for follow-up work.
+
+## Integration shape
+
+1. Create an agent profile for the job your product needs.
+2. Call Orca from your backend with a tenant API key.
+3. Stream run events to your frontend.
+4. Reuse the returned session ID when the user continues the same task.
+5. Attach tools, skills, MCP servers, memory, or storage as the use case grows.
+
+## Backend call
+
+```typescript
+const run = await client.runs.create({
+  id: "",
+  profile: "support-triager",
+  sessionId: user.currentOrcaSessionId ?? "",
+  title: "Triage support conversation",
+  prompt: `Summarize this customer issue and suggest next steps:\n\n${transcript}`,
+});
+```
+
+## Frontend stream
+
+Your frontend can render events as they arrive:
+
+| Event | Product behavior |
+| --- | --- |
+| `progress` | Update a status line |
+| `assistant` | Append streamed text |
+| `tool_call` | Show tool activity when useful |
+| `usage` | Record metering or analytics |
+| `result` | Mark the task complete |
+| `error` | Show a recoverable failure state |
+
+## Where Orca fits
+
+Orca sits behind your product backend. Your users interact with your product UI; your backend decides which agent to call, what context to pass, and which result to show.
+
+Use the public chat gateway only when you want users or customers to talk directly to a published agent.

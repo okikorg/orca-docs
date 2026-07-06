@@ -1,0 +1,46 @@
+---
+title: "Publish an agent for chat"
+description: "Expose a selected Orca agent through a scoped chat endpoint."
+---
+
+Publish an agent when an end-user application should chat with a selected agent without receiving access to the full workspace API.
+
+## When to publish
+
+Use a published agent for:
+
+- Customer-facing support assistants.
+- Embedded product copilots.
+- Internal tools where users should chat with one approved agent.
+- Partner integrations that need a narrow API surface.
+
+Do not use the chat gateway for workspace administration. Use the control-plane API, CLI, or SDKs for trusted workspace operations.
+
+## Publish and create a key
+
+```bash
+orca agents publish support --slug support
+orca agents keys create support
+```
+
+Store the returned chat key in your application backend. It is shown once.
+
+## Call the chat gateway
+
+```bash
+curl -X POST "https://agents.example.com/v1/chat/acme/support" \
+  -H "Authorization: Bearer $ORCA_CHAT_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "message": "Help me understand my setup issue.",
+    "stream": false
+  }'
+```
+
+## Streaming chat
+
+Use streaming when you want the UI to update as the agent works. Preserve the returned conversation ID so follow-up messages stay in context.
+
+## Boundary
+
+Published chat exposes the chat experience only. It does not expose profile editing, secrets, workspace storage administration, or tenant API keys.

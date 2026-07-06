@@ -1,0 +1,39 @@
+---
+title: "Architecture"
+description: "How users, applications, agents, tools, and model providers interact through Orca."
+---
+
+Orca gives your product, team, and end users one place to create agents, submit work, stream progress, and expose selected agents through a public chat surface.
+
+The diagram below shows the user-facing architecture. It focuses on the surfaces you interact with, not deployment internals.
+
+<div style={{ overflowX: "auto", margin: "28px 0" }}>
+  <img src="/images/orca-architecture.svg" alt="High-level Orca architecture diagram showing user interfaces, Orca control-plane surfaces, agent sessions, tools, data, models, and streamed events" style={{ minWidth: "920px", maxWidth: "100%", height: "auto", border: "1px solid #2e2e2e" }} />
+</div>
+
+## What you interact with
+
+| Surface | Who uses it | What it does |
+| --- | --- | --- |
+| Dashboard | Operators and workspace admins | Create agents, inspect runs, manage resources, and publish agents |
+| CLI | Developers and automation | Script agent, run, key, storage, memory, MCP, skill, usage, and workflow operations |
+| SDKs | Product and backend code | Create runs, stream events, manage agents, and integrate Orca into applications |
+| Control plane API | Any trusted application | The HTTP surface behind the dashboard, CLI, and SDKs |
+| Chat gateway | End-user products | Send chat messages to published agents with scoped chat keys |
+
+## Request flow
+
+1. A user, script, backend service, or chat client submits work to Orca.
+2. Orca resolves the target agent profile, session context, tools, memory, storage, and access rules.
+3. An agent session executes the task with the selected model and approved capabilities.
+4. Orca streams events back to the caller: progress, assistant output, tool activity, usage, result, or error.
+5. If the agent is published, end users interact only with the chat gateway, not the full workspace API.
+
+## Boundary model
+
+Orca exposes two main public surfaces:
+
+- **Workspace control surface**: dashboard, CLI, SDKs, and control-plane API for trusted workspace operations.
+- **Published chat surface**: scoped chat endpoints for end-user applications.
+
+This separation lets teams manage agents and resources privately while exposing only selected agents to users.

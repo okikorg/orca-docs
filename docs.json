@@ -13,6 +13,17 @@
     "light": "#CC4B32",
     "dark": "#FF775C"
   },
+  "fonts": {
+    "family": "Switzer",
+    "heading": {
+      "family": "Switzer",
+      "weight": 600
+    },
+    "body": {
+      "family": "Switzer",
+      "weight": 400
+    }
+  },
   "topbar": {
     "links": [
       {
@@ -46,13 +57,19 @@
           {
             "group": "Core concepts",
             "pages": [
+              "concepts/architecture",
               "concepts/agents",
               "concepts/runs-and-sessions",
               "concepts/tools-skills-and-mcp",
               "concepts/memory-and-storage",
               "concepts/published-agents"
             ]
-          },
+          }
+        ]
+      },
+      {
+        "tab": "Reference",
+        "groups": [
           {
             "group": "CLI",
             "pages": [
@@ -70,6 +87,13 @@
               "sdk/python",
               "sdk/go"
             ]
+          },
+          {
+            "group": "API usage",
+            "pages": [
+              "guides/authentication",
+              "guides/errors-and-events"
+            ]
           }
         ]
       },
@@ -79,8 +103,9 @@
           {
             "group": "Guides",
             "pages": [
-              "guides/authentication",
-              "guides/errors-and-events",
+              "guides/integrate-orca",
+              "guides/use-cases",
+              "guides/published-chat",
               "guides/workflows"
             ]
           }
