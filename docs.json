@@ -70,7 +70,12 @@
               "sdk/python",
               "sdk/go"
             ]
-          },
+          }
+        ]
+      },
+      {
+        "tab": "Guides",
+        "groups": [
           {
             "group": "Guides",
             "pages": [
