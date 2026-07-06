@@ -29,90 +29,72 @@
       "url": "/quickstart"
     }
   },
-  "tabs": [
-    {
-      "tab": "Docs",
-      "groups": [
-        "Get started",
-        "Core concepts",
-        "Guides"
-      ]
-    },
-    {
-      "tab": "CLI",
-      "groups": [
-        "CLI"
-      ]
-    },
-    {
-      "tab": "SDKs",
-      "groups": [
-        "SDKs"
-      ]
-    },
-    {
-      "tab": "API Reference",
-      "groups": [
-        "API reference"
-      ]
-    }
-  ],
   "navigation": {
-    "groups": [
+    "tabs": [
       {
-        "group": "Get started",
-        "pages": [
-          "introduction",
-          "quickstart",
-          "get-started/create-an-agent",
-          "get-started/stream-a-run"
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "get-started/create-an-agent",
+              "get-started/stream-a-run"
+            ]
+          },
+          {
+            "group": "Core concepts",
+            "pages": [
+              "concepts/agents",
+              "concepts/runs-and-sessions",
+              "concepts/tools-skills-and-mcp",
+              "concepts/memory-and-storage",
+              "concepts/published-agents"
+            ]
+          },
+          {
+            "group": "CLI",
+            "pages": [
+              "cli/overview",
+              "cli/authentication",
+              "cli/commands",
+              "cli/agent-files"
+            ]
+          },
+          {
+            "group": "SDKs",
+            "pages": [
+              "sdk/overview",
+              "sdk/typescript",
+              "sdk/python",
+              "sdk/go"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/authentication",
+              "guides/errors-and-events",
+              "guides/workflows"
+            ]
+          }
         ]
       },
       {
-        "group": "Core concepts",
-        "pages": [
-          "concepts/agents",
-          "concepts/runs-and-sessions",
-          "concepts/tools-skills-and-mcp",
-          "concepts/memory-and-storage",
-          "concepts/published-agents"
-        ]
-      },
-      {
-        "group": "Guides",
-        "pages": [
-          "guides/authentication",
-          "guides/errors-and-events",
-          "guides/workflows"
-        ]
-      },
-      {
-        "group": "CLI",
-        "pages": [
-          "cli/overview",
-          "cli/authentication",
-          "cli/commands",
-          "cli/agent-files"
-        ]
-      },
-      {
-        "group": "SDKs",
-        "pages": [
-          "sdk/overview",
-          "sdk/typescript",
-          "sdk/python",
-          "sdk/go"
-        ]
-      },
-      {
-        "group": "API reference",
-        "pages": [
-          "api-reference/control-plane",
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "api-reference/control-plane",
+              "api-reference/chat-gateway"
+            ]
+          },
           {
             "group": "Control plane API",
             "openapi": "/api-reference/orca-openapi.yaml"
           },
-          "api-reference/chat-gateway",
           {
             "group": "Chat gateway API",
             "openapi": "/api-reference/chat-openapi.yaml"
