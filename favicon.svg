@@ -1,5 +1,7 @@
-<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Orca">
-  <rect width="64" height="64" rx="16" fill="#111827"/>
-  <path d="M43 16.8C36.2 13.8 26.8 14.5 20.5 20.6C12.5 28.4 13.5 41.6 22.4 48.2C32.3 55.5 47.2 49.8 50.3 38.9C45.2 41.6 38.6 40.6 34.3 36.3C29.7 31.8 29.1 25 32.3 19.8C35.6 18.4 39.4 17.5 43 16.8Z" fill="white"/>
-  <path d="M45.8 22.8C47.4 22.8 48.7 21.5 48.7 19.9C48.7 18.3 47.4 17 45.8 17C44.2 17 42.9 18.3 42.9 19.9C42.9 21.5 44.2 22.8 45.8 22.8Z" fill="#818CF8"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <rect width="32" height="32" fill="#121212"/>
+  <rect x="6" y="6" width="9" height="9" fill="#FF775C"/>
+  <rect x="17" y="6" width="9" height="9" fill="#2E2E2E"/>
+  <rect x="6" y="17" width="9" height="9" fill="#2E2E2E"/>
+  <rect x="17" y="17" width="9" height="9" fill="#FF775C"/>
 </svg>
