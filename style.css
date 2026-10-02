@@ -1,0 +1,142 @@
+/* Voidline for docs.orcapods.ai. Tokens mirror docs/design/voidline in the
+   orca repo: void ground, hairline structure, three inks, mint as the one
+   signal, flat 4px geometry, no shadows, system type stacks. */
+:root {
+  --vl-void: #FDFDFD; --vl-canvas: #FFFFFF; --vl-surface: #FFFFFF; --vl-raised: #FFFFFF;
+  --vl-line: rgba(0, 0, 0, .09); --vl-line-2: rgba(0, 0, 0, .17);
+  --vl-ink: #111111; --vl-ink-2: #4D4D4D; --vl-ink-3: #6B6B6B;
+  --vl-mint: #12A566; --vl-mint-strong: #0A7A4A;
+  --vl-mint-tint: rgba(18, 165, 102, .10); --vl-mint-edge: rgba(18, 165, 102, .26);
+  --vl-amber-strong: #875D08; --vl-amber-tint: rgba(176, 122, 12, .10); --vl-amber-edge: rgba(176, 122, 12, .24);
+  --vl-coral-strong: #A5341D; --vl-coral-tint: rgba(206, 67, 39, .10); --vl-coral-edge: rgba(206, 67, 39, .24);
+  --vl-inverse: #000000; --vl-inverse-ink: #FDFDFD;
+  --vl-r: 4px;
+  --vl-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable Text", system-ui, "Helvetica Neue", Arial, sans-serif;
+  --vl-mono: ui-monospace, "SF Mono", SFMono-Regular, "JetBrains Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+}
+.dark {
+  --vl-void: #000000; --vl-canvas: #0A0A0A; --vl-surface: #141414; --vl-raised: #1C1C1C;
+  --vl-line: rgba(255, 255, 255, .07); --vl-line-2: rgba(255, 255, 255, .13);
+  --vl-ink: #F5F5F5; --vl-ink-2: #A3A3A3; --vl-ink-3: #808080;
+  --vl-mint: #5BE49B; --vl-mint-strong: #7DEDB2;
+  --vl-mint-tint: rgba(91, 228, 155, .10); --vl-mint-edge: rgba(91, 228, 155, .26);
+  --vl-amber-strong: #F5D189; --vl-amber-tint: rgba(239, 193, 92, .10); --vl-amber-edge: rgba(239, 193, 92, .24);
+  --vl-coral-strong: #F79684; --vl-coral-tint: rgba(240, 112, 92, .10); --vl-coral-edge: rgba(240, 112, 92, .24);
+  --vl-inverse: #FDFDFD; --vl-inverse-ink: #000000;
+}
+
+/* Type: the system stack carries language, the mono is the instrument face. */
+html, body { font-family: var(--vl-sans) !important; }
+body { color: var(--vl-ink-2); -webkit-font-smoothing: antialiased; }
+h1, h2, h3, h4, #page-title { font-family: var(--vl-sans); color: var(--vl-ink); letter-spacing: -0.015em; font-weight: 600; }
+#page-title { font-size: 34px; line-height: 1.14; letter-spacing: -0.022em; }
+code, kbd, pre, .font-mono, code-block, code-group { font-family: var(--vl-mono) !important; }
+eyebrow { font-family: var(--vl-mono); font-size: 11px; font-weight: 500; letter-spacing: .09em; text-transform: uppercase; color: var(--vl-ink-3); }
+
+/* Ground and chrome: flat planes divided by hairlines, never shadows. */
+#background-color, body { background: var(--vl-void) !important; }
+#navbar { background: var(--vl-void) !important; border-bottom: 1px solid var(--vl-line); box-shadow: none !important; backdrop-filter: none !important; }
+#sidebar { background: var(--vl-void); }
+#sidebar-content a, #sidebar-content li > div { border-radius: var(--vl-r); color: var(--vl-ink-2); }
+#sidebar-content li[data-active] > a, #sidebar-content li[data-active] > div {
+  background: var(--vl-raised) !important; color: var(--vl-ink) !important; border: 1px solid var(--vl-line); box-shadow: none;
+}
+#sidebar-content a:hover { background: var(--vl-surface); color: var(--vl-ink); }
+sidebar-group[data-active] > * { color: var(--vl-ink); }
+#table-of-contents { border-left: none; }
+toc-item a { color: var(--vl-ink-3); }
+toc-item[data-active] a { color: var(--vl-ink); }
+toc-item[data-active-deepest] a { color: var(--vl-ink); }
+#footer, footer { background: var(--vl-void); border-top: 1px solid var(--vl-line); box-shadow: none; }
+
+/* Corners are quiet and even: one radius, no capsules, no cast shadows. */
+card, accordion, accordion-group, callout, code-block, code-group, tabs, frame, tile, step, expandable, panel, #panel,
+nav-dropdown-content, .rounded-2xl, .rounded-xl, .rounded-lg, .rounded-md, .rounded-full, [class*="rounded-"] {
+  border-radius: var(--vl-r) !important;
+}
+card, accordion, callout, code-block, code-group, tabs, frame, tile, expandable, nav-dropdown-content, panel, #panel, #search-input {
+  box-shadow: none !important;
+}
+card { background: var(--vl-canvas) !important; border: 1px solid var(--vl-line) !important; }
+card:hover { border-color: var(--vl-line-2) !important; }
+[data-component-part="card-title"] { color: var(--vl-ink); }
+[data-component-part="card-content"] { color: var(--vl-ink-2); }
+[data-component-part="card-icon"] { color: var(--vl-ink-2) !important; }
+accordion, expandable { background: var(--vl-canvas); border: 1px solid var(--vl-line); }
+tabs { border-bottom: 1px solid var(--vl-line); }
+
+/* Callouts: a state hue only when the callout is a state. Note and Info stay neutral. */
+callout { background: var(--vl-surface) !important; border: 1px solid var(--vl-line) !important; color: var(--vl-ink-2); }
+callout[data-callout-type="warning"], callout.warning { background: var(--vl-amber-tint) !important; border-color: var(--vl-amber-edge) !important; }
+callout[data-callout-type="danger"], callout.danger { background: var(--vl-coral-tint) !important; border-color: var(--vl-coral-edge) !important; }
+callout[data-callout-type="check"], callout.check, callout[data-callout-type="tip"], callout.tip { background: var(--vl-mint-tint) !important; border-color: var(--vl-mint-edge) !important; }
+
+/* Code is the instrument face: canvas plane, hairline, no glow. */
+code-block, code-group, pre { background: var(--vl-canvas) !important; border: 1px solid var(--vl-line) !important; }
+code-block pre, code-group pre { border: 0 !important; background: transparent !important; }
+:not(pre) > code { background: var(--vl-surface); border: 1px solid var(--vl-line); border-radius: var(--vl-r); padding: 1px 5px; color: var(--vl-ink); font-size: .88em; }
+code-block-copy-button { border-radius: var(--vl-r) !important; }
+
+/* Links: ink with a dotted hairline underline. Mint is not a link colour. */
+mdx-content a:not([class*="button"]), link, mdx-content a {
+  color: var(--vl-ink) !important; text-decoration: underline; text-decoration-style: dotted; text-decoration-color: var(--vl-line-2); text-underline-offset: 4px;
+}
+mdx-content a:hover { text-decoration-color: var(--vl-ink); }
+navbar-link, nav-anchor, nav-tabs-item { color: var(--vl-ink-2) !important; }
+navbar-link:hover, nav-anchor:hover, .nav-tabs-item[data-active] { color: var(--vl-ink) !important; }
+.nav-tabs-item[data-active] { border-color: var(--vl-ink) !important; }
+
+/* The one primary per region inverts the ground. */
+#topbar-cta-button, #topbar-cta-button a, [data-component-name="primary-header-button"] {
+  background: var(--vl-inverse) !important; color: var(--vl-inverse-ink) !important; border-radius: var(--vl-r) !important; border: 0 !important; box-shadow: none !important; font-weight: 600;
+}
+#topbar-cta-button:hover { opacity: .9; }
+#search-bar-entry, #search-bar-entry-mobile { background: var(--vl-surface) !important; border: 1px solid var(--vl-line) !important; border-radius: var(--vl-r) !important; color: var(--vl-ink-3) !important; box-shadow: none !important; }
+#search-bar-entry:hover { border-color: var(--vl-line-2) !important; }
+#search-bar-entry kbd { background: var(--vl-raised); border: 1px solid var(--vl-line); border-radius: var(--vl-r); font-family: var(--vl-mono); color: var(--vl-ink-2); }
+
+/* Tables: 40px heads in ink-3, hairline rows. */
+mdx-content table { border-collapse: collapse; }
+mdx-content th { color: var(--vl-ink-3); font-weight: 400; font-size: 13px; border-bottom: 1px solid var(--vl-line); }
+mdx-content td { border-bottom: 1px solid var(--vl-line); color: var(--vl-ink-2); }
+mdx-content tr:hover td { background: var(--vl-surface); }
+
+/* Steps and pagination. */
+step { border-color: var(--vl-line); }
+#pagination { border-top: 1px solid var(--vl-line); }
+#pagination a { color: var(--vl-ink-2); border-radius: var(--vl-r); }
+#pagination a:hover { color: var(--vl-ink); background: var(--vl-surface); }
+
+/* Focus is mint, always. Selection too. */
+:focus-visible { outline: 2px solid var(--vl-mint-edge); outline-offset: 2px; border-radius: var(--vl-r); }
+::selection { background: var(--vl-mint-edge); color: var(--vl-ink); }
+
+/* The topbar primary inverts the ground whatever element Mintlify wraps it in. */
+#topbar-cta-button, #topbar-cta-button > *, #topbar-cta-button a, #topbar-cta-button button, #topbar-cta-button span {
+  background: var(--vl-inverse) !important; color: var(--vl-inverse-ink) !important;
+  border-radius: var(--vl-r) !important; border: 0 !important; box-shadow: none !important;
+}
+#topbar-cta-button svg { color: var(--vl-inverse-ink) !important; }
+
+/* Last modified. Mintlify prints it at the foot of the page, after the
+   prev/next links, which is where nobody checks whether a page is stale.
+   The block is the last plain child of #content-area, which is already
+   position:relative, so lift it onto the eyebrow line: same baseline as the
+   group name, right edge of the column, in the eyebrow's own mono voice.
+   Constrained to wide viewports because below 1050px the column is narrow
+   enough for the date to collide with a long title. */
+@media (min-width: 1051px) {
+  #content-area > div[class*="pb-16"]:not([id]) {
+    position: absolute;
+    top: 0;
+    right: 0;
+    padding: 0;
+    margin: 0;
+    font-family: var(--vl-mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+    color: var(--vl-ink-3);
+  }
+}

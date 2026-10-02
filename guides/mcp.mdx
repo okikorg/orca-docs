@@ -1,0 +1,46 @@
+---
+title: MCP tools
+description: Connect approved remote MCP servers to an Orca agent.
+---
+
+Unlike [function tools](/guides/function-tools), MCP calls go to a configured server. Use `allowed_tools` to limit what the model can call. Orca's supported MCP transports and security rules are specific to this server; do not assume every feature in the [upstream Agents API quickstart](https://developers.openai.com/api/docs/guides/agents-api/quickstart/) is available. Examples target Python `openai==3.13.0` and TypeScript `openai@7.15.0`.
+
+Before creating a session, have your deployment administrator approve the HTTPS origin (and configure trust for a private CA if needed). Match the credential's `mcp_server_url` to the tool's exact URL. Do not put tokens in agent instructions, environment files, or logs. The following uses a placeholder token; replace the URL, token, model, and Orca connection details.
+
+```python
+import os
+from openai import OpenAI
+
+client = OpenAI(api_key=os.environ["ORCA_API_KEY"],
+                base_url=os.environ["ORCA_BASE_URL"], max_retries=0)
+agents = client.beta.agents
+url = "https://mcp.example.com/orders/mcp"
+vault = agents.vaults.create(name="orders")
+try:
+    credential = agents.vaults.credentials.create(
+        vault.id, name="orders-reader",
+        auth={"type": "static_bearer", "mcp_server_url": url,
+              "token": os.environ["ORDERS_MCP_TOKEN"]})
+    try:
+        agent = agents.create(model=os.environ["ORCA_MODEL"], name="orders",
+            tools=[{"type": "mcp", "server_label": "orders",
+                    "transport": {"type": "http", "server_url": url},
+                    "allowed_tools": ["lookup_order"]}])
+        try:
+            session = agents.sessions.create(
+                agent_id=agent.id, environment={"type": "none"},
+                vault_ids=[vault.id], input="Look up order-42")
+            try:
+                print(session.id)  # Observe with sessions.turns.list and sessions.items.list.
+            finally:
+                agents.sessions.delete(session.id)
+        finally:
+            agents.delete(agent.id)
+    finally:
+        agents.vaults.credentials.delete(credential.id, vault_id=vault.id)
+finally:
+    agents.vaults.delete(vault.id)
+    client.close()
+```
+
+Wait for the turn to finish before deleting the session (see [sessions](/guides/sessions)); the snippet shows resource wiring and cleanup only. Tools are discovered at session start; a missing required vault credential can fail session creation. Discovered names appear as `mcp__<server_label>__<tool>`; inspect `mcp_call` items in session history to audit calls. Keep allowlists read-only where possible, review remote tool output as untrusted input, and grant write access only when needed. For credential rotation and vault management see [credentials](/guides/credentials); for full runnable Python and TypeScript examples see [runnable examples](/examples).

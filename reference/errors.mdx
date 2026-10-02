@@ -1,0 +1,28 @@
+---
+title: Errors
+description: HTTP errors and stream failures.
+---
+
+Authenticated `/v1` requests return JSON errors shaped like this (message and param vary):
+
+```json
+{"error":{"message":"Resource not found","type":"invalid_request_error","param":null,"code":"not_found"}}
+```
+
+| HTTP status | Common meaning | Typical code |
+| --- | --- | --- |
+| `400 Bad Request` | Invalid field, unsupported configuration, malformed event input or cursor | `invalid_request` |
+| `401 Unauthorized` | Missing or invalid bearer key | `invalid_api_key` |
+| `404 Not Found` | Missing resource (including resources outside the caller's scope) | `not_found` |
+| `409 Conflict` | Conflicting state or incompatible environment use | `conflict` |
+| `413 Payload Too Large` | Request exceeds a supported size limit | `invalid_request` |
+| `500 Internal Server Error` | Operation could not be completed | `server_error` |
+| `502 Bad Gateway` | Downstream failure | `server_error` |
+
+The envelope uses `type: "server_error"` for 5xx and `type: "invalid_request_error"` for client errors. `param` can identify an invalid request field; do not parse English messages as stable machine codes. Framework-level errors are normalized to the same envelope but may use generic codes. Other HTTP failures can occur; inspect the actual status and body. Do not automatically retry a validation error. For uncertain mutation outcomes, use an `Idempotency-Key` (one nonempty value, at most 512 bytes) and retry with the same request; the server supports idempotency on mutations, including session event submission. A mismatched replay can conflict.
+
+An established [SSE stream](/reference/events) can carry an `error` event instead of a new HTTP error response. Observe terminal session/turn events and retrieve the turn if you need a durable outcome. Interrupted turns are marked failed rather than replaying external actions on restart; sending new input creates a subsequent turn.
+
+## Uncertain mutation outcomes
+
+A keyed retry can return HTTP 409 if the original operation is still pending or was interrupted, rather than a replayed response. Reconcile the resource or turn state and check any external effects before deciding what to do next. Do not bypass an uncertain outcome by generating a new key and blindly repeating the action.

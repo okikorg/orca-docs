@@ -1,0 +1,39 @@
+---
+title: "Introduction"
+description: "Orca guides for developers using the OpenAI Agents API with their own endpoint."
+---
+
+## What is Orca?
+
+Orca lets you create agents, run sessions, connect tools, and collect results using the official OpenAI clients with an Orca endpoint. Define reusable model, instruction, and tool settings, then run conversations with streamed events and saved history.
+
+Use an execution environment when your agent needs to work with code and files, or start without a sandbox for conversation and application-side tools.
+
+## Start with your endpoint
+
+You need an Orca base URL, an Orca API key, and a model available to your account. No separate Orca client library is required. Configure the `openai` Python or TypeScript package to use your endpoint, then create your first session.
+
+<CardGroup cols={2}>
+  <Card title="Run your first agent" icon="terminal" href="/quickstart">Install a client, send input, and read the result.</Card>
+  <Card title="Explore runnable examples" icon="code" href="/examples">Use the project's Python and TypeScript recipes.</Card>
+  <Card title="Connect your tools" icon="wrench" href="/guides/function-tools">Keep application-side actions under your control.</Card>
+  <Card title="Read the public API" icon="book-open" href="/reference/overview">Find endpoints, event types, and compatibility limits.</Card>
+</CardGroup>
+
+## How these docs relate to OpenAI
+
+The [OpenAI Agent API quickstart](https://developers.openai.com/api/docs/guides/agents-api/quickstart/) is the primary upstream introduction to the Agents API. Use it for the API's overall programming model. Use **our quickstart and guides** for Orca endpoint setup, supported environments, provider keys, and the behavior demonstrated by this project.
+
+<Note>
+Orca is a separate service, not an OpenAI-hosted endpoint. An Orca key authenticates to Orca; it is not an OpenAI API key. OpenAI documentation may describe features or defaults that are not available on your Orca deployment. Check the [compatibility notes](/reference/overview) before adapting an upstream example.
+</Note>
+
+## Choose what your agent can do
+
+- **Conversation only:** start with `environment={"type": "none"}`.
+- **Application tools:** declare function tools and return results from your application.
+- **Remote tools:** connect approved HTTPS MCP servers.
+- **Code and files:** request an available execution environment and download artifacts before cleanup.
+- **Reusable workflows:** attach versioned skills and staged input files.
+
+Read [core concepts](/concepts) next, or go straight to the [quickstart](/quickstart).

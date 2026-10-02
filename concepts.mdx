@@ -1,0 +1,38 @@
+---
+title: "Core concepts"
+description: "Understand agents, sessions, turns, tools, environments, and artifacts."
+---
+
+The [OpenAI Agent API quickstart](https://developers.openai.com/api/docs/guides/agents-api/quickstart/) introduces the upstream API. This page maps those concepts to the choices you make with Orca.
+
+| Concept | What you control | Use it for |
+| --- | --- | --- |
+| Agent | Model, instructions, tool definitions, supported settings | Reusable behavior across conversations |
+| Session | Agent selection, environment, input, history | One continuing conversation |
+| Turn | Input that starts work; observation and cancellation | Tracking one unit of agent activity |
+| Item | Messages, tool calls, and tool results | Reading the saved conversation |
+| Event | Input events and streamed output events | Sending follow-ups and observing progress |
+| Environment | Execution availability, files, network policy | Code execution and file-based work |
+| Artifact | A captured output file | Downloading a result produced by a turn |
+| Skill | A reusable, versioned instruction bundle | Sharing task-specific workflows |
+| Vault | Credentials scoped to supported tool access | Keeping tool secrets out of prompts |
+
+## Configuration and conversation are separate
+
+Create an agent once when you want to reuse its settings. Create a session for each conversation. Retain the session ID to ask follow-up questions. An agent ID is not a conversation ID.
+
+Sessions without an environment can still use supported application function tools and remote MCP tools. They do not have a code execution workspace. Explicitly select `none` when your task does not need execution.
+
+## Accepted input is not finished work
+
+An input request being accepted does not mean its turn completed. Wait for the terminal turn status or terminal lifecycle event, then inspect the saved result. `idle` is a session state, not evidence that a particular task succeeded.
+
+A session can contain more than one turn. When sending a follow-up, track the new turn rather than accidentally reading the prior turn's terminal status. See [sessions](/guides/sessions) and [streaming](/guides/streaming).
+
+## Tools are capabilities, not guarantees
+
+A declared tool must be supported by your model, environment, and service configuration. Your application handles function calls; remote MCP services provide their own tools. Execution tools require an available environment. Reject dangerous actions in the application instead of relying on instructions alone.
+
+## Save outputs before cleanup
+
+Conversation items, uploaded files, and artifacts are different resources. Save the artifact bytes you need before deleting their session or environment. See [files and artifacts](/guides/files-and-artifacts).

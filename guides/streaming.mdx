@@ -1,0 +1,39 @@
+---
+title: Streaming and cancellation
+description: Observe Orca turn events and stop work deliberately.
+---
+
+Use the official clients pinned to Python `openai==3.13.0` or TypeScript `openai@7.15.0` with your Orca `/v1` base URL and bearer key. The general Agents API introduction is the [upstream quickstart](https://developers.openai.com/api/docs/guides/agents-api/quickstart/); Orca supports the workflows shown here, not every upstream feature. See [the quickstart](/quickstart) to create an agent.
+
+`sessions.stream(session_id, input=...)` submits input and subscribes to events for that turn. Consume the entire stream to receive the terminal event. Deltas are fragments; concatenate them for display. Other events, including failures and tool calls, may occur between deltas.
+
+```python
+import os
+from openai import OpenAI
+
+client = OpenAI(api_key=os.environ["ORCA_API_KEY"],
+                base_url=os.environ["ORCA_BASE_URL"], max_retries=0,
+                timeout=60)
+sessions = client.beta.agents.sessions
+# session_id is a session created with client.beta.agents.sessions.create(...)
+with sessions.stream(session_id, input="Give a one-line status update") as stream:
+    chunks = []
+    for event in stream:
+        if event.type == "agent.session.turn.output_text.delta":
+            chunks.append(event.delta)
+        elif event.type == "agent.session.turn.completed":
+            print("completed:", event.turn.id)
+        elif event.type in ("agent.session.turn.failed", "agent.session.turn.cancelled"):
+            print("not completed:", event.type)
+    print("".join(chunks))
+```
+
+To observe a session independently of submitting input, subscribe with `sessions.events.stream(session_id)` and submit messages with `sessions.events.create(session_id, events=[...])`. Closing an SSE subscription disconnects only that reader: it **does not cancel** execution. A subscriber can reconnect; the session event stream supports `Last-Event-ID` for replay from a known event cursor. Persist event IDs and deduplicate events in consumers that reconnect. Read `sessions.turns.list(session_id)` and `sessions.retrieve(session_id)` to confirm terminal status after a disconnect rather than resubmitting a message blindly.
+
+To stop the current turn, explicitly send:
+
+```python
+sessions.events.create(session_id, events=[{"type": "agent.session.input.cancel"}])
+```
+
+Cancellation stops execution, not the stored conversation or turn record. A function call awaiting an application response may leave the session in `requires_action`; see [function tools](/guides/function-tools). For safe retries and restart behavior see [reliability](/guides/reliability). Complete runnable [Python and TypeScript streaming examples](/examples) demonstrate both attached and detached subscriptions; see [session reference](/reference/sessions).

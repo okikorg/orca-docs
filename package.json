@@ -1,0 +1,13 @@
+{
+  "name": "orca-public-docs",
+  "private": true,
+  "scripts": {
+    "dev": "mint dev",
+    "validate": "mint validate",
+    "check-links": "mint broken-links",
+    "check": "python3 ../../scripts/check_public_docs.py"
+  },
+  "devDependencies": {
+    "mint": "4.2.964"
+  }
+}

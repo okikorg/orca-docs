@@ -1,0 +1,41 @@
+---
+title: Function tools
+description: Handle model-requested calls in your own application.
+---
+
+Function handlers run in **your application**, not in the agent's environment. Define narrowly scoped, validated tool schemas; treat arguments as untrusted. Use Python `openai==3.13.0` or TypeScript `openai@7.15.0` pointed at Orca `/v1`. See [upstream Agents API quickstart](https://developers.openai.com/api/docs/guides/agents-api/quickstart/) for general concepts; this is the Orca-supported workflow. See [the quickstart](/quickstart) for authentication.
+
+```python
+import os
+from openai import OpenAI
+
+client = OpenAI(api_key=os.environ["ORCA_API_KEY"],
+                base_url=os.environ["ORCA_BASE_URL"], max_retries=0)
+agents = client.beta.agents
+agent = agents.create(model=os.environ["ORCA_MODEL"], name="order-reader", tools=[{
+    "type": "function", "name": "lookup_order", "description": "Read an order by ID",
+    "parameters": {"type": "object", "properties": {"order_id": {"type": "string"}},
+                   "required": ["order_id"], "additionalProperties": False},
+    "defer_loading": False,
+}])
+try:
+    session = agents.sessions.create(agent_id=agent.id, environment={"type": "none"})
+    try:
+        def lookup_order(args):
+            if args.get("order_id") != "order-42":
+                return {"error": "not found"}
+            return {"status": "shipped"}
+
+        with agents.sessions.stream(session.id, input="Check order-42",
+                                    tool_handlers={"lookup_order": lookup_order}) as stream:
+            for event in stream:
+                if event.type == "agent.session.turn.completed":
+                    print("done")
+    finally:
+        agents.sessions.delete(session.id)
+finally:
+    agents.delete(agent.id)
+    client.close()
+```
+
+The stream helper invokes handlers and returns results **within the same turn**; fully drain the stream. A handler exception is reported as tool failure rather than leaking exception text to the model. For a worker in another process, submit a message via `sessions.events.create`, inspect `sessions.retrieve(id).required_actions` for `function_call` entries, and return each result using `sessions.events.create(id, events=[{"type":"agent.session.input.tool_result", "turn_id": action.turn_id, "call_id": action.call_id, "success": True, "output": json.dumps(result)}])`. Parse `action.arguments` (it may be a JSON string), validate the name and parameters, and keep polling until the turn finishes: parallel calls can appear one by one, so one snapshot can miss calls. Track answered `call_id`s to avoid duplicate side effects. Never execute arbitrary code or expose privileged data just because the model requested it. For remote services hosted as tools, use [MCP](/guides/mcp); for end-to-end helper and manual loops see [runnable examples](/examples) and [session reference](/reference/sessions).

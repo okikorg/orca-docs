@@ -1,0 +1,53 @@
+---
+title: "Subagents"
+description: "Delegate bounded work and inspect each child conversation."
+---
+
+Enable multi-agent behavior when a task has separable pieces: for example, ask one child to review release notes and another to summarize an input file. Each child has its own conversation; the parent receives its result. Keep the task, expected deliverable, and stopping condition explicit in your instructions.
+
+This guide uses the same public settings as the repository's feature-tour example. Capability depends on your model and endpoint configuration. Start with [our quickstart](/quickstart); the [OpenAI Agent API quickstart](https://developers.openai.com/api/docs/guides/agents-api/quickstart/) introduces the upstream API.
+
+## Enable delegation
+
+With a configured `client`:
+
+```python
+import os
+
+agent = client.beta.agents.create(
+    model=os.environ["ORCA_MODEL"],
+    name="review-lead",
+    instructions=(
+        "Delegate separate review tasks when useful. Give each child a bounded "
+        "task and request evidence. Combine the results and state disagreements."
+    ),
+    multi_agent={"enabled": True, "max_concurrent_subagents": 2},
+)
+```
+
+Create and observe a session as described in [sessions](/guides/sessions). Enable an [execution environment](/guides/environments) if the task requires workspace tools. Enabling delegation allows the agent to use subagents; it does not guarantee it will spawn a particular number or follow a fixed plan.
+
+## Inspect child results
+
+Retain the parent session ID. Use child IDs returned by the session's subagent list rather than assuming the parent item history contains every child's messages.
+
+```python
+sessions = client.beta.agents.sessions
+for child in sessions.subagents.list(session_id):
+    details = sessions.subagents.retrieve(child.id, session_id=session_id)
+    print(details.id, details.status)
+    for turn in sessions.subagents.turns.list(child.id, session_id=session_id):
+        print("child turn:", turn.id, turn.status)
+    for item in sessions.subagents.items.list(child.id, session_id=session_id):
+        print("child item:", item.id, item.type)
+```
+
+The SDK collection iterator handles pagination. For a specific child turn, `sessions.subagents.turns.retrieve(turn_id, session_id=session_id, subagent_id=child.id)` retrieves its state, and `sessions.subagents.turns.items.list(...)` lists that turn's items. See the complete route table in [session reference](/reference/sessions#subagents-and-their-history).
+
+## Track outcomes and cost
+
+- Observe `agent.session.subagent.created`, `.active`, and `.closed` events while the parent runs. Retrieve the child's turns to determine success; a closed child is not proof that its task succeeded.
+- Bound concurrency and task scope. Delegation can increase model calls and latency as well as improve parallelism.
+- Review the parent's final answer and child evidence. Conflicting or failed child work needs explicit handling.
+- Treat the same tool arguments, files, and remote content as untrusted in child tasks. Delegation is not an authorization or isolation boundary.
+- Keep the session until you have read the child history and downloaded any required [artifacts](/guides/files-and-artifacts).

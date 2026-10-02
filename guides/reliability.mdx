@@ -1,0 +1,36 @@
+---
+title: Reliable session workflows
+description: Retry safely, recover from disconnects, and inspect failed turns.
+---
+
+Orca stores accepted session input and public events. Design clients for network interruption and application restarts: record IDs and terminal statuses, bound your polling, and reconcile state before resubmitting input. Use official OpenAI Python `3.13.0` or TypeScript `7.15.0` clients against your Orca `/v1` URL. General Agents API concepts: [upstream quickstart](https://developers.openai.com/api/docs/guides/agents-api/quickstart/). Only the Orca behavior described here is supported; start at [the quickstart](/quickstart).
+
+- **Before retrying a write:** supply an `Idempotency-Key` for side-effecting requests when your client supports custom headers. Reuse the same key for the same request bytes and target; do not reuse it for a different operation. For a timeout, first retrieve known session/turn IDs or reconcile application records. Disabling automatic SDK retries (`max_retries=0`) helps make retry policy explicit, but does not itself prevent duplicates.
+- **After a stream disconnect:** closing an SSE connection does not cancel the turn. Retrieve the session with `sessions.retrieve(id)`, check `sessions.turns.list(id)` for `completed`, `failed`, or `cancelled`, then reconnect to `sessions.events.stream(id)` if needed. The event endpoint accepts `Last-Event-ID` to resume from a stored cursor; persist and deduplicate IDs in a raw SSE consumer. Do not assume partial text is the final answer.
+- **When action is required:** inspect `session.required_actions`. For `function_call`, send one `agent.session.input.tool_result` with the matching `turn_id` and `call_id` and track answered IDs; do not rerun external side effects blindly. See [function tools](/guides/function-tools). For `environment_connection`, restart or reconnect your self-hosted executor; see [environments](/guides/environments).
+- **After interruption:** an interrupted turn is marked failed on restart; external actions from it are **not replayed**. A subsequent turn can continue the conversation, but verify external systems before repeating the request. Managed environments reattach to their recorded sandbox; a missing sandbox is not silently replaced. Check statuses and errors rather than assuming a stalled turn will finish.
+- **Cancellation and cleanup:** send `sessions.events.create(id, events=[{"type":"agent.session.input.cancel"}])` to stop execution, not just close the stream. Delete sessions you no longer need, then delete independent agents, files, templates, skills, and vaults when appropriate. Self-hosted processes are your responsibility.
+
+A bounded status loop (with `sessions = client.beta.agents.sessions`) is:
+
+```python
+import time
+end = time.monotonic() + 300
+while time.monotonic() < end:
+    current = sessions.retrieve(session_id)
+    turns = sessions.turns.list(session_id).data
+    if turns and turns[0].status in ("completed", "failed", "cancelled"):
+        print(turns[0].status, current.error)
+        break
+    if current.required_actions:
+        print("needs attention:", current.required_actions)
+    time.sleep(0.5)
+else:
+    raise TimeoutError("Inspect the session before retrying input")
+```
+
+Treat failed turns, partial outputs, and tool errors as distinct outcomes. Keep API keys and sensitive tool results out of telemetry. See [streaming](/guides/streaming), [sessions](/guides/sessions), runnable [runnable examples](/examples), and [session reference](/reference/sessions).
+
+## Uncertain mutation outcomes
+
+A keyed retry can return HTTP 409 if the original operation is still pending or was interrupted, rather than a replayed response. Reconcile the resource or turn state and check any external effects before deciding what to do next. Do not bypass an uncertain outcome by generating a new key and blindly repeating the action.

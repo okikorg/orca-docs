@@ -1,0 +1,40 @@
+---
+title: Session events
+description: Submit input and subscribe to session event streams.
+---
+
+All paths below are relative to `/v1`. Session events are distinct from the paginated session items and turns in [Sessions](/reference/sessions). See also [Streaming guide](/guides/streaming).
+
+| Method | Path | Behavior |
+| --- | --- | --- |
+| `POST` | `/agents/sessions/{session_id}/events` | Submit a nonempty `events` array; successful admission returns `204 No Content`. |
+| `GET` | `/agents/sessions/{session_id}/events` | Subscribe to session events as `text/event-stream`. |
+| `POST` | `/agents/sessions` | Create a session with optional `input`; set `stream: true` for a creation stream instead of a JSON session response. |
+
+```bash
+curl -N -H "Authorization: Bearer $API_KEY" \
+  "$BASE_URL/agents/sessions/$SESSION_ID/events"
+
+curl -X POST "$BASE_URL/agents/sessions/$SESSION_ID/events" \
+  -H "Authorization: Bearer $API_KEY" -H 'Content-Type: application/json' \
+  -H 'Idempotency-Key: follow-up-1' \
+  -d '{"events":[{"type":"agent.session.input.message","input":[{"role":"user","content":[{"type":"input_text","text":"Continue."}]}]}]}'
+```
+
+Input event types exercised by the examples include `agent.session.input.message` and `agent.session.input.cancel`; tool-result input is also supported. A submitted message can start a turn; do not infer completion from the `204`. Follow status events or retrieve turns. Closing a GET subscription does **not** cancel the turn. For SSE reconnection, send `Last-Event-ID` with a previously received event ID; the stream emits `id`, `event`, and JSON `data` fields. Treat IDs as opaque. Invalid cursors can return `400`.
+
+## Output event names
+
+The pinned event inventory records the following output **type names**, not full validated event payload definitions:
+
+| Family | Types |
+| --- | --- |
+| Session lifecycle | `agent.session.created`, `agent.session.idle`, `agent.session.in_progress`, `agent.session.requires_action`, `agent.session.failed` |
+| Environment | `agent.session.environment.pending`, `agent.session.environment.ready`, `agent.session.environment.connected`, `agent.session.environment.disconnected`, `agent.session.environment.failed` |
+| Turn lifecycle | `agent.session.turn.created`, `agent.session.turn.in_progress`, `agent.session.turn.completed`, `agent.session.turn.failed`, `agent.session.turn.cancelled` |
+| Turn content | `agent.session.turn.item.added`, `agent.session.turn.item.done`, `agent.session.turn.content_part.added`, `agent.session.turn.content_part.done`, `agent.session.turn.output_text.delta`, `agent.session.turn.output_text.done` |
+| Reasoning summary | `agent.session.turn.reasoning_summary_part.added`, `agent.session.turn.reasoning_summary_part.done`, `agent.session.turn.reasoning_summary_text.delta`, `agent.session.turn.reasoning_summary_text.done` |
+| Subagent | `agent.session.subagent.created`, `agent.session.subagent.active`, `agent.session.subagent.closed` |
+| Other | `agent.output.command_execution_output.delta`, `error` |
+
+For text, concatenate `delta` from `agent.session.turn.output_text.delta`; use `agent.session.turn.completed` or `failed` to decide a turn's outcome. Handle event types you do not recognize without assuming this table is exhaustive. Stream failures may arrive as `error` events after HTTP headers have already succeeded; see [Errors](/reference/errors).

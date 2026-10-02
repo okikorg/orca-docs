@@ -1,0 +1,253 @@
+---
+title: "Quickstart"
+description: "Run your first Orca session with the official Python or TypeScript client."
+---
+
+This is the Orca-specific path through the [OpenAI Agent API quickstart](https://developers.openai.com/api/docs/guides/agents-api/quickstart/). It runs a conversation without a sandbox, waits for a terminal turn, reads history, and sends a follow-up.
+
+## Before you begin
+
+Get a running Orca endpoint and an API key from your service administrator. Choose a model available to your account. These instructions configure an application client; they do not deploy the server.
+
+```bash
+# Use your endpoint. Include /v1, not /agents.
+export ORCA_BASE_URL="https://YOUR_ORCA_HOST/v1"
+export ORCA_API_KEY="YOUR_ORCA_KEY"
+export ORCA_MODEL="YOUR_AVAILABLE_MODEL"
+```
+
+Keep the key in your backend or secret manager, never in browser code or source control. Plain HTTP is only appropriate for a trusted local development endpoint.
+
+## Install a supported client
+
+The examples target the project's pinned client versions. The Agents API uses the `beta.agents` namespace.
+
+<CodeGroup>
+```bash Python
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install openai==3.13.0
+```
+```bash TypeScript
+npm init -y
+npm install openai@7.15.0
+```
+</CodeGroup>
+
+For the TypeScript example, use a Node.js version with native TypeScript stripping (Node 22.18+ or Node 24+) or your existing TypeScript runner.
+
+## Create an agent and run a session
+
+Save the code as `quickstart.py` or `quickstart.ts`. It uses the same flow as the repository's runnable quickstart examples. The `finally` block deletes demo resources, so save any output you want to retain before the program exits.
+
+<Tabs>
+<Tab title="Python">
+```python
+"""Create an agent, run one turn, and read the answer.
+
+Needs: a running Orca Agent Server. Set ORCA_BASE_URL and ORCA_API_KEY.
+"""
+
+import os
+import time
+
+import openai
+
+MODEL = os.environ["ORCA_MODEL"]
+client = openai.OpenAI(
+    api_key=os.environ["ORCA_API_KEY"],
+    base_url=os.environ["ORCA_BASE_URL"],
+    max_retries=0,
+    timeout=60,
+)
+agents = client.beta.agents
+sessions = agents.sessions
+agent_id = session_id = None
+
+
+def finished(session_id, after_turn_id=None):
+    """Poll until the newest turn reaches a terminal state."""
+    deadline = time.monotonic() + 300
+    while time.monotonic() < deadline:
+        turns = sessions.turns.list(session_id).data
+        if (turns and turns[0].id != after_turn_id
+                and turns[0].status in ("completed", "failed", "cancelled")):
+            return turns[0]
+        time.sleep(0.5)
+    raise SystemExit("Turn did not finish in time")
+
+
+try:
+    # An agent holds the reusable configuration: model, instructions, tools.
+    agent = agents.create(
+        model=MODEL,
+        name="quickstart",
+        instructions="You are a concise assistant.",
+    )
+    agent_id = agent.id
+    print("agent:", agent.id, agent.model)
+
+    # A session holds one conversation. Passing input starts the first turn.
+    # 'none' means this session gets no sandbox; see our environments guide.
+    session = sessions.create(
+        agent_id=agent.id,
+        environment={"type": "none"},
+        input="Write a 100 word poem",
+    )
+    session_id = session.id
+    print("session:", session.id, session.status)
+
+    turn = finished(session.id)
+    print("turn:", turn.id, turn.status)
+    if turn.usage:
+        print(f"tokens: {turn.usage.input_tokens} in, {turn.usage.output_tokens} out")
+
+    # Conversation history is durable and paginated; items include the reply.
+    for item in reversed(sessions.items.list(session.id, limit=10).data):
+        for part in getattr(item, "content", None) or []:
+            if getattr(part, "text", None):
+                print(f"{item.role}: {part.text}")
+
+    # A follow-up turn resumes the same stored conversation.
+    sessions.events.create(
+        session.id,
+        events=[
+            {
+                "type": "agent.session.input.message",
+                "input": [
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "input_text",
+                                "text": "And again, briefly.",
+                            }
+                        ],
+                    }
+                ],
+            }
+        ],
+    )
+    print("follow-up turn:", finished(session.id, after_turn_id=turn.id).status)
+    print("turns on this page:", len(sessions.turns.list(session.id).data))
+finally:
+    if session_id:
+        try:
+            sessions.delete(session_id)
+        except openai.APIError:
+            pass
+    if agent_id:
+        try:
+            agents.delete(agent_id)
+        except openai.APIError:
+            pass
+    client.close()
+```
+</Tab>
+<Tab title="TypeScript">
+```typescript
+/**
+ * Create an agent, run one turn, and read the answer.
+ *
+ * Needs: a running Orca Agent Server. Set ORCA_BASE_URL and ORCA_API_KEY.
+ */
+import OpenAI from 'openai';
+
+const MODEL = process.env.ORCA_MODEL!;
+const client = new OpenAI({
+  apiKey: process.env.ORCA_API_KEY!,
+  baseURL: process.env.ORCA_BASE_URL!,
+  maxRetries: 0,
+  timeout: 60_000,
+});
+const agents = client.beta.agents;
+const sessions = agents.sessions;
+let agentId: string | undefined;
+let sessionId: string | undefined;
+
+const pause = (ms = 500) => new Promise(resolve => setTimeout(resolve, ms));
+
+/** Poll until the newest turn reaches a terminal state. */
+async function finished(session: string, afterTurnId?: string) {
+  for (let attempt = 0; attempt < 600; attempt++) {
+    const [turn] = (await sessions.turns.list(session)).data;
+    if (turn && turn.id !== afterTurnId && ['completed', 'failed', 'cancelled'].includes(turn.status)) return turn;
+    await pause();
+  }
+  throw new Error('Turn did not finish in time');
+}
+
+try {
+  // An agent holds the reusable configuration: model, instructions, tools.
+  const agent = await agents.create({ model: MODEL, name: 'quickstart', instructions: 'You are a concise assistant.' });
+  agentId = agent.id;
+  console.log('agent:', agent.id, agent.model);
+
+  // A session holds one conversation. Passing input starts the first turn.
+  // 'none' means this session gets no sandbox; see the environments topics.
+  const session = await sessions.create({
+    agent_id: agent.id,
+    environment: { type: 'none' },
+    input: 'Summarize what this agent server does.',
+  });
+  sessionId = session.id;
+  console.log('session:', session.id, session.status);
+
+  const turn = await finished(session.id);
+  console.log('turn:', turn.id, turn.status);
+  if (turn.usage) console.log(`tokens: ${turn.usage.input_tokens} in, ${turn.usage.output_tokens} out`);
+
+  // Conversation history is durable and paginated; items include the reply.
+  const items = (await sessions.items.list(session.id, { limit: 10 })).data;
+  for (const item of [...items].reverse()) {
+    for (const part of (item as any).content ?? []) {
+      if (part.text) console.log(`${(item as any).role}: ${part.text}`);
+    }
+  }
+
+  // A follow-up turn resumes the same stored conversation.
+  await sessions.events.create(session.id, {
+    events: [{
+      type: 'agent.session.input.message',
+      input: [{ role: 'user', content: [{ type: 'input_text', text: 'And again, briefly.' }] }],
+    }],
+  });
+  console.log('follow-up turn:', (await finished(session.id, turn.id)).status);
+  console.log('turns on this page:', (await sessions.turns.list(session.id)).data.length);
+} finally {
+  if (sessionId) await sessions.delete(sessionId).catch(() => {});
+  if (agentId) await agents.delete(agentId).catch(() => {});
+}
+```
+</Tab>
+</Tabs>
+
+<CodeGroup>
+```bash Python
+python quickstart.py
+```
+```bash TypeScript
+node --experimental-strip-types quickstart.ts
+```
+</CodeGroup>
+
+## Understand the result
+
+1. The agent stores reusable model, instruction, and tool settings.
+2. The session stores the conversation. Initial `input` starts a turn.
+3. Polling waits up to five minutes for `completed`, `failed`, or `cancelled`.
+4. Saved items contain the conversation; they are not limited to assistant text.
+5. The follow-up uses the same session, preserving conversation context.
+
+<Warning>
+This example prints terminal status for inspection. In an application, handle `failed` and `cancelled` explicitly. Even a completed turn does not prove every tool succeeded: inspect the relevant tool result or output. A polling timeout does not cancel execution; retrieve the session before sending the same task again.
+</Warning>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Stream responses" icon="bolt" href="/guides/streaming">Receive text and lifecycle events as a turn runs.</Card>
+  <Card title="Give your agent tools" icon="wrench" href="/guides/function-tools">Handle actions in your application.</Card>
+  <Card title="Work in an environment" icon="cube" href="/guides/environments">Stage inputs and produce downloadable files.</Card>
+  <Card title="Fix a setup issue" icon="life-ring" href="/troubleshooting">Check authentication, versions, and model access.</Card>
+</CardGroup>

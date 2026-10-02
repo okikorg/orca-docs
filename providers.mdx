@@ -1,0 +1,64 @@
+---
+title: "Models and provider keys"
+description: "Discover models and connect your own provider credentials."
+---
+
+You can use models offered by your Orca endpoint or connect your own key for a supported provider. Model credentials are separate from your Orca API key and from [tool credentials in vaults](/guides/credentials).
+
+## Discover endpoint models
+
+With the client configured as in the [quickstart](/quickstart):
+
+```python
+for model in client.models.list().data:
+    print(model.id)
+```
+
+`GET /v1/models` lists the configured endpoint's model catalog. It does not combine every provider catalog or guarantee every listed model supports every agent setting.
+
+## Connect a provider
+
+Provider management is an **Orca extension** under `/api/providers`, outside the OpenAI `/v1` surface. Use ordinary authenticated HTTP requests, not `client.beta.agents` methods. Use your Orca origin without `/v1`:
+
+```bash
+export ORCA_ORIGIN="https://YOUR_ORCA_HOST"
+curl --fail-with-body "$ORCA_ORIGIN/api/providers"   -H "Authorization: Bearer $ORCA_API_KEY"
+```
+
+The response includes provider IDs, whether you have a key, whether a catalog is public, and `unsupported_agent_fields`. It never returns the stored key.
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| GET | `/api/providers` | List supported providers and key status |
+| GET | `/api/providers/{provider}` | Retrieve provider status |
+| PUT | `/api/providers/{provider}/key` | Set or replace a key with `{"api_key":"…"}` |
+| DELETE | `/api/providers/{provider}/key` | Remove your key |
+| GET | `/api/providers/{provider}/models` | Read that provider's catalog |
+
+Supported IDs are `openai`, `anthropic`, `openrouter`, `vercel`, and `cheaperinference`. Catalogs marked `public_catalog` can be read without a provider key; other catalogs require one. Provider catalog requests still require Orca authentication.
+
+Submit keys from trusted backend code or your secret-management workflow. Do not paste a real provider key into documentation examples, browser code, command history, or logs. The service validates a new key before accepting it; an invalid key returns HTTP 400.
+
+## Select the model explicitly
+
+For your own provider key, use `<provider>/<model-id>` as the agent's `model`. For example, an OpenRouter model ID already containing a namespace becomes `openrouter/<vendor>/<model-name>`. Get the actual model ID from that provider's catalog rather than copying a stale example.
+
+```python
+agent = client.beta.agents.create(
+    model="openai/YOUR_MODEL_ID",
+    instructions="Be concise and state uncertainty.",
+)
+```
+
+A bare model name uses the endpoint's configured model access. A recognized provider prefix selects your key for that provider; it does **not** fall back to endpoint credentials if your key is missing. A session with a prefixed model and no corresponding key is rejected with HTTP 400 on `agent.model`.
+
+## Check capability limits
+
+- Inspect `unsupported_agent_fields` before sending provider-specific settings.
+- Anthropic does not accept JSON-schema `text.format`, non-default `text.verbosity`, or non-`auto` `service_tier` in this integration.
+- Provider-key models cannot be combined with `web_search` here.
+- A catalog entry is not a promise of tool support or availability on your provider account.
+
+## Rotate and remove keys carefully
+
+Replacement applies to subsequent model requests, including requests within existing sessions. Removing a key makes the next model request for sessions using it fail with `authentication_error`; it does not silently change providers. Restore a valid key before continuing affected sessions, and inspect turn status before resubmitting work.

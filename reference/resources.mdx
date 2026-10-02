@@ -1,0 +1,81 @@
+---
+title: Resources
+description: Environments, files, skills, and vaults.
+---
+
+All routes here are relative to `/v1`. Files and skills are supporting resources; vaults and templates can be reused by sessions. A resource's existence does not imply that every environment can stage or execute it.
+
+## Environment templates
+
+| Method | Path | Purpose / response |
+| --- | --- | --- |
+| `GET` | `/agents/environments/templates` | List · `SyncCursorPage[EnvironmentTemplate]` |
+| `POST` | `/agents/environments/templates` | Create · `EnvironmentTemplate` |
+| `DELETE` | `/agents/environments/templates/{environment_template_id}` | Delete · `EnvironmentTemplateDeleted` |
+| `GET` | `/agents/environments/templates/{environment_template_id}` | Get · `EnvironmentTemplate` |
+| `POST` | `/agents/environments/templates/{environment_template_id}` | Update · `EnvironmentTemplate` |
+
+## Environments and files
+
+| Method | Path | Purpose / response |
+| --- | --- | --- |
+| `GET` | `/agents/environments/{environment_id}` | Get · `EnvironmentInfo` |
+| `GET` | `/agents/environments/{environment_id}/files` | List · `SyncTokenPage[EnvironmentFile]` |
+| `POST` | `/agents/environments/{environment_id}/files` | Create · `EnvironmentFile` |
+
+## Vaults and credentials
+
+| Method | Path | Purpose / response |
+| --- | --- | --- |
+| `GET` | `/vaults` | List · `SyncCursorPage[Vault]` |
+| `POST` | `/vaults` | Create · `Vault` |
+| `DELETE` | `/vaults/{vault_id}` | Delete · `VaultDeleted` |
+| `GET` | `/vaults/{vault_id}` | Get · `Vault` |
+| `GET` | `/vaults/{vault_id}/credentials` | List · `SyncCursorPage[Credential]` |
+| `POST` | `/vaults/{vault_id}/credentials` | Create · `Credential` |
+| `DELETE` | `/vaults/{vault_id}/credentials/{credential_id}` | Delete · `CredentialDeleted` |
+| `GET` | `/vaults/{vault_id}/credentials/{credential_id}` | Get · `Credential` |
+| `POST` | `/vaults/{vault_id}/credentials/{credential_id}` | Update · `Credential` |
+
+## Files
+
+| Method | Path | Purpose / response |
+| --- | --- | --- |
+| `GET` | `/files` | List · `SyncCursorPage[FileObject]` |
+| `POST` | `/files` | Create · `FileObject` |
+| `DELETE` | `/files/{file_id}` | Delete · `FileDeleted` |
+| `GET` | `/files/{file_id}` | Get · `FileObject` |
+| `GET` | `/files/{file_id}/content` | Download · Binary content |
+
+## Skills and versions
+
+| Method | Path | Purpose / response |
+| --- | --- | --- |
+| `GET` | `/skills` | List · `SyncCursorPage[Skill]` |
+| `POST` | `/skills` | Create · `Skill` |
+| `DELETE` | `/skills/{skill_id}` | Delete · `DeletedSkill` |
+| `GET` | `/skills/{skill_id}` | Get · `Skill` |
+| `POST` | `/skills/{skill_id}` | Update · `Skill` |
+| `GET` | `/skills/{skill_id}/content` | Get · Binary content |
+| `GET` | `/skills/{skill_id}/versions` | List · `SyncCursorPage[SkillVersion]` |
+| `POST` | `/skills/{skill_id}/versions` | Create · `SkillVersion` |
+| `DELETE` | `/skills/{skill_id}/versions/{version}` | Delete · `DeletedSkillVersion` |
+| `GET` | `/skills/{skill_id}/versions/{version}` | Get · `SkillVersion` |
+| `GET` | `/skills/{skill_id}/versions/{version}/content` | Get · Binary content |
+
+Templates accept optional `name`, `files`, `skills`, `env`, `network`, `packages`, `plugins`, `setup_commands`, and `capability_directories`. For environment files, create requires `path` and `type` (`file_id` with `file_id`, or `inline` with `data`). Environment file listing uses **`page`**, not `after`; it also accepts `limit`, `order`, and `path`. Environment IDs are obtained from sessions; there is no standalone environment-create endpoint in this inventory.
+
+`POST /files` and skill/skill-version uploads use multipart form data, not JSON. File upload needs `file` and `purpose`. Skill creation takes `files`; updating a skill requires `default_version`. Downloads (`/content`) return bytes. Vault credential creation requires `name` and `auth`; credential update requires a replacement `auth` object, not a plaintext read. Never log tokens.
+
+```bash
+curl -X POST "$BASE_URL/files" -H "Authorization: Bearer $API_KEY" \
+  -F 'purpose=user_data' -F 'file=@./notes.txt'
+curl -X POST "$BASE_URL/agents/environments/templates" \
+  -H "Authorization: Bearer $API_KEY" -H 'Content-Type: application/json' \
+  -d '{"name":"review-workspace","files":[{"type":"file_id","file_id":"'"$FILE_ID"'","path":"/workspace/notes.txt"}]}'
+curl -H "Authorization: Bearer $API_KEY" "$BASE_URL/agents/environments/$ENVIRONMENT_ID/files?limit=20"
+curl -X POST "$BASE_URL/vaults" -H "Authorization: Bearer $API_KEY" \
+  -H 'Content-Type: application/json' -d '{"name":"partner-api"}'
+```
+
+Vault lists and credential lists support `status`, `after`, `limit`, `order`. Other cursor lists accept `after`, `limit`, `order`. See [Pagination](/reference/overview#pagination).

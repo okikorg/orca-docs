@@ -1,0 +1,30 @@
+---
+title: Agents
+description: Reusable agent configuration endpoints.
+---
+
+Agents store reusable model, instruction, and tool configuration. All paths below are relative to `/v1`. Use a server bearer key; see [Overview](/reference/overview).
+
+## Agents
+
+| Method | Path | Purpose / response |
+| --- | --- | --- |
+| `GET` | `/agents` | List · `SyncCursorPage[Agent]` |
+| `POST` | `/agents` | Create · `Agent` |
+| `DELETE` | `/agents/{agent_id}` | Delete · `AgentDeleted` |
+| `GET` | `/agents/{agent_id}` | Get · `Agent` |
+| `POST` | `/agents/{agent_id}` | Update · `Agent` |
+
+`POST /agents` requires `model`; optional fields include `name`, `instructions`, `metadata`, `tools`, `reasoning`, `text`, `service_tier`, and `multi_agent`. `POST /agents/{agent_id}` updates supplied fields (it is not a `PATCH`). Model availability depends on the configured provider; a saved agent alone does not run a turn.
+
+```bash
+curl -X POST "$BASE_URL/agents" \
+  -H "Authorization: Bearer $API_KEY" -H 'Content-Type: application/json' \
+  -d '{"model":"your-model-id","name":"Research helper","instructions":"Be concise."}'
+curl -H "Authorization: Bearer $API_KEY" "$BASE_URL/agents?limit=20"
+curl -X POST "$BASE_URL/agents/$AGENT_ID" \
+  -H "Authorization: Bearer $API_KEY" -H 'Content-Type: application/json' \
+  -d '{"instructions":"Cite sources."}'
+```
+
+List accepts `after`, `limit`, and `order` (`asc` or `desc`). Delete returns a deletion object. See [Sessions](/reference/sessions) to run an agent.

@@ -1,0 +1,59 @@
+---
+title: Sessions
+description: Conversations, turns, items, subagents, and artifacts.
+---
+
+Paths are relative to `/v1`. A session needs `environment` and either a saved `agent_id` or an inline `agent` configuration. `input` is optional; supplying it starts a turn. Use `{"type":"none"}` when no execution environment is needed. Hosted and self-hosted environments have different capabilities; do not assume tools work with `none`.
+
+## Sessions
+
+| Method | Path | Purpose / response |
+| --- | --- | --- |
+| `GET` | `/agents/sessions` | List · `SyncCursorPage[AgentSession]` |
+| `POST` | `/agents/sessions` | Create · `AgentSession` |
+| `DELETE` | `/agents/sessions/{session_id}` | Delete · `AgentSessionDeleted` |
+| `GET` | `/agents/sessions/{session_id}` | Get · `AgentSession` |
+| `POST` | `/agents/sessions/{session_id}` | Update · `AgentSession` |
+
+## Session items and turns
+
+| Method | Path | Purpose / response |
+| --- | --- | --- |
+| `GET` | `/agents/sessions/{session_id}/items` | List · `SyncCursorPage[AgentSessionItem]` |
+| `GET` | `/agents/sessions/{session_id}/turns` | List · `SyncCursorPage[Turn]` |
+| `GET` | `/agents/sessions/{session_id}/turns/{turn_id}` | Get · `Turn` |
+
+## Subagents and their history
+
+| Method | Path | Purpose / response |
+| --- | --- | --- |
+| `GET` | `/agents/sessions/{session_id}/subagents` | List · `SyncCursorPage[Subagent]` |
+| `GET` | `/agents/sessions/{session_id}/subagents/{subagent_id}` | Get · `Subagent` |
+| `GET` | `/agents/sessions/{session_id}/subagents/{subagent_id}/items` | List · `SyncCursorPage[AgentSessionItem]` |
+| `GET` | `/agents/sessions/{session_id}/subagents/{subagent_id}/turns` | List · `SyncCursorPage[Turn]` |
+| `GET` | `/agents/sessions/{session_id}/subagents/{subagent_id}/turns/{turn_id}` | Get · `Turn` |
+| `GET` | `/agents/sessions/{session_id}/subagents/{subagent_id}/turns/{turn_id}/items` | List · `SyncCursorPage[AgentSessionItem]` |
+
+## Artifacts
+
+| Method | Path | Purpose / response |
+| --- | --- | --- |
+| `GET` | `/agents/sessions/{session_id}/artifacts` | List · `SyncCursorPage[SessionArtifact]` |
+| `DELETE` | `/agents/sessions/{session_id}/artifacts/{artifact_id}` | Delete · `SessionArtifactDeleted` |
+| `GET` | `/agents/sessions/{session_id}/artifacts/{artifact_id}` | Get · `SessionArtifact` |
+| `GET` | `/agents/sessions/{session_id}/artifacts/{artifact_id}/content` | Download · Binary content |
+
+Create and read a conversation:
+
+```bash
+curl -X POST "$BASE_URL/agents/sessions" \
+  -H "Authorization: Bearer $API_KEY" -H 'Content-Type: application/json' \
+  -d '{"agent_id":"'"$AGENT_ID"'","environment":{"type":"none"},"input":"Summarize this topic."}'
+curl -H "Authorization: Bearer $API_KEY" "$BASE_URL/agents/sessions/$SESSION_ID/turns?limit=10"
+curl -H "Authorization: Bearer $API_KEY" "$BASE_URL/agents/sessions/$SESSION_ID/items?limit=10"
+curl -X POST "$BASE_URL/agents/sessions/$SESSION_ID" \
+  -H "Authorization: Bearer $API_KEY" -H 'Content-Type: application/json' \
+  -d '{"metadata":{"project":"demo"}}'
+```
+
+`POST /agents/sessions/{session_id}` updates metadata only. List sessions accepts `agent_id`, `after`, `limit`, `order`; history and artifact lists accept `after`, `limit`, `order` (artifacts also accept `environment_id`). A turn may still be in progress after session creation: inspect its status or subscribe to [events](/reference/events). Artifact content is binary, not a JSON resource. Deleting a session does not delete its saved agent.

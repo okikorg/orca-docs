@@ -1,0 +1,52 @@
+---
+title: Sessions and turns
+description: Create conversations, submit follow-ups, and read turn history with Orca.
+---
+
+Orca implements a supported subset of the Agents API using the official OpenAI clients (Python `openai==3.13.0`, TypeScript `openai@7.15.0`). Point the client at your Orca `/v1` URL and use an Orca API key, not a model-provider key. For the general Agents API introduction see the [upstream quickstart](https://developers.openai.com/api/docs/guides/agents-api/quickstart/); this guide covers Orca behavior, not a promise of complete upstream compatibility. Start with [the quickstart](/quickstart).
+
+An agent holds reusable configuration (model, instructions, tools); a session is one conversation with an environment and optional attached vaults. Providing `input` at creation starts a turn. Use `environment: {type: "none"}` if no workspace is needed; for code or files choose an [environment](/guides/environments).
+
+```python
+import os, time
+from openai import OpenAI
+
+client = OpenAI(api_key=os.environ["ORCA_API_KEY"],
+                base_url=os.environ["ORCA_BASE_URL"], max_retries=0)
+# ORCA_BASE_URL example: http://127.0.0.1:8080/v1
+agents = client.beta.agents
+sessions = agents.sessions
+agent = agents.create(model=os.environ["ORCA_MODEL"], name="assistant",
+                      instructions="Answer concisely.")
+try:
+    session = sessions.create(agent_id=agent.id, environment={"type": "none"},
+                              input="Summarize our plan.")
+    try:
+        deadline = time.monotonic() + 300
+        while time.monotonic() < deadline:
+            turns = sessions.turns.list(session.id).data
+            if turns and turns[0].status in ("completed", "failed", "cancelled"):
+                print(turns[0].status, turns[0].usage)
+                break
+            time.sleep(0.5)
+        else:
+            raise TimeoutError("Turn did not finish")
+        for item in reversed(sessions.items.list(session.id, limit=20).data):
+            for part in getattr(item, "content", None) or []:
+                if getattr(part, "text", None):
+                    print(item.role, part.text)
+        # The stream helper submits and observes the follow-up turn.
+        with sessions.stream(session.id, input="What should we do next?") as stream:
+            for event in stream:
+                if event.type in ("agent.session.turn.completed",
+                                  "agent.session.turn.failed",
+                                  "agent.session.turn.cancelled"):
+                    print("follow-up:", event.type)
+    finally:
+        sessions.delete(session.id)
+finally:
+    agents.delete(agent.id)
+    client.close()
+```
+
+Store the agent and session IDs if the application must resume later. `sessions.retrieve(id)` exposes status and `required_actions`; `sessions.turns.list(id)` and `sessions.items.list(id, limit=...)` are paginated, so do not assume a single page contains a long history. A turn can require a [function result](/guides/function-tools) or an [executor connection](/guides/environments). Check `failed` and `cancelled` explicitly rather than treating absence of text as success. Delete sessions when finished to release their environment; deleting an agent is a separate operation. To watch the turn as it runs, see [streaming](/guides/streaming). See also the [Python and TypeScript examples](/examples) and the [API reference](/reference/sessions).

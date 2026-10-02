@@ -1,0 +1,44 @@
+---
+title: Skills and templates
+description: Version reusable instructions and stage them into environments.
+---
+
+A skill upload contains a `SKILL.md` with YAML front matter including `name` and `description`. Package it in a zip, then reference a specific version when creating an environment template. Review third-party skill instructions and bundled files as untrusted content before installing them. This is Orca-specific guidance using Python `openai==3.13.0` or TypeScript `openai@7.15.0`, not a guarantee that all [upstream Agents API](https://developers.openai.com/api/docs/guides/agents-api/quickstart/) features work here. See [the quickstart](/quickstart).
+
+```python
+import io, os, zipfile
+from openai import OpenAI
+
+client = OpenAI(api_key=os.environ["ORCA_API_KEY"], base_url=os.environ["ORCA_BASE_URL"])
+def bundle(text):
+    out = io.BytesIO()
+    with zipfile.ZipFile(out, "w") as archive:
+        archive.writestr("release-notes/SKILL.md", text)
+    return out.getvalue()
+
+text = "---\nname: release-notes\ndescription: Draft notes from a changelog\n---\nSummarize changes.\n"
+skill = client.skills.create(files=[("release-notes.zip", bundle(text))])
+try:
+    version = client.skills.versions.create(
+        skill.id, files=[("release-notes.zip", bundle(text + "Check the dates.\n"))],
+        default=False)
+    print(skill.id, version.version, client.skills.retrieve(skill.id).default_version)
+    # Promotion is explicit; pin versions in templates for reproducibility.
+    client.skills.update(skill.id, default_version=version.version)
+    templates = client.beta.agents.environments.templates
+    template = templates.create(name="release-workspace", skills=[{
+        "type": "skill_reference", "skill_id": skill.id, "version": version.version,
+    }])
+    try:
+        # Reference the template from a managed session's environment.
+        # agent_id is the ID of a saved agent; do not delete the template or
+        # skill until you have finished sessions that depend on them.
+        print({"type": "openai_hosted", "environment_template_id": template.id})
+    finally:
+        templates.delete(template.id)
+finally:
+    client.skills.delete(skill.id)
+    client.close()
+```
+
+Templates can also stage files with `files=[{"type":"file_id", "file_id": uploaded.id, "path":"/workspace/data.bin"}]`. A newly created version does not automatically change the default if `default=False`; explicitly promote it or pin it. Do not embed secrets in skills or templates: use [vault credentials](/guides/credentials). Managed environments can stage capabilities; self-hosted executors cannot use nonempty `capability_directories` (see [environments](/guides/environments)). See runnable [resource examples](/examples) and [skills reference](/reference/resources#skills-and-versions).

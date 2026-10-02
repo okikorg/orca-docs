@@ -1,0 +1,42 @@
+---
+title: Files and artifacts
+description: Stage inputs and download outputs from an Orca session.
+---
+
+Use uploaded files as reusable inputs; use environment files for an individual workspace; download artifacts for immutable output snapshots. These Orca-specific workflows use the official clients Python `openai==3.13.0` and TypeScript `openai@7.15.0`. See [the quickstart](/quickstart) for client setup and the [upstream quickstart](https://developers.openai.com/api/docs/guides/agents-api/quickstart/) for general Agents API context.
+
+```python
+import os
+from openai import OpenAI
+client = OpenAI(api_key=os.environ["ORCA_API_KEY"], base_url=os.environ["ORCA_BASE_URL"])
+uploaded = client.files.create(file=("input.txt", b"source material"), purpose="user_data")
+try:
+    assert client.files.content(uploaded.id).content == b"source material"
+    agent = client.beta.agents.create(model=os.environ["ORCA_MODEL"], name="file-worker")
+    try:
+        session = client.beta.agents.sessions.create(agent_id=agent.id, environment={
+            "type": "openai_hosted", "network": {"access": "disabled"},
+            "files": [{"type": "file_id", "file_id": uploaded.id,
+                       "path": "/workspace/input.txt"}],
+        })
+        try:
+            with client.beta.agents.sessions.stream(
+                session.id, input="Read input.txt; write a summary to /workspace/outputs/summary.txt"
+            ) as stream:
+                for event in stream:
+                    if event.type == "agent.session.turn.completed":
+                        print("completed")
+            for artifact in client.beta.agents.sessions.artifacts.list(session.id).data:
+                data = client.beta.agents.sessions.artifacts.content(
+                    artifact.id, session_id=session.id).content
+                print(artifact.path, data)
+        finally:
+            client.beta.agents.sessions.delete(session.id)
+    finally:
+        client.beta.agents.delete(agent.id)
+finally:
+    client.files.delete(uploaded.id)
+    client.close()
+```
+
+Wait for a completed turn before enumerating artifacts. Orca captures regular files beneath `/workspace/outputs` as immutable snapshots for completed turns; changing the workspace file later does not change an existing artifact. Artifacts may be binary: save bytes rather than assuming UTF-8. Validate downloaded content before opening it, and avoid staging credentials or sensitive files into untrusted tasks. Managed environments support `agents.environments.files.list(environment_id, path="/workspace")` and `.create(environment_id, type="inline", path="/workspace/notes.txt", data=base64_encoded_bytes)` for live file access. For self-hosted environments, paths must be within the configured workspace, and isolation is your responsibility (see [environments](/guides/environments)). For reusable bundles see [skills](/guides/skills). More in [runnable examples](/examples) and [file reference](/reference/resources#files).

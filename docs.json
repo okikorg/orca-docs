@@ -1,0 +1,121 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "Orca",
+  "description": "Build agent applications with Orca using the official OpenAI clients. Guides, runnable examples, and an Agents API reference.",
+  "colors": {
+    "primary": "#111111",
+    "light": "#F5F5F5",
+    "dark": "#111111"
+  },
+  "appearance": {
+    "default": "dark"
+  },
+  "background": {
+    "color": {
+      "light": "#FDFDFD",
+      "dark": "#000000"
+    }
+  },
+  "logo": {
+    "light": "/assets/logo-light.svg",
+    "dark": "/assets/logo-dark.svg",
+    "href": "/introduction"
+  },
+  "favicon": "/assets/favicon.svg",
+  "navbar": {
+    "links": [
+      {
+        "label": "OpenAI Agent API",
+        "href": "https://developers.openai.com/api/docs/guides/agents-api/quickstart/"
+      }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "Get Started",
+      "href": "/quickstart"
+    }
+  },
+  "search": {
+    "prompt": "Search guides, examples, and endpoints\u2026"
+  },
+  "styling": {
+    "codeblocks": "dark",
+    "eyebrows": "section"
+  },
+  "navigation": {
+    "anchors": [
+      {
+        "anchor": "Documentation",
+        "icon": "book-open",
+        "tabs": [
+          {
+            "tab": "Documentation",
+            "groups": [
+              {
+                "group": "Start here",
+                "pages": [
+                  "introduction",
+                  "quickstart",
+                  "concepts"
+                ]
+              },
+              {
+                "group": "Build with Orca",
+                "pages": [
+                  "guides/sessions",
+                  "guides/streaming",
+                  "guides/subagents",
+                  "guides/function-tools",
+                  "guides/mcp",
+                  "guides/environments",
+                  "guides/files-and-artifacts",
+                  "guides/skills",
+                  "guides/credentials",
+                  "providers"
+                ]
+              },
+              {
+                "group": "Operate your application",
+                "pages": [
+                  "guides/reliability",
+                  "troubleshooting"
+                ]
+              }
+            ]
+          },
+          {
+            "tab": "API reference",
+            "groups": [
+              {
+                "group": "Public API",
+                "pages": [
+                  "reference/overview",
+                  "reference/agents",
+                  "reference/sessions",
+                  "reference/resources",
+                  "reference/events",
+                  "reference/errors"
+                ]
+              }
+            ]
+          },
+          {
+            "tab": "Examples",
+            "groups": [
+              {
+                "group": "Runnable recipes",
+                "pages": [
+                  "examples"
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "footer": {
+    "socials": {}
+  }
+}

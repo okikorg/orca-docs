@@ -1,0 +1,40 @@
+---
+title: "Troubleshooting"
+description: "Diagnose client setup, model access, tools, streams, and missing outputs."
+---
+
+## The client has no `beta.agents` attribute
+
+Confirm you installed the documented package in the interpreter or Node project actually running your code. These docs target Python `openai==3.13.0` and TypeScript `openai@7.15.0`. Other versions may have a different API surface. Restart long-lived development processes after changing dependencies.
+
+## Authentication fails
+
+Use an **Orca API key** against the **Orca endpoint**. The OpenAI key used for a provider is not interchangeable with it. Check the `Authorization: Bearer …` header, accidental whitespace, and whether your key has been revoked. Keep keys out of support messages and logs.
+
+## Requests return 404
+
+Use a base URL ending in `/v1` for the OpenAI client. Do not append `/agents`. Provider management uses the origin plus `/api/providers`, not `/v1/api/providers`. A 404 can also mean a resource does not exist or is not accessible with your current account.
+
+## Model selection fails
+
+Read `client.models.list()` for endpoint models or the provider's catalog for provider-key models. A prefixed model requires your corresponding provider key and will not fall back to endpoint credentials. Check [models and provider keys](/providers) for unsupported field combinations.
+
+## A turn appears stuck
+
+Retrieve the latest turn and inspect its saved items. Your application may need to answer a pending function call. Check tool service availability and environment readiness. Do not submit the same task blindly: a client timeout or disconnected event stream does not cancel work. Use explicit cancellation if you want to stop execution.
+
+## The event stream disconnected
+
+Reconnect to observe the session and read saved turns and items to recover the outcome. Do not treat `idle` as success. Distinguish `completed`, `failed`, and `cancelled`, and inspect output. See [streaming](/guides/streaming) and [reliability](/guides/reliability).
+
+## A tool or environment is rejected
+
+Check that the tool shape, model settings, environment type, and network configuration are supported. An approved MCP origin is required for remote MCP access. Do not loosen policies or replace HTTPS with HTTP to work around a validation error. Your service administrator can confirm which execution features are enabled.
+
+## There is no artifact to download
+
+An agent mentioning a filename does not prove an artifact exists. Check the session's artifact list after the producing turn completes. Output must be written to the supported output location (`/workspace/outputs` in managed execution). Download artifacts before deleting the session. See [files and artifacts](/guides/files-and-artifacts).
+
+## Report a reproducible issue
+
+Include the client language and package version, sanitized request shape, HTTP status, public error code, session/turn IDs where appropriate, and whether the issue repeats. Remove authorization headers, provider keys, vault contents, prompts containing private data, and sensitive file content. Public resource IDs may still be sensitive in your organization: share them only through an approved support channel.

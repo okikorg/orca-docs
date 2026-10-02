@@ -1,0 +1,49 @@
+---
+title: Execution environments
+description: Choose no sandbox, a managed workspace, or your own executor.
+---
+
+At session creation choose `environment.type`: `none` for text and application function tools, `openai_hosted` for a managed sandbox, or `self_hosted` for a caller-owned executor. Environments belong to sessions; deleting a session releases managed compute. These are Orca behaviors, not a claim of full compatibility with the [upstream Agents API](https://developers.openai.com/api/docs/guides/agents-api/quickstart/). Use official clients Python `openai==3.13.0` or TypeScript `openai@7.15.0`; see [the quickstart](/quickstart).
+
+## Managed workspace
+
+Your deployment must provide a configured managed sandbox. Stage inline file bytes as base64 or upload a file and stage by `file_id` (see [files](/guides/files-and-artifacts)). Example with a disabled network:
+
+```python
+import base64, os
+from openai import OpenAI
+client = OpenAI(api_key=os.environ["ORCA_API_KEY"], base_url=os.environ["ORCA_BASE_URL"])
+agents = client.beta.agents
+agent = agents.create(model=os.environ["ORCA_MODEL"], name="workspace")
+try:
+    session = agents.sessions.create(agent_id=agent.id, environment={
+        "type": "openai_hosted", "network": {"access": "disabled"},
+        "files": [{"type": "inline", "path": "/workspace/input.txt",
+                   "data": base64.b64encode(b"hello").decode()}],
+    })
+    try:
+        env_id = session.environment.id
+        print(agents.environments.retrieve(env_id).status)
+        with agents.sessions.stream(session.id, input="Read input.txt") as stream:
+            for event in stream:
+                if event.type == "agent.session.turn.completed":
+                    print(event.turn.status)
+        print(agents.environments.files.list(env_id, path="/workspace").data)
+    finally:
+        agents.sessions.delete(session.id)
+finally:
+    agents.delete(agent.id)
+    client.close()
+```
+
+`network.access` supports `disabled`, `enabled`, and (on supported managed backends) `restricted` with `allowed_domains`; Daytona and E2B reject restricted domain policies. Do not confuse server-side MCP/model access with sandbox command egress. `enabled` grants sandbox network access; use the least permissive setting that works. Reusable environment templates can combine files and skills (see [skills](/guides/skills)). `agents.environments.files.create(environment_id, type="inline", path="/workspace/notes.txt", data=base64_string)` can add a file after creation.
+
+## Self-hosted executor
+
+Enable this option on the deployment and create a session with `environment={"type":"self_hosted", "workspace_directory": "/absolute/real/workspace"}`. The environment starts `pending` and holds initial input until the executor connects. Start a **stock native Codex** executor on a host you control using the returned `session.environment.remote_url` and `session.environment.id`:
+
+```sh
+CODEX_API_KEY="$ORCA_API_KEY" codex exec-server --remote "$REMOTE_URL" --environment-id "$ENVIRONMENT_ID"
+```
+
+Use a tenant-matching Orca API key; wait for `agents.environments.retrieve(id).status == "connected"`. Use an absolute path without symlink components (resolve `/tmp` on macOS). Self-hosted `capability_directories` must be empty; stage files inside the workspace. **Self-hosted shell commands have the executor process's host privileges**: the workspace path limits file tools but is not an OS isolation boundary. Deleting the session revokes access but does not terminate your process or remove arbitrary host files. If the executor disconnects, the session requires an `environment_connection` action; reconnect before sending more input. See [reliability](/guides/reliability), [managed/self-hosted runnable examples](/examples), and [environment reference](/reference/resources#environments-and-files).
