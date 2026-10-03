@@ -69,7 +69,7 @@ def finished(session_id, after_turn_id=None):
     """Poll until the newest turn reaches a terminal state."""
     deadline = time.monotonic() + 300
     while time.monotonic() < deadline:
-        turns = sessions.turns.list(session_id).data
+        turns = [t for t in sessions.turns.list(session_id).data if t.subagent_id is None]
         if (turns and turns[0].id != after_turn_id
                 and turns[0].status in ("completed", "failed", "cancelled")):
             return turns[0]

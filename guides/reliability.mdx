@@ -18,7 +18,8 @@ import time
 end = time.monotonic() + 300
 while time.monotonic() < end:
     current = sessions.retrieve(session_id)
-    turns = sessions.turns.list(session_id).data
+    # Skip subagent turns: they finish before the turn that spawned them.
+    turns = [t for t in sessions.turns.list(session_id).data if t.subagent_id is None]
     if turns and turns[0].status in ("completed", "failed", "cancelled"):
         print(turns[0].status, current.error)
         break

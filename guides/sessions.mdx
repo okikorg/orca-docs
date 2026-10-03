@@ -24,7 +24,8 @@ try:
     try:
         deadline = time.monotonic() + 300
         while time.monotonic() < deadline:
-            turns = sessions.turns.list(session.id).data
+            # The list also holds subagent turns; the session's own have no subagent_id.
+            turns = [t for t in sessions.turns.list(session.id).data if t.subagent_id is None]
             if turns and turns[0].status in ("completed", "failed", "cancelled"):
                 print(turns[0].status, turns[0].usage)
                 break

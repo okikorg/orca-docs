@@ -29,7 +29,7 @@ Create and observe a session as described in [sessions](/guides/sessions). Enabl
 
 ## Inspect child results
 
-Retain the parent session ID. Use child IDs returned by the session's subagent list rather than assuming the parent item history contains every child's messages.
+Retain the parent session ID. Use child IDs returned by the session's subagent list rather than assuming the parent item history contains every child's messages. The session's turn list does include child turns, newest first, each with a `subagent_id`; a child usually finishes before the turn that spawned it, so when polling for the parent's outcome skip turns whose `subagent_id` is set.
 
 ```python
 sessions = client.beta.agents.sessions

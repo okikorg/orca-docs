@@ -56,4 +56,4 @@ curl -X POST "$BASE_URL/agents/sessions/$SESSION_ID" \
   -d '{"metadata":{"project":"demo"}}'
 ```
 
-`POST /agents/sessions/{session_id}` updates metadata only. List sessions accepts `agent_id`, `after`, `limit`, `order`; history and artifact lists accept `after`, `limit`, `order` (artifacts also accept `environment_id`). A turn may still be in progress after session creation: inspect its status or subscribe to [events](/reference/events). Artifact content is binary, not a JSON resource. Deleting a session does not delete its saved agent.
+`GET .../turns` lists subagent turns alongside the session's own; they carry a non-null `subagent_id`, while session items list only the session's own conversation. `POST /agents/sessions/{session_id}` updates metadata only. List sessions accepts `agent_id`, `after`, `limit`, `order`; history and artifact lists accept `after`, `limit`, `order` (artifacts also accept `environment_id`). A turn may still be in progress after session creation: inspect its status or subscribe to [events](/reference/events). Artifact content is binary, not a JSON resource. Deleting a session does not delete its saved agent.

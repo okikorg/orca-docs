@@ -57,6 +57,7 @@ A bare model name uses the endpoint's configured model access. A recognized prov
 - Inspect `unsupported_agent_fields` before sending provider-specific settings.
 - Anthropic does not accept JSON-schema `text.format`, non-default `text.verbosity`, or non-`auto` `service_tier` in this integration.
 - Provider-key models cannot be combined with `web_search` here.
+- `reasoning.summary` is not available on any route; reasoning summaries are not exposed. Saved agents that set it are rejected on create or update.
 - A catalog entry is not a promise of tool support or availability on your provider account.
 
 ## Rotate and remove keys carefully
