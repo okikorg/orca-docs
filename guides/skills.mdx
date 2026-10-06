@@ -3,7 +3,7 @@ title: Skills and templates
 description: Version reusable instructions and stage them into environments.
 ---
 
-A skill upload contains a `SKILL.md` with YAML front matter including `name` and `description`. Package it in a zip, then reference a specific version when creating an environment template. Review third-party skill instructions and bundled files as untrusted content before installing them. This is Orca-specific guidance using Python `openai==3.13.0` or TypeScript `openai@7.15.0`, not a guarantee that all [upstream Agents API](https://developers.openai.com/api/docs/guides/agents-api/quickstart/) features work here. See [the quickstart](/quickstart).
+A skill upload contains a `SKILL.md` with YAML front matter including `name` and `description`. The `name` uses only letters, digits, `_` and `-`, since it names the folder the skill is staged in; an upload with any other name is refused. Package it in a zip, then reference a specific version when creating an environment template. Review third-party skill instructions and bundled files as untrusted content before installing them. This is Orca-specific guidance using Python `openai==3.13.0` or TypeScript `openai@7.15.0`, not a guarantee that all [upstream Agents API](https://developers.openai.com/api/docs/guides/agents-api/quickstart/) features work here. See [the quickstart](/quickstart).
 
 ```python
 import io, os, zipfile
