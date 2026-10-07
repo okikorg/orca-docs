@@ -1,53 +1,155 @@
 ---
 title: Sessions and turns
-description: Create conversations, submit follow-ups, and read turn history with Orca.
+description: Start conversations, continue them later, and read their history.
 ---
 
-Orca implements a supported subset of the Agents API using the official OpenAI clients (Python `openai==3.13.0`, TypeScript `openai@7.15.0`). Point the client at your Orca `/v1` URL and use an Orca API key, not a model-provider key. For the general Agents API introduction see the [upstream quickstart](https://developers.openai.com/api/docs/guides/agents-api/quickstart/); this guide covers Orca behavior, not a promise of complete upstream compatibility. Start with [the quickstart](/quickstart).
+A **session** is one conversation with an agent. You create it, send it messages, and read back what happened. Each message you send starts a **turn**: the agent's full round of work in response to that message. See [how Orca works](/concepts) for the bigger picture.
 
-An agent holds reusable configuration (model, instructions, tools); a session is one conversation with an environment and optional attached vaults. Providing `input` at creation starts a turn. Use `environment: {type: "none"}` if no workspace is needed; for code or files choose an [environment](/guides/environments).
+## When to create a new session
+
+Create one session per independent conversation: a chat thread, a support ticket, a scheduled job. Reuse the same session when the agent should remember what was said before.
+
+| Situation | Do this |
+| --- | --- |
+| A user replies in the same chat | Send a message to the existing session. |
+| A user starts a new chat | Create a new session for the same agent. |
+| You changed the agent's instructions | Create a new session to use the new settings. |
+| The task needs a sandbox, but the current session has none | Create a new session. The environment is chosen at creation and cannot be changed later. |
+
+## Create a session
+
+Examples on this page assume `client` is an `OpenAI` client configured as in the [quickstart](/quickstart).
+
+A session needs an agent and an environment. Pass `input` to send the first message right away, or omit it and send messages later.
 
 ```python
-import os, time
-from openai import OpenAI
-
-client = OpenAI(api_key=os.environ["ORCA_API_KEY"],
-                base_url=os.environ["ORCA_BASE_URL"], max_retries=0)
-# ORCA_BASE_URL example: http://127.0.0.1:8080/v1
-agents = client.beta.agents
-sessions = agents.sessions
-agent = agents.create(model=os.environ["ORCA_MODEL"], name="assistant",
-                      instructions="Answer concisely.")
-try:
-    session = sessions.create(agent_id=agent.id, environment={"type": "none"},
-                              input="Summarize our plan.")
-    try:
-        deadline = time.monotonic() + 300
-        while time.monotonic() < deadline:
-            # The list also holds subagent turns; the session's own have no subagent_id.
-            turns = [t for t in sessions.turns.list(session.id).data if t.subagent_id is None]
-            if turns and turns[0].status in ("completed", "failed", "cancelled"):
-                print(turns[0].status, turns[0].usage)
-                break
-            time.sleep(0.5)
-        else:
-            raise TimeoutError("Turn did not finish")
-        for item in reversed(sessions.items.list(session.id, limit=20).data):
-            for part in getattr(item, "content", None) or []:
-                if getattr(part, "text", None):
-                    print(item.role, part.text)
-        # The stream helper submits and observes the follow-up turn.
-        with sessions.stream(session.id, input="What should we do next?") as stream:
-            for event in stream:
-                if event.type in ("agent.session.turn.completed",
-                                  "agent.session.turn.failed",
-                                  "agent.session.turn.cancelled"):
-                    print("follow-up:", event.type)
-    finally:
-        sessions.delete(session.id)
-finally:
-    agents.delete(agent.id)
-    client.close()
+session = client.beta.agents.sessions.create(
+    agent_id=agent.id,
+    environment={"type": "none"},  # no sandbox; see the environments guide
+    input="Summarize our plan.",   # optional
+)
+print(session.id, session.status)
 ```
 
-Store the agent and session IDs if the application must resume later. `sessions.retrieve(id)` exposes status and `required_actions`; `sessions.turns.list(id)` and `sessions.items.list(id, limit=...)` are paginated, so do not assume a single page contains a long history. A turn can require a [function result](/guides/function-tools) or an [executor connection](/guides/environments). Check `failed` and `cancelled` explicitly rather than treating absence of text as success. Delete sessions when finished to release their environment; deleting an agent is a separate operation. To watch the turn as it runs, see [streaming](/guides/streaming). See also the [Python and TypeScript examples](/examples) and the [API reference](/reference/sessions).
+- **`agent_id`** selects a saved agent. You can instead pass an inline `agent` configuration if you do not want to save one.
+- **`environment`** decides whether the agent gets a sandbox. Use `{"type": "none"}` for conversation and tools that run elsewhere. See [execution environments](/guides/environments).
+- **`vault_ids`** (optional) attaches stored credentials for MCP tools. See [credentials and vaults](/guides/credentials).
+- **`metadata`** (optional) is a set of your own key-value labels, such as a user or ticket ID. You can change it later with `sessions.update`.
+
+## Send a follow-up message
+
+There are two ways. Both add the message to the same conversation.
+
+```python
+sessions = client.beta.agents.sessions
+
+# 1. Post an input event. Returns as soon as the message is accepted.
+sessions.events.create(
+    session.id,
+    events=[
+        {
+            "type": "agent.session.input.message",
+            "input": [
+                {
+                    "role": "user",
+                    "content": [{"type": "input_text", "text": "What should we do next?"}],
+                }
+            ],
+        }
+    ],
+)
+
+# 2. Or use the stream helper: sends the message and streams the turn to its end.
+with sessions.stream(session.id, input="What should we do next?") as stream:
+    for event in stream:
+        pass
+```
+
+If a turn is still running when you send a message, the message joins that turn instead of starting a new one. See [turns and statuses](/turn-lifecycle#sending-a-message-while-a-turn-is-running).
+
+## Full example
+
+This program creates a session with a first message, waits for the turn by polling, prints the history, and then sends a follow-up using the stream helper.
+
+```python
+import os
+import time
+
+agents = client.beta.agents
+sessions = agents.sessions
+
+agent = agents.create(
+    model=os.environ["ORCA_MODEL"],
+    name="assistant",
+    instructions="Answer concisely.",
+)
+session = sessions.create(
+    agent_id=agent.id,
+    environment={"type": "none"},
+    input="Summarize our plan.",
+)
+
+# 1. Wait for the first turn. Subagent turns have a subagent_id; skip them.
+deadline = time.monotonic() + 300
+while time.monotonic() < deadline:
+    turns = [t for t in sessions.turns.list(session.id).data if t.subagent_id is None]
+    if turns and turns[0].status in ("completed", "failed", "cancelled"):
+        print(turns[0].status, turns[0].usage)
+        break
+    time.sleep(0.5)
+else:
+    raise TimeoutError("Turn did not finish")
+
+# 2. Print the history, oldest first.
+for item in reversed(sessions.items.list(session.id, limit=20).data):
+    for part in getattr(item, "content", None) or []:
+        if getattr(part, "text", None):
+            print(f"{item.role}: {part.text}")
+
+# 3. Send a follow-up and stream it until the turn ends.
+done = (
+    "agent.session.turn.completed",
+    "agent.session.turn.failed",
+    "agent.session.turn.cancelled",
+)
+with sessions.stream(session.id, input="What should we do next?") as stream:
+    for event in stream:
+        if event.type in done:
+            print("follow-up:", event.type)
+
+# 4. Clean up.
+sessions.delete(session.id)
+agents.delete(agent.id)
+```
+
+## Read the history
+
+`sessions.items.list(session_id)` returns the saved history, newest first. Items are not only messages: tool calls, tool results, and commands are items too. Check each item's `type` before reading its fields. The [item types](/concepts#items-the-saved-history) table lists them.
+
+`sessions.turns.list(session_id)` returns the turns, newest first. Each has a `status`, an `error` if it failed, and `usage` with token counts once it ends.
+
+Both lists are **paginated**. A long conversation does not fit in one page. In Python, iterate the result directly (`for item in sessions.items.list(...)`) to fetch all pages automatically, or pass `after=` the last ID you saw.
+
+## Resume later
+
+Orca stores sessions durably. To pick up a conversation hours or days later, store the session ID in your database and use it again:
+
+```python
+session = client.beta.agents.sessions.retrieve(stored_session_id)
+print(session.status, session.required_actions)
+```
+
+Check `status` before you send anything. If it is `requires_action`, the agent is waiting for you; see [`required_actions`](/turn-lifecycle#when-the-session-needs-you).
+
+## Delete when finished
+
+`sessions.delete(session_id)` deletes the conversation, its artifacts, and its sandbox. Download anything you need first. Deleting a session does not delete its agent, and deleting an agent is a separate call.
+
+## Common mistakes
+
+- **Reading the reply right after sending.** The send call returns before the agent has answered. Wait for the turn to end first.
+- **Treating `idle` as success.** `idle` means nothing is running. The last turn may have failed; check the turn's status.
+- **Using an agent ID as a conversation ID.** Many sessions can share one agent. Keep the session ID.
+- **Reading only the first page.** Lists are paginated.
+
+See also: [streaming](/guides/streaming), [runnable examples](/examples), and the [sessions API reference](/reference/sessions).

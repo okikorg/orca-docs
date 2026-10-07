@@ -37,10 +37,15 @@
     }
   },
   "search": {
-    "prompt": "Search guides, examples, and endpoints\u2026"
+    "prompt": "Search guides, examples, and endpoints…"
   },
   "styling": {
-    "codeblocks": "dark",
+    "codeblocks": {
+      "theme": {
+        "light": "vitesse-light",
+        "dark": "vitesse-black"
+      }
+    },
     "eyebrows": "section"
   },
   "navigation": {
@@ -57,7 +62,9 @@
                 "pages": [
                   "introduction",
                   "quickstart",
-                  "concepts"
+                  "concepts",
+                  "turn-lifecycle",
+                  "glossary"
                 ]
               },
               {
@@ -65,12 +72,12 @@
                 "pages": [
                   "guides/sessions",
                   "guides/streaming",
-                  "guides/subagents",
                   "guides/function-tools",
                   "guides/mcp",
                   "guides/environments",
                   "guides/files-and-artifacts",
                   "guides/skills",
+                  "guides/subagents",
                   "guides/credentials",
                   "providers"
                 ]

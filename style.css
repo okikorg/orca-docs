@@ -140,3 +140,56 @@ step { border-color: var(--vl-line); }
     color: var(--vl-ink-3);
   }
 }
+
+/* Diagrams. Mintlify renders Mermaid with its stock default/dark theme and
+   scopes those colours under the SVG's own id, so every override here needs
+   !important. Only paint is restyled: Mermaid measures labels in the inherited
+   font at render time, so font size and padding stay untouched or labels
+   would overflow their boxes. Ground and frame match code blocks; nodes are
+   raised planes on a hairline; edges and arrowheads are ink-3; no colour. */
+[data-component-name="mermaid-container"] {
+  background: var(--vl-canvas); border: 1px solid var(--vl-line); border-radius: var(--vl-r); padding: 20px 12px; margin: 20px 0;
+}
+[data-component-name="mermaid-container"] svg { background: transparent !important; }
+[data-component-name="mermaid-container"] button {
+  background: var(--vl-surface) !important; border: 1px solid var(--vl-line) !important; border-radius: var(--vl-r) !important;
+  color: var(--vl-ink-2) !important; box-shadow: none !important;
+}
+[data-component-name="mermaid-container"] button:hover { color: var(--vl-ink) !important; border-color: var(--vl-line-2) !important; }
+
+/* Shapes: flowchart nodes, state boxes, sequence actors and notes. */
+[data-component-name="mermaid-container"] svg :is(.node rect, .node polygon, .node path, .node circle:not(.state-start):not(.state-end),
+  .actor, rect.actor, .labelBox, .note, rect.note, .statediagram-state rect, .cluster rect) {
+  fill: var(--vl-surface) !important; stroke: var(--vl-line-2) !important; stroke-width: 1px !important; rx: var(--vl-r); ry: var(--vl-r);
+}
+/* State start/end dots are the only filled marks: solid ink. */
+[data-component-name="mermaid-container"] svg :is(.state-start, circle.state-start, .state-end, .end-state-inner) {
+  fill: var(--vl-ink) !important; stroke: var(--vl-ink) !important;
+}
+[data-component-name="mermaid-container"] svg .end-state-outer { fill: none !important; stroke: var(--vl-ink) !important; }
+/* Mermaid 11 draws the end state as a ring (outer-path) around a dot (its inner g). */
+[data-component-name="mermaid-container"] svg .node[id*="_end"] > g.outer-path > path { fill: var(--vl-canvas) !important; stroke: var(--vl-ink) !important; stroke-width: 1px !important; }
+[data-component-name="mermaid-container"] svg .node[id*="_end"] > g.outer-path > g > path { fill: var(--vl-ink) !important; stroke: var(--vl-ink) !important; }
+[data-component-name="mermaid-container"] svg .statediagram-state .divider { stroke: var(--vl-line-2) !important; }
+
+/* Text. */
+[data-component-name="mermaid-container"] svg :is(text, tspan, .nodeLabel, .label, .stateLabel, .state-title, .messageText,
+  text.actor, text.actor > tspan, .noteText, .noteText > tspan, .labelText, .loopText, .loopText > tspan) {
+  fill: var(--vl-ink) !important; color: var(--vl-ink) !important;
+}
+[data-component-name="mermaid-container"] svg :is(.nodeLabel, .label) p { color: var(--vl-ink) !important; }
+
+/* Edges, lifelines, messages. */
+[data-component-name="mermaid-container"] svg :is(.flowchart-link, .edgePath .path, path.transition, .transition, .relation,
+  .messageLine0, .messageLine1, .loopLine) {
+  stroke: var(--vl-ink-3) !important; stroke-width: 1px !important;
+}
+[data-component-name="mermaid-container"] svg .actor-line { stroke: var(--vl-line-2) !important; stroke-width: 1px !important; }
+[data-component-name="mermaid-container"] svg :is(marker path, .marker, .arrowheadPath, [id$="arrowhead"] path) {
+  fill: var(--vl-ink-3) !important; stroke: var(--vl-ink-3) !important; stroke-width: 1px !important;
+}
+/* Edge labels sit on the diagram ground so a line appears to pass behind them. */
+[data-component-name="mermaid-container"] svg :is(.edgeLabel, .edgeLabel p, .edgeLabel span, .labelBkg) {
+  background-color: var(--vl-canvas) !important; color: var(--vl-ink-2) !important; fill: var(--vl-ink-2) !important;
+}
+[data-component-name="mermaid-container"] svg .edgeLabel rect { fill: var(--vl-canvas) !important; opacity: 1 !important; }

@@ -1,26 +1,39 @@
 ---
 title: "Quickstart"
-description: "Run your first Orca session with the official Python or TypeScript client."
+description: "Create an agent, have a short conversation, and read the reply, in Python or TypeScript."
 ---
 
-This is the Orca-specific path through the [OpenAI Agent API quickstart](https://developers.openai.com/api/docs/guides/agents-api/quickstart/). It runs a conversation without a sandbox, waits for a terminal turn, reads history, and sends a follow-up.
+In this quickstart you write one short program that:
 
-## Before you begin
+1. Creates an **agent** (the model and its instructions).
+2. Opens a **session** (a conversation) and sends a first message.
+3. Waits for the agent to finish its **turn**.
+4. Prints the saved conversation.
+5. Sends a follow-up message in the same conversation.
 
-Get a running Orca endpoint, and create an API key in the dashboard under Settings, API keys (it is shown once). Choose a model available to your account. These instructions configure an application client; they do not deploy the server.
+It takes about five minutes. No sandbox is involved, so it works on any Orca endpoint. If any of these words are new, [how Orca works](/concepts) explains them, but you do not need it to follow along.
+
+<Steps>
+<Step title="Get your connection details">
+
+You need three connection details for your Orca deployment:
+
+- **Base URL**: your Orca address ending in `/v1`. Not `/agents`, and not `api.openai.com`.
+- **API key**: create an Orca key in the dashboard under Settings, API keys (it is shown once). An OpenAI key does not work here.
+- **Model**: the name of a model your endpoint offers. If you are unsure, [list the available models](/providers#discover-endpoint-models).
 
 ```bash
-# Use your endpoint. Include /v1, not /agents.
 export ORCA_BASE_URL="https://YOUR_ORCA_HOST/v1"
 export ORCA_API_KEY="YOUR_ORCA_KEY"
 export ORCA_MODEL="YOUR_AVAILABLE_MODEL"
 ```
 
-Keep the key in your backend or secret manager, never in browser code or source control. Plain HTTP is only appropriate for a trusted local development endpoint.
+Treat the key like a password: keep it in your backend or a secret manager, never in browser code or source control. Use plain `http://` only for a local development server.
 
-## Install a supported client
+</Step>
+<Step title="Install the OpenAI client">
 
-The examples target the project's pinned client versions. The Agents API uses the `beta.agents` namespace.
+Orca works with the official `openai` package. These docs are tested against the versions below; the Agents API is still a beta, so other versions may differ.
 
 <CodeGroup>
 ```bash Python
@@ -34,11 +47,12 @@ npm install openai@7.15.0
 ```
 </CodeGroup>
 
-For the TypeScript example, use a Node.js version with native TypeScript stripping (Node 22.18+ or Node 24+) or your existing TypeScript runner.
+For TypeScript, use Node 22.18+ or Node 24+, which can run `.ts` files directly, or your usual TypeScript runner.
 
-## Create an agent and run a session
+</Step>
+<Step title="Write the program">
 
-Save the code as `quickstart.py` or `quickstart.ts`. It uses the same flow as the repository's runnable quickstart examples. The `finally` block deletes demo resources, so save any output you want to retain before the program exits.
+Save this as `quickstart.py` or `quickstart.ts`. The comments mark each of the five steps above. The `finally` block deletes the agent and session at the end so the demo leaves nothing behind.
 
 <Tabs>
 <Tab title="Python">
@@ -69,6 +83,7 @@ def finished(session_id, after_turn_id=None):
     """Poll until the newest turn reaches a terminal state."""
     deadline = time.monotonic() + 300
     while time.monotonic() < deadline:
+        # Skip subagent turns: they finish before the turn that spawned them.
         turns = [t for t in sessions.turns.list(session_id).data if t.subagent_id is None]
         if (turns and turns[0].id != after_turn_id
                 and turns[0].status in ("completed", "failed", "cancelled")):
@@ -92,7 +107,7 @@ try:
     session = sessions.create(
         agent_id=agent.id,
         environment={"type": "none"},
-        input="Write a 100 word poem",
+        input="Write a haiku about the ocean.",
     )
     session_id = session.id
     print("session:", session.id, session.status)
@@ -170,8 +185,10 @@ const pause = (ms = 500) => new Promise(resolve => setTimeout(resolve, ms));
 /** Poll until the newest turn reaches a terminal state. */
 async function finished(session: string, afterTurnId?: string) {
   for (let attempt = 0; attempt < 600; attempt++) {
-    const [turn] = (await sessions.turns.list(session)).data;
-    if (turn && turn.id !== afterTurnId && ['completed', 'failed', 'cancelled'].includes(turn.status)) return turn;
+    // Skip subagent turns: they finish before the turn that spawned them.
+    const [turn] = (await sessions.turns.list(session)).data.filter(t => !t.subagent_id);
+    const done = ['completed', 'failed', 'cancelled'].includes(turn?.status ?? '');
+    if (turn && turn.id !== afterTurnId && done) return turn;
     await pause();
   }
   throw new Error('Turn did not finish in time');
@@ -179,16 +196,20 @@ async function finished(session: string, afterTurnId?: string) {
 
 try {
   // An agent holds the reusable configuration: model, instructions, tools.
-  const agent = await agents.create({ model: MODEL, name: 'quickstart', instructions: 'You are a concise assistant.' });
+  const agent = await agents.create({
+    model: MODEL,
+    name: 'quickstart',
+    instructions: 'You are a concise assistant.',
+  });
   agentId = agent.id;
   console.log('agent:', agent.id, agent.model);
 
   // A session holds one conversation. Passing input starts the first turn.
-  // 'none' means this session gets no sandbox; see the environments topics.
+  // 'none' means this session gets no sandbox; see our environments guide.
   const session = await sessions.create({
     agent_id: agent.id,
     environment: { type: 'none' },
-    input: 'Summarize what this agent server does.',
+    input: 'Write a haiku about the ocean.',
   });
   sessionId = session.id;
   console.log('session:', session.id, session.status);
@@ -207,10 +228,14 @@ try {
 
   // A follow-up turn resumes the same stored conversation.
   await sessions.events.create(session.id, {
-    events: [{
-      type: 'agent.session.input.message',
-      input: [{ role: 'user', content: [{ type: 'input_text', text: 'And again, briefly.' }] }],
-    }],
+    events: [
+      {
+        type: 'agent.session.input.message',
+        input: [
+          { role: 'user', content: [{ type: 'input_text', text: 'And again, briefly.' }] },
+        ],
+      },
+    ],
   });
   console.log('follow-up turn:', (await finished(session.id, turn.id)).status);
   console.log('turns on this page:', (await sessions.turns.list(session.id)).data.length);
@@ -222,6 +247,9 @@ try {
 </Tab>
 </Tabs>
 
+</Step>
+<Step title="Run it">
+
 <CodeGroup>
 ```bash Python
 python quickstart.py
@@ -231,23 +259,43 @@ node --experimental-strip-types quickstart.ts
 ```
 </CodeGroup>
 
-## Understand the result
+You should see the agent and session IDs, the turn finishing with status `completed`, token usage, the conversation (your message and the haiku), and then the follow-up turn completing.
 
-1. The agent stores reusable model, instruction, and tool settings.
-2. The session stores the conversation. Initial `input` starts a turn.
-3. Polling waits up to five minutes for `completed`, `failed`, or `cancelled`.
-4. Saved items contain the conversation; they are not limited to assistant text.
-5. The follow-up uses the same session, preserving conversation context.
+</Step>
+</Steps>
+
+## What just happened
+
+**`agents.create`** saved a configuration. Nothing ran yet, and no tokens were used.
+
+**`sessions.create` with `input`** opened a conversation and sent the first message. The call returned right away, while the agent was still working. That is why the program has a `finished()` helper: it checks the session's turn list every half second until the newest turn reaches a final status (`completed`, `failed`, or `cancelled`). [Turns and statuses](/turn-lifecycle) explains why Orca works this way and what each status means.
+
+**`sessions.items.list`** read the saved history. The history includes your message, the agent's reply, and (for agents with tools) every tool call. The list is newest first, so the program reverses it to print in order.
+
+**`sessions.events.create`** sent a follow-up message as an *input event*. Because it is the same session, the agent remembers the poem. The program passes the first turn's ID to `finished()` so it waits for the **new** turn instead of seeing the old one as already done.
+
+Polling is the simplest way to wait. To show the reply word by word as it is generated, use [streaming](/guides/streaming) instead.
 
 <Warning>
-This example prints terminal status for inspection. In an application, handle `failed` and `cancelled` explicitly. Even a completed turn does not prove every tool succeeded: inspect the relevant tool result or output. A polling timeout does not cancel execution; retrieve the session before sending the same task again.
+In your own application, treat `failed` and `cancelled` as real outcomes, not just log lines. Also, if your wait times out, the turn is still running on the server: check its status before you send the same message again, or the agent will do the work twice.
 </Warning>
+
+## If something went wrong
+
+| Symptom | Likely cause |
+| --- | --- |
+| `AttributeError: ... has no attribute 'agents'` | An older `openai` package. Install the version above. |
+| `401` | The API key is wrong, or it is an OpenAI key instead of an Orca key. |
+| `404` on every request | The base URL does not end in `/v1`, or has `/agents` appended. |
+| The turn ends `failed` | Print `turn.error`. A common cause is a model name your endpoint does not offer; [list the available models](/providers#discover-endpoint-models). |
+
+More in [troubleshooting](/troubleshooting).
 
 ## Next steps
 
 <CardGroup cols={2}>
-  <Card title="Stream responses" icon="bolt" href="/guides/streaming">Receive text and lifecycle events as a turn runs.</Card>
-  <Card title="Give your agent tools" icon="wrench" href="/guides/function-tools">Handle actions in your application.</Card>
-  <Card title="Work in an environment" icon="cube" href="/guides/environments">Stage inputs and produce downloadable files.</Card>
-  <Card title="Fix a setup issue" icon="life-ring" href="/troubleshooting">Check authentication, versions, and model access.</Card>
+  <Card title="Stream responses" icon="bolt" href="/guides/streaming">Show text as it is generated instead of polling.</Card>
+  <Card title="Give your agent tools" icon="wrench" href="/guides/function-tools">Let the agent call functions in your code.</Card>
+  <Card title="Run code in a sandbox" icon="cube" href="/guides/environments">Let the agent run commands and produce files.</Card>
+  <Card title="How Orca works" icon="diagram-project" href="/concepts">The full picture of agents, sessions, turns, and tools.</Card>
 </CardGroup>

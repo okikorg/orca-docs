@@ -1,44 +1,127 @@
 ---
 title: Skills and templates
-description: Version reusable instructions and stage them into environments.
+description: Package reusable instructions as versioned skills, and reuse sandbox setups with templates.
 ---
 
-A skill upload contains a `SKILL.md` with YAML front matter including `name` and `description`. The `name` uses only letters, digits, `_` and `-`, since it names the folder the skill is staged in; an upload with any other name is refused. Package it in a zip, then reference a specific version when creating an environment template. Review third-party skill instructions and bundled files as untrusted content before installing them. This is Orca-specific guidance using Python `openai==3.13.0` or TypeScript `openai@7.15.0`, not a guarantee that all [upstream Agents API](https://developers.openai.com/api/docs/guides/agents-api/quickstart/) features work here. See [the quickstart](/quickstart).
+## What is a skill?
 
-```python
-import io, os, zipfile
-from openai import OpenAI
+A **skill** is a folder of instructions that teaches the agent how to do one specific job, such as "draft release notes from a changelog" or "produce our standard weekly sales report". It contains a `SKILL.md` file and, optionally, scripts, templates, or reference files the instructions refer to.
 
-client = OpenAI(api_key=os.environ["ORCA_API_KEY"], base_url=os.environ["ORCA_BASE_URL"])
-def bundle(text):
-    out = io.BytesIO()
-    with zipfile.ZipFile(out, "w") as archive:
-        archive.writestr("release-notes/SKILL.md", text)
-    return out.getvalue()
+Skills keep your agent's base instructions short. Instead of putting every procedure in the agent's instructions, you install skills in its sandbox. The agent sees each skill's name and description, and loads the full instructions only when a task calls for that skill.
 
-text = "---\nname: release-notes\ndescription: Draft notes from a changelog\n---\nSummarize changes.\n"
-skill = client.skills.create(files=[("release-notes.zip", bundle(text))])
-try:
-    version = client.skills.versions.create(
-        skill.id, files=[("release-notes.zip", bundle(text + "Check the dates.\n"))],
-        default=False)
-    print(skill.id, version.version, client.skills.retrieve(skill.id).default_version)
-    # Promotion is explicit; pin versions in templates for reproducibility.
-    client.skills.update(skill.id, default_version=version.version)
-    templates = client.beta.agents.environments.templates
-    template = templates.create(name="release-workspace", skills=[{
-        "type": "skill_reference", "skill_id": skill.id, "version": version.version,
-    }])
-    try:
-        # Reference the template from a managed session's environment.
-        # agent_id is the ID of a saved agent; do not delete the template or
-        # skill until you have finished sessions that depend on them.
-        print({"type": "openai_hosted", "environment_template_id": template.id})
-    finally:
-        templates.delete(template.id)
-finally:
-    client.skills.delete(skill.id)
-    client.close()
+```text
+release-notes/
+  SKILL.md          <- required: front matter + instructions
+  template.md       <- optional files the instructions mention
+  scripts/check.py
 ```
 
-Templates can also stage files with `files=[{"type":"file_id", "file_id": uploaded.id, "path":"/workspace/data.bin"}]`. A newly created version does not automatically change the default if `default=False`; explicitly promote it or pin it. Do not embed secrets in skills or templates: use [vault credentials](/guides/credentials). Managed environments can stage capabilities; self-hosted executors cannot use nonempty `capability_directories` (see [environments](/guides/environments)). See runnable [resource examples](/examples) and [skills reference](/reference/resources#skills-and-versions).
+`SKILL.md` starts with YAML front matter giving a `name` and a `description`. The `name` uses only letters, digits, `_` and `-`, since it names the folder the skill is staged in; an upload with any other name is refused. Write the description so the model can tell when to use the skill:
+
+```markdown
+---
+name: release-notes
+description: Draft release notes from a changelog. Use when asked for release notes or a changelog summary.
+---
+Read CHANGELOG.md. Group changes into Features, Fixes, and Breaking changes.
+Use template.md for the layout. Check every date against the git tags.
+```
+
+Skills need a [managed sandbox](/guides/environments#managed-sandbox); they are installed as files inside it.
+
+## Versions
+
+Every upload of a skill is a numbered **version**. The skill also has a **default version**. Uploading a new version does not change the default unless you ask it to, so you can test a new version before switching everyone to it.
+
+| Action | Call |
+| --- | --- |
+| Create a skill (version 1, default) | `client.skills.create(files=[...])` |
+| Upload a new version | `client.skills.versions.create(skill_id, files=[...], default=False)` |
+| Make a version the default | `client.skills.update(skill_id, default_version=...)` |
+
+When you reference a skill, you can pin a specific `version`. Pinning makes runs reproducible: a session always gets exactly the instructions you tested.
+
+## Example: upload, version, and use in a template
+
+Examples on this page assume `client` is an `OpenAI` client configured as in the [quickstart](/quickstart).
+
+The upload is a zip file containing the skill folder.
+
+```python
+import io
+import zipfile
+
+
+def bundle(skill_md: str) -> bytes:
+    """Zip a skill folder that contains a single SKILL.md."""
+    out = io.BytesIO()
+    with zipfile.ZipFile(out, "w") as archive:
+        archive.writestr("release-notes/SKILL.md", skill_md)
+    return out.getvalue()
+
+
+skill_md = """---
+name: release-notes
+description: Draft release notes from a changelog
+---
+Summarize changes.
+"""
+
+# 1. Create the skill. Version 1 becomes the default.
+skill = client.skills.create(files=[("release-notes.zip", bundle(skill_md))])
+
+# 2. Upload version 2 without changing the default yet.
+version = client.skills.versions.create(
+    skill.id,
+    files=[("release-notes.zip", bundle(skill_md + "Check the dates.\n"))],
+    default=False,
+)
+
+# 3. Promote it once you have tested it.
+client.skills.update(skill.id, default_version=version.version)
+
+# 4. Pin that exact version in a reusable template.
+template = client.beta.agents.environments.templates.create(
+    name="release-workspace",
+    skills=[
+        {"type": "skill_reference", "skill_id": skill.id, "version": version.version},
+    ],
+)
+```
+
+## Install a skill in a session
+
+Add it to the session's `environment`, or to a template the session uses:
+
+```python
+session = client.beta.agents.sessions.create(
+    agent_id=agent.id,
+    environment={
+        "type": "openai_hosted",
+        "skills": [
+            {"type": "skill_reference", "skill_id": skill.id, "version": version.version},
+        ],
+    },
+)
+```
+
+## Environment templates
+
+An **environment template** is a saved sandbox setup that many sessions can share: staged files, skills, packages, setup commands, environment variables, and network policy. Create it once, then pass its ID:
+
+```python
+session = client.beta.agents.sessions.create(agent_id=agent.id, environment={
+    "type": "openai_hosted",
+    "environment_template_id": template.id,
+})
+```
+
+Settings on the session override the template's, except that a session cannot loosen the template's network policy. Do not delete a template or skill while sessions that depend on it are still being created.
+
+## Keep it safe
+
+- **Review skills like code.** A skill's instructions direct what the agent does, and its scripts run in the sandbox. Read third-party skills before installing them.
+- **No secrets in skills or templates.** Anything in them is readable by the agent. Use [vault credentials](/guides/credentials) for tokens.
+- **Self-hosted environments cannot install skills.** Put the files the agent needs in the workspace folder instead.
+
+See also: [execution environments](/guides/environments), [runnable resource examples](/examples), and the [skills reference](/reference/resources#skills-and-versions).

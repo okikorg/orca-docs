@@ -1,11 +1,29 @@
 ---
 title: Streaming and cancellation
-description: Observe Orca turn events and stop work deliberately.
+description: Show the agent's work as it happens, reconnect after a drop, and stop a turn on purpose.
 ---
 
-Use the official clients pinned to Python `openai==3.13.0` or TypeScript `openai@7.15.0` with your Orca `/v1` base URL and bearer key. The general Agents API introduction is the [upstream quickstart](https://developers.openai.com/api/docs/guides/agents-api/quickstart/); Orca supports the workflows shown here, not every upstream feature. See [the quickstart](/quickstart) to create an agent.
+A turn can take seconds or minutes. Streaming lets you show its progress live: text as the model writes it, tool calls as they start, and the moment the turn ends. If you only need the final result, [polling](/turn-lifecycle#a-complete-wait-loop) is simpler.
 
-`sessions.stream(session_id, input=...)` submits input and subscribes to events for that turn. Consume the entire stream to receive the terminal event. Deltas are fragments; concatenate them for display. Other events, including failures and tool calls, may occur between deltas.
+## How streaming works
+
+Each session has an **event stream**: a long-lived HTTP response (server-sent events) on which Orca sends one event per thing that happens. Every event has a `type`, such as:
+
+| Event type | When it arrives |
+| --- | --- |
+| `agent.session.turn.created`, `agent.session.turn.in_progress` | A turn was accepted and started. |
+| `agent.session.turn.output_text.delta` | A small piece of the reply text. Append `event.delta` to what you have. |
+| `agent.session.turn.item.added`, `agent.session.turn.item.done` | A history item (a message, a tool call, a command) started or finished. |
+| `agent.session.requires_action` | The agent is waiting for your application, for example a function result. |
+| `agent.session.turn.completed`, `.failed`, `.cancelled` | The turn ended. This is the event to wait for. |
+
+The full list is in the [events reference](/reference/events). New event types can appear; ignore types you do not recognize.
+
+## Stream one turn
+
+Examples on this page assume `client` is an `OpenAI` client configured as in the [quickstart](/quickstart).
+
+`sessions.stream(session_id, input=...)` sends a message **and** streams the turn it starts. This is the easiest option when your code both sends and displays.
 
 ```python
 import os
@@ -28,12 +46,51 @@ with sessions.stream(session_id, input="Give a one-line status update") as strea
     print("".join(chunks))
 ```
 
-To observe a session independently of submitting input, subscribe with `sessions.events.stream(session_id)` and submit messages with `sessions.events.create(session_id, events=[...])`. Closing an SSE subscription disconnects only that reader: it **does not cancel** execution. A subscriber can reconnect; the session event stream supports `Last-Event-ID` for replay from a known event cursor. Persist event IDs and deduplicate events in consumers that reconnect. Read `sessions.turns.list(session_id)` and `sessions.retrieve(session_id)` to confirm terminal status after a disconnect rather than resubmitting a message blindly.
+Read the stream to the end. The terminal event (`completed`, `failed`, or `cancelled`) is the last one for that turn, and it is the only reliable signal that the turn is over. Text deltas can be interleaved with tool events, so do not assume the reply arrives in one piece.
 
-To stop the current turn, explicitly send:
+## Watch a session from somewhere else
+
+Sometimes the code that sends messages is not the code that displays them, for example a backend job that sends and a web page that watches. Separate the two:
+
+- **Send** with `sessions.events.create(session_id, events=[...])`. It returns as soon as the message is accepted.
+- **Watch** with `sessions.events.stream(session_id)`. Any number of watchers can subscribe to the same session.
+
+```python
+with sessions.events.stream(session_id) as events:
+    for event in events:
+        print(event.type)
+        if event.type in ("agent.session.turn.completed",
+                          "agent.session.turn.failed",
+                          "agent.session.turn.cancelled"):
+            break
+```
+
+## Reconnecting after a drop
+
+Closing a stream, or losing the network, only disconnects **you**. The turn keeps running on the server. To recover:
+
+1. Read the current state with `sessions.retrieve(session_id)` and `sessions.turns.list(session_id)`. If the turn already ended, you are done.
+2. Otherwise, subscribe again with `sessions.events.stream(session_id)`.
+
+Every event carries an ID. If you consume the raw SSE stream yourself, send the last ID you processed in the `Last-Event-ID` header when you reconnect, and Orca replays what you missed. Expect to occasionally see an event twice, and ignore duplicates by ID.
+
+Do **not** resend the message just because the stream dropped. The agent is probably still working on it.
+
+## Cancel a turn
+
+To stop the agent, send a cancel event. Closing the stream does not cancel anything.
 
 ```python
 sessions.events.create(session_id, events=[{"type": "agent.session.input.cancel"}])
 ```
 
-Cancellation stops execution, not the stored conversation or turn record. A function call awaiting an application response may leave the session in `requires_action`; see [function tools](/guides/function-tools). For safe retries and restart behavior see [reliability](/guides/reliability). Complete runnable [Python and TypeScript streaming examples](/examples) demonstrate both attached and detached subscriptions; see [session reference](/reference/sessions).
+The turn ends with status `cancelled`. The conversation and everything the agent did up to that point stay in the history, and you can send a new message afterwards. Actions the agent already took in the outside world, such as a file it wrote or an API it called, are not undone.
+
+## Common mistakes
+
+- **Stopping at the first text.** Deltas are fragments. Keep reading until a terminal turn event.
+- **Using a stream close as a cancel.** It is not one. Send `agent.session.input.cancel`.
+- **Resending after a disconnect.** Check the turn's status first.
+- **Treating any event as the final answer.** Only `agent.session.turn.completed` means the agent finished. Even then, check the result.
+
+See also: [turns and statuses](/turn-lifecycle), [reliable session workflows](/guides/reliability), [runnable streaming examples](/examples), and the [events reference](/reference/events).

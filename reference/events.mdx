@@ -3,7 +3,7 @@ title: Session events
 description: Submit input and subscribe to session event streams.
 ---
 
-All paths below are relative to `/v1`. Session events are distinct from the paginated session items and turns in [Sessions](/reference/sessions). See also [Streaming guide](/guides/streaming).
+Events are how you talk to a running session. You **post input events** to send messages, tool results, and cancellations, and you **subscribe to output events** to watch progress live. Events are the live view; the stored record is in [items and turns](/reference/sessions). For a walkthrough, see the [streaming guide](/guides/streaming). Paths are relative to `/v1`.
 
 | Method | Path | Behavior |
 | --- | --- | --- |
@@ -21,7 +21,17 @@ curl -X POST "$BASE_URL/agents/sessions/$SESSION_ID/events" \
   -d '{"events":[{"type":"agent.session.input.message","input":[{"role":"user","content":[{"type":"input_text","text":"Continue."}]}]}]}'
 ```
 
-Input event types exercised by the examples include `agent.session.input.message` and `agent.session.input.cancel`; tool-result input is also supported. A submitted message can start a turn; do not infer completion from the `204`. Follow status events or retrieve turns. Closing a GET subscription does **not** cancel the turn. For SSE reconnection, send `Last-Event-ID` with a previously received event ID; the stream emits `id`, `event`, and JSON `data` fields. Treat IDs as opaque. Invalid cursors can return `400`.
+## Input event types
+
+| Type | Purpose | Fields |
+| --- | --- | --- |
+| `agent.session.input.message` | Send a user message. Starts a turn, or joins the running one. | `input`: a list of messages with `role` and `content` |
+| `agent.session.input.tool_result` | Answer a function call | `turn_id`, `call_id`, `success`, and `output` (or `error` when `success` is false) |
+| `agent.session.input.cancel` | Stop the running turn | none |
+
+## Behavior
+
+ A submitted message can start a turn; do not infer completion from the `204`. Follow status events or retrieve turns. Closing a GET subscription does **not** cancel the turn. For SSE reconnection, send `Last-Event-ID` with a previously received event ID; the stream emits `id`, `event`, and JSON `data` fields. Treat IDs as opaque. Invalid cursors can return `400`.
 
 ## Output event names
 

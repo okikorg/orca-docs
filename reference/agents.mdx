@@ -3,7 +3,7 @@ title: Agents
 description: Reusable agent configuration endpoints.
 ---
 
-Agents store reusable model, instruction, and tool configuration. All paths below are relative to `/v1`. Use a server bearer key; see [Overview](/reference/overview).
+An agent is a saved configuration: model, instructions, and tools. It does not run on its own; a [session](/reference/sessions) uses it. Each session copies the agent's settings when it is created, so updating an agent affects only sessions created afterwards. Paths are relative to `/v1`; see the [overview](/reference/overview) for authentication.
 
 ## Agents
 
@@ -15,7 +15,18 @@ Agents store reusable model, instruction, and tool configuration. All paths belo
 | `GET` | `/agents/{agent_id}` | Get · `Agent` |
 | `POST` | `/agents/{agent_id}` | Update · `Agent` |
 
-`POST /agents` requires `model`; optional fields include `name`, `instructions`, `metadata`, `tools`, `reasoning`, `text`, `service_tier`, and `multi_agent`. `POST /agents/{agent_id}` updates supplied fields (it is not a `PATCH`). Model availability depends on the configured provider; a saved agent alone does not run a turn.
+`POST /agents` requires `model`. Optional fields:
+
+| Field | Meaning |
+| --- | --- |
+| `name` | A display name |
+| `instructions` | The system instructions the model follows |
+| `tools` | Function, MCP, and other tool definitions; see [function tools](/guides/function-tools) and [MCP](/guides/mcp) |
+| `multi_agent` | `{"enabled": true, "max_concurrent_subagents": n}` to allow [subagents](/guides/subagents) |
+| `reasoning`, `text`, `service_tier` | Model settings; support varies by [provider](/providers) |
+| `metadata` | Your own key-value labels |
+
+`POST /agents/{agent_id}` updates only the fields you send. Model availability depends on your endpoint and [provider keys](/providers).
 
 ```bash
 curl -X POST "$BASE_URL/agents" \

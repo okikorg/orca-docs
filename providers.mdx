@@ -3,7 +3,16 @@ title: "Models and provider keys"
 description: "Discover models and connect your own provider credentials."
 ---
 
-You can use models offered by your Orca endpoint or connect your own key for a supported provider. Model credentials are separate from your Orca API key and from [tool credentials in vaults](/guides/credentials).
+Every agent needs a model. On Orca there are two ways to get one, and the agent's `model` field decides which:
+
+| | Endpoint models | Your own provider key |
+| --- | --- | --- |
+| **`model` looks like** | A bare name, such as `YOUR_MODEL` | `<provider>/<model>`, such as `anthropic/claude-sonnet-4-5` |
+| **Provider account used** | Your Orca deployment's | Yours |
+| **Setup** | None | Store your provider key in Orca once |
+| **Find model names** | `client.models.list()` | That provider's catalog |
+
+Provider keys are separate from your Orca API key and from [tool credentials in vaults](/guides/credentials).
 
 ## Discover endpoint models
 
@@ -22,7 +31,16 @@ Provider management is an **Orca extension** under `/api/providers`, outside the
 
 ```bash
 export ORCA_ORIGIN="https://YOUR_ORCA_HOST"
-curl --fail-with-body "$ORCA_ORIGIN/api/providers"   -H "Authorization: Bearer $ORCA_API_KEY"
+# See which providers are supported and which you have keys for
+curl --fail-with-body "$ORCA_ORIGIN/api/providers" -H "Authorization: Bearer $ORCA_API_KEY"
+
+# Store your Anthropic key (read from an environment variable, not typed inline)
+curl --fail-with-body -X PUT "$ORCA_ORIGIN/api/providers/anthropic/key" \
+  -H "Authorization: Bearer $ORCA_API_KEY" -H "Content-Type: application/json" \
+  -d "{\"api_key\": \"$ANTHROPIC_API_KEY\"}"
+
+# List the models that key can use
+curl --fail-with-body "$ORCA_ORIGIN/api/providers/anthropic/models" -H "Authorization: Bearer $ORCA_API_KEY"
 ```
 
 The response includes provider IDs, whether you have a key, whether a catalog is public, and `unsupported_agent_fields`. It never returns the stored key.
@@ -62,4 +80,7 @@ A bare model name uses the endpoint's configured model access. A recognized prov
 
 ## Rotate and remove keys carefully
 
-Replacement applies to subsequent model requests, including requests within existing sessions. Removing a key makes the next model request for sessions using it fail with `authentication_error`; it does not silently change providers. Restore a valid key before continuing affected sessions, and inspect turn status before resubmitting work.
+Orca looks up your key on every model call, so changes take effect immediately, even for sessions that are already running.
+
+
+Removing a key makes the next model request for sessions using it fail with `authentication_error`; it does not silently change providers. Restore a valid key before continuing affected sessions, and inspect turn status before resubmitting work.

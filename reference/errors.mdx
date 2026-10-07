@@ -3,7 +3,7 @@ title: Errors
 description: HTTP errors and stream failures.
 ---
 
-Authenticated `/v1` requests return JSON errors shaped like this (message and param vary):
+When a request fails, Orca returns an HTTP error status and a JSON body in the same format as OpenAI's API. Check `code` and `param` in your code; `message` is for humans and may change.
 
 ```json
 {"error":{"message":"Resource not found","type":"invalid_request_error","param":null,"code":"not_found"}}

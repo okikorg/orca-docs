@@ -1,26 +1,68 @@
 ---
 title: API reference overview
-description: Public Agents API routes and conventions.
+description: Base URL, authentication, pagination, and compatibility for the Orca Agents API.
 ---
 
-This is a route-oriented reference for this server's verified public surface. Start with the **[official OpenAI Agents API quickstart](https://developers.openai.com/api/docs/guides/agents-api/quickstart/)** for upstream concepts; for a runnable server-specific introduction see [Quickstart](/quickstart), then [Streaming](/guides/streaming). Browse [Agents](/reference/agents), [Sessions](/reference/sessions), [Resources](/reference/resources), [Events](/reference/events), and [Errors](/reference/errors).
+This reference lists every route Orca supports, grouped by resource. If you are new to Orca, start with [how Orca works](/concepts) and the [quickstart](/quickstart); this section is for looking things up.
 
-The paths in these pages are relative to a `/v1` base URL. The server works with the official OpenAI Python and TypeScript clients configured with that base URL. This reference covers the routes verified in the pinned endpoint inventory, not an OpenAPI specification or a promise of complete compatibility with future upstream releases. The schema inventories are SDK type snapshots, **not** a full wire specification. Provider/model availability and sandbox capabilities depend on the service configuration.
+| Page | Covers |
+| --- | --- |
+| [Agents](/reference/agents) | Saved agent configurations |
+| [Sessions](/reference/sessions) | Conversations, turns, items, subagents, artifacts |
+| [Events](/reference/events) | Sending input and streaming output |
+| [Resources](/reference/resources) | Environments, templates, files, skills, vaults |
+| [Errors](/reference/errors) | Error format and HTTP status codes |
 
-## Authentication and requests
+## Base URL
 
-Send `Authorization: Bearer <server API key>` on requests. An absent or invalid key returns `401`. Keys scope access to a tenant; use HTTPS for remote connections and keep keys out of source control. JSON requests use `Content-Type: application/json`; file and skill uploads use multipart. For example, with `BASE_URL=https://your-server.example/v1`:
+All paths in this reference are relative to your Orca base URL, which ends in `/v1`:
+
+```text
+https://YOUR_ORCA_HOST/v1
+```
+
+The official clients take this as `base_url` (Python) or `baseURL` (TypeScript). Agents, sessions, environments, and vaults are under `client.beta.agents`; files and skills are under `client.files` and `client.skills`.
+
+Provider key management is an Orca addition outside `/v1`; see [models and provider keys](/providers).
+
+## Authentication
+
+Send your Orca API key as a bearer token on every request. A missing or invalid key returns `401`.
 
 ```bash
 curl -H "Authorization: Bearer $API_KEY" "$BASE_URL/agents?limit=10"
 ```
 
-In Python, set `openai.OpenAI(api_key=..., base_url="https://your-server.example/v1")`; in TypeScript set `new OpenAI({ apiKey: ..., baseURL: "https://your-server.example/v1" })`. For this server, use a server API key rather than assuming an upstream OpenAI key grants access.
+```python
+from openai import OpenAI
+client = OpenAI(api_key="YOUR_ORCA_KEY", base_url="https://YOUR_ORCA_HOST/v1")
+```
+
+The key determines your account (tenant). You only see resources your account created; anything else returns `404`. Use HTTPS for any remote endpoint, and keep keys out of source control.
+
+JSON requests use `Content-Type: application/json`. File and skill uploads use `multipart/form-data`.
 
 ## Pagination
 
-Most list endpoints use cursor pagination: `limit`, `order=asc|desc`, and `after` (the last item's ID from the preceding page). List responses contain `object: "list"`, `data`, `first_id`, `last_id`, and `has_more`. Request another page with `after=<last_id>` while `has_more` is true. Session lists additionally accept `agent_id`; artifact lists additionally accept `environment_id`; vault lists accept `status`. **Environment file listing differs**: its response contains `data`, `has_more`, and an opaque `next` token; pass `next` as `page` for the following request, not `after`. Consult [Resources](/reference/resources). Do not treat a list as a full result set without paging.
+Most list endpoints use cursor pagination:
 
-## Version scope
+| Parameter | Meaning |
+| --- | --- |
+| `limit` | Page size |
+| `order` | `asc` or `desc` |
+| `after` | The ID of the last item on the previous page |
 
-Routes and SDK names were checked against the pinned **OpenAI TypeScript 7.15.0** and **Python 3.13.0** client inventories. SDK calls use `beta.agents` for agents, sessions, environments, and vaults; files and skills use `files` and `skills`. The pinned inventories record paths, parameter types, response types and selected event discriminators; they do not establish that every upstream SDK type, model, event payload or future API feature is supported. See [Errors](/reference/errors) for HTTP failures and [Events](/reference/events) for streaming.
+The response contains `object: "list"`, `data`, `first_id`, `last_id`, and `has_more`. While `has_more` is true, request the next page with `after=<last_id>`. The Python and TypeScript clients do this for you when you iterate the result.
+
+Some lists take extra filters: sessions accept `agent_id`, artifacts accept `environment_id`, and vaults and credentials accept `status`.
+
+**Environment file listing is different.** Its response has `data`, `has_more`, and an opaque `next` token. Pass `next` as `page` to get the following page, not `after`.
+
+## Compatibility
+
+Orca implements the OpenAI Agents API. The [OpenAI Agent API quickstart](https://developers.openai.com/api/docs/guides/agents-api/quickstart/) is useful background, but Orca is a separate implementation:
+
+- **Supported routes** are exactly those listed in this reference. They were checked against the official clients at **Python `openai` 3.13.0** and **TypeScript `openai` 7.15.0**.
+- **Other client versions** may add or rename methods that Orca does not support.
+- **Features differ by deployment.** Which models, sandbox types, and network policies are available depends on how your Orca endpoint is configured.
+- **Event payloads**: Orca sends the event types listed in [events](/reference/events). Handle unknown event types gracefully.

@@ -1,17 +1,78 @@
 ---
 title: Reliable session workflows
-description: Retry safely, recover from disconnects, and inspect failed turns.
+description: Retry without doing work twice, recover after disconnects and restarts, and clean up.
 ---
 
-Orca stores accepted session input and public events. Design clients for network interruption and application restarts: record IDs and terminal statuses, bound your polling, and reconcile state before resubmitting input. Use official OpenAI Python `3.13.0` or TypeScript `7.15.0` clients against your Orca `/v1` URL. General Agents API concepts: [upstream quickstart](https://developers.openai.com/api/docs/guides/agents-api/quickstart/). Only the Orca behavior described here is supported; start at [the quickstart](/quickstart).
+Networks drop, processes restart, and requests time out. Orca is built so that none of these lose work: sessions, history, and running turns are stored on the server. Your application's job is to **reconcile before it retries**: check what actually happened before doing anything again.
 
-- **Before retrying a write:** supply an `Idempotency-Key` for side-effecting requests when your client supports custom headers. Reuse the same key for the same request bytes and target; do not reuse it for a different operation. For a timeout, first retrieve known session/turn IDs or reconcile application records. Disabling automatic SDK retries (`max_retries=0`) helps make retry policy explicit, but does not itself prevent duplicates.
-- **After a stream disconnect:** closing an SSE connection does not cancel the turn. Retrieve the session with `sessions.retrieve(id)`, check `sessions.turns.list(id)` for `completed`, `failed`, or `cancelled`, then reconnect to `sessions.events.stream(id)` if needed. The event endpoint accepts `Last-Event-ID` to resume from a stored cursor; persist and deduplicate IDs in a raw SSE consumer. Do not assume partial text is the final answer.
-- **When action is required:** inspect `session.required_actions`. For `function_call`, send one `agent.session.input.tool_result` with the matching `turn_id` and `call_id` and track answered IDs; do not rerun external side effects blindly. See [function tools](/guides/function-tools). For `environment_connection`, restart or reconnect your self-hosted executor; see [environments](/guides/environments).
-- **After interruption:** an interrupted turn is marked failed on restart; external actions from it are **not replayed**. A subsequent turn can continue the conversation, but verify external systems before repeating the request. Managed environments reattach to their recorded sandbox; a missing sandbox is not silently replaced. Check statuses and errors rather than assuming a stalled turn will finish.
-- **Cancellation and cleanup:** send `sessions.events.create(id, events=[{"type":"agent.session.input.cancel"}])` to stop execution, not just close the stream. Delete sessions you no longer need, then delete independent agents, files, templates, skills, and vaults when appropriate. Self-hosted processes are your responsibility.
+This page assumes you know [turns and statuses](/turn-lifecycle).
 
-A bounded status loop (with `sessions = client.beta.agents.sessions`) is:
+## The core rule
+
+When you are not sure whether something happened, **look it up** instead of repeating it.
+
+| You lost track of... | Look it up with |
+| --- | --- |
+| Whether a session was created | Your own records of IDs, or `sessions.list(agent_id=...)` and the `metadata` you set |
+| Whether a message was accepted | `sessions.turns.list(session_id)` and `sessions.items.list(session_id)` |
+| Whether a turn finished | `sessions.turns.list(session_id)` (newest first; skip turns with a `subagent_id`) |
+| Whether the agent needs you | `sessions.retrieve(session_id).required_actions` |
+
+Store session IDs in your own database as soon as you get them. They are your handle on everything else.
+
+## Retry safely with idempotency keys
+
+An **idempotency key** is a unique string you attach to a request in the `Idempotency-Key` header. If you send the same request with the same key again, Orca recognizes it and returns the original result instead of doing the work twice.
+
+```python
+import uuid
+
+# Generate the key once per logical action, and store it with your job.
+key = str(uuid.uuid4())
+
+message = {
+    "type": "agent.session.input.message",
+    "input": [{"role": "user", "content": [{"type": "input_text", "text": "Continue."}]}],
+}
+sessions.events.create(
+    session_id,
+    events=[message],
+    extra_headers={"Idempotency-Key": key},
+)
+# If this times out, retry with the SAME key.
+```
+
+- **Reuse the key only for the identical request.** A different body with the same key is rejected.
+- **Make a new key for a new action**, never to get past an error.
+- If the original request is still being processed, or was interrupted, a retry returns **HTTP 409** instead of a result. Look up the state (see the table above) before deciding what to do.
+- `max_retries=0` on the client turns off automatic retries so that your own code decides when to retry. It does not by itself prevent duplicates; idempotency keys do.
+
+## After a stream disconnects
+
+Closing or losing a stream does not affect the turn.
+
+1. Call `sessions.retrieve(session_id)` and `sessions.turns.list(session_id)`.
+2. If the turn ended, read the result. You are done.
+3. If not, reconnect with `sessions.events.stream(session_id)`. Raw SSE consumers can send `Last-Event-ID` to replay missed events; ignore duplicate IDs.
+
+Never treat partial streamed text as the final answer. Read the saved items once the turn has ended.
+
+## When the session needs you
+
+If `required_actions` is not empty:
+
+- **`function_call`**: send one `agent.session.input.tool_result` for each `call_id`. Track which you answered, and do not rerun side effects for a call you already answered. See [function tools](/guides/function-tools).
+- **`environment_connection`**: start or restart your self-hosted executor. See [execution environments](/guides/environments#self-hosted-environment).
+
+## When the Orca server restarts
+
+- **Running turns are marked `failed`.** Orca does not re-run them, because the agent may already have changed things in the outside world. Check those systems, then send a new message if the work should continue.
+- **Managed sandboxes reconnect** to the same sandbox. If it no longer exists, Orca restores it from its last saved workspace, or reports an error. It never silently gives you an unrelated empty sandbox.
+- **History is intact.** Every accepted message and every finished item is stored.
+
+## A bounded status loop
+
+Never wait forever. This loop gives up after five minutes and leaves the turn running so you can inspect it:
 
 ```python
 import time
@@ -30,8 +91,21 @@ else:
     raise TimeoutError("Inspect the session before retrying input")
 ```
 
-Treat failed turns, partial outputs, and tool errors as distinct outcomes. Keep API keys and sensitive tool results out of telemetry. See [streaming](/guides/streaming), [sessions](/guides/sessions), runnable [runnable examples](/examples), and [session reference](/reference/sessions).
+## Cancel and clean up
 
-## Uncertain mutation outcomes
+- **To stop work**, send `{"type": "agent.session.input.cancel"}` with `sessions.events.create`. Closing a stream does not stop anything.
+- **Delete sessions** you no longer need; this releases their sandbox. Download artifacts first.
+- **Delete other resources separately**: agents, files, skills, templates, and vaults are not deleted with sessions.
+- **Self-hosted executors** are your processes. Stop them yourself.
 
-A keyed retry can return HTTP 409 if the original operation is still pending or was interrupted, rather than a replayed response. Reconcile the resource or turn state and check any external effects before deciding what to do next. Do not bypass an uncertain outcome by generating a new key and blindly repeating the action.
+## Outcomes to handle separately
+
+| Outcome | What it means |
+| --- | --- |
+| Turn `completed`, result looks right | Success. |
+| Turn `completed`, but a tool failed or the answer says it could not finish | The agent ran, the task did not succeed. Check items. |
+| Turn `failed` | An error stopped the turn. Read `turn.error`. |
+| Turn `cancelled` | Someone cancelled it. |
+| Your wait timed out | Unknown. The turn may still be running. Look it up. |
+
+Keep API keys and sensitive tool results out of logs and telemetry. See also: [streaming](/guides/streaming), [runnable examples](/examples), and the [errors reference](/reference/errors).

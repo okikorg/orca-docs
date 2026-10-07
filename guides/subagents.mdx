@@ -1,15 +1,39 @@
 ---
 title: "Subagents"
-description: "Delegate bounded work and inspect each child conversation."
+description: "Let an agent split a task into pieces and hand each piece to a helper agent."
 ---
 
-Enable multi-agent behavior when a task has separable pieces: for example, ask one child to review release notes and another to summarize an input file. Each child has its own conversation; the parent receives its result. Keep the task, expected deliverable, and stopping condition explicit in your instructions.
+A **subagent** is a helper that an agent starts in the middle of a turn to handle part of the work. The main agent (the *parent*) writes the helper a task, the helper works on it in its own separate conversation, and its result comes back to the parent, which combines everything into one answer.
 
-This guide uses the same public settings as the repository's feature-tour example. Capability depends on your model and endpoint configuration. Start with [our quickstart](/quickstart); the [OpenAI Agent API quickstart](https://developers.openai.com/api/docs/guides/agents-api/quickstart/) introduces the upstream API.
+Use subagents when a task has parts that can be done independently, for example reviewing five files, or researching three competitors. Helpers can work in parallel, and each one starts with a clean context that holds only its own piece of the task.
 
-## Enable delegation
+```mermaid
+%%{init: {"layout": "elk", "flowchart": {"curve": "linear"}}}%%
+flowchart LR
+    You["Your message"] --> Parent["Parent agent"]
+    Parent -->|"task A"| C1["Subagent 1"]
+    Parent -->|"task B"| C2["Subagent 2"]
+    C1 -->|"result"| Combine["Parent combines results"]
+    C2 -->|"result"| Combine
+    Combine --> Answer["Final answer"]
+```
 
-With a configured `client`:
+## What a subagent shares, and what it does not
+
+| | Shared with the parent | Its own |
+| --- | --- | --- |
+| Model and tools | Yes | |
+| Sandbox and files | Yes, the same environment | |
+| Conversation history | | Yes. It sees only the task the parent wrote. |
+| Turns and items | | Yes, listed under the subagent |
+
+Subagents cannot start subagents of their own. Delegation is one level deep.
+
+## Turn it on
+
+Examples on this page assume `client` is an `OpenAI` client configured as in the [quickstart](/quickstart).
+
+Set `multi_agent` on the agent. `max_concurrent_subagents` limits how many helpers run at once.
 
 ```python
 import os
@@ -25,11 +49,13 @@ agent = client.beta.agents.create(
 )
 ```
 
-Create and observe a session as described in [sessions](/guides/sessions). Enable an [execution environment](/guides/environments) if the task requires workspace tools. Enabling delegation allows the agent to use subagents; it does not guarantee it will spawn a particular number or follow a fixed plan.
+Enabling it lets the agent delegate. It does not force it to: the model decides when delegation helps. Say in the instructions when to delegate and what each helper should return.
 
-## Inspect child results
+Everything else works as usual: create a session, send a message, and wait for the parent's turn to finish. The turn ends only after all its helpers are done.
 
-Retain the parent session ID. Use child IDs returned by the session's subagent list rather than assuming the parent item history contains every child's messages. The session's turn list does include child turns, newest first, each with a `subagent_id`; a child usually finishes before the turn that spawned it, so when polling for the parent's outcome skip turns whose `subagent_id` is set.
+## See what the helpers did
+
+The parent's history shows its own messages plus the calls it made to start and talk to helpers (`create_subagent_call` items and related types). Each helper's own conversation is stored separately under the session:
 
 ```python
 sessions = client.beta.agents.sessions
@@ -42,12 +68,14 @@ for child in sessions.subagents.list(session_id):
         print("child item:", item.id, item.type)
 ```
 
-The SDK collection iterator handles pagination. For a specific child turn, `sessions.subagents.turns.retrieve(turn_id, session_id=session_id, subagent_id=child.id)` retrieves its state, and `sessions.subagents.turns.items.list(...)` lists that turn's items. See the complete route table in [session reference](/reference/sessions#subagents-and-their-history).
+The iterators fetch all pages. For a single helper turn, `sessions.subagents.turns.retrieve(turn_id, session_id=session_id, subagent_id=child.id)` gets its state, and `sessions.subagents.turns.items.list(...)` lists its items. The [sessions reference](/reference/sessions#subagents-and-their-history) has the full route table.
 
-## Track outcomes and cost
+## Watch out for
 
-- Observe `agent.session.subagent.created`, `.active`, and `.closed` events while the parent runs. Retrieve the child's turns to determine success; a closed child is not proof that its task succeeded.
-- Bound concurrency and task scope. Delegation can increase model calls and latency as well as improve parallelism.
-- Review the parent's final answer and child evidence. Conflicting or failed child work needs explicit handling.
-- Treat the same tool arguments, files, and remote content as untrusted in child tasks. Delegation is not an authorization or isolation boundary.
-- Keep the session until you have read the child history and downloaded any required [artifacts](/guides/files-and-artifacts).
+- **Helper turns appear in the session's turn list.** They have a `subagent_id`. When you wait for your own turn to finish, skip them, or you may stop waiting too early. See [turns and statuses](/turn-lifecycle#subagent-turns-appear-in-the-same-list).
+- **A closed helper is not a successful helper.** The `agent.session.subagent.closed` event means the helper stopped. Check its turns to see whether it completed or failed.
+- **Cost and time.** Every helper makes its own model calls. Delegation can finish sooner but usually uses more tokens.
+- **Same trust level.** A helper has the same tools and sandbox as its parent. Delegation is not a security boundary.
+- **Keep the session** until you have read the helper histories and downloaded any [artifacts](/guides/files-and-artifacts) you need.
+
+See also: [sessions and turns](/guides/sessions), and [events](/reference/events) for the `agent.session.subagent.*` events.

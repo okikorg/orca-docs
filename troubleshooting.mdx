@@ -1,40 +1,96 @@
 ---
 title: "Troubleshooting"
-description: "Diagnose client setup, model access, tools, streams, and missing outputs."
+description: "Fix common setup, model, tool, stream, and output problems."
 ---
 
-## The client has no `beta.agents` attribute
+Find your symptom below. Most problems in a new setup are one of the first three.
 
-Confirm you installed the documented package in the interpreter or Node project actually running your code. These docs target Python `openai==3.13.0` and TypeScript `openai@7.15.0`. Other versions may have a different API surface. Restart long-lived development processes after changing dependencies.
+## Setup
 
-## Authentication fails
+<AccordionGroup>
+<Accordion title="The client has no beta.agents attribute">
+The installed `openai` package is too old, or your code is running in a different environment from the one you installed into. Install the versions from the [quickstart](/quickstart) (`pip show openai` or `npm ls openai` shows what is installed) and restart long-running processes.
+</Accordion>
+<Accordion title="401 Unauthorized">
+The API key is missing, wrong, or revoked, or it is an OpenAI key. Orca needs an **Orca** key, sent as `Authorization: Bearer ...`. Look for stray whitespace or quotes in the environment variable.
+</Accordion>
+<Accordion title="404 on every request">
+The base URL must end in `/v1`, for example `https://orca.example.com/v1`. Do not add `/agents`; the client adds it. Provider management is the exception: it lives at the origin without `/v1`, as `/api/providers`.
 
-Use an **Orca API key** against the **Orca endpoint**. The OpenAI key used for a provider is not interchangeable with it. Check the `Authorization: Bearer …` header, accidental whitespace, and whether your key has been revoked. Keep keys out of support messages and logs.
+A 404 on one specific resource means it does not exist, was deleted, or belongs to another account.
+</Accordion>
+<Accordion title="Connection refused or TLS errors">
+Check the host and port, and that the URL uses `https://` unless you are talking to a local development server.
+</Accordion>
+</AccordionGroup>
 
-## Requests return 404
+## Models
 
-Use a base URL ending in `/v1` for the OpenAI client. Do not append `/agents`. Provider management uses the origin plus `/api/providers`, not `/v1/api/providers`. A 404 can also mean a resource does not exist or is not accessible with your current account.
+<AccordionGroup>
+<Accordion title="The turn fails with a model error">
+Read `turn.error`. Common causes: a model name the endpoint does not offer (check `client.models.list()`), or a provider-prefixed model such as `anthropic/...` with no key stored for that provider. Prefixed models never fall back to the endpoint's own credentials. See [models and provider keys](/providers).
+</Accordion>
+<Accordion title="400 on an agent setting">
+Some settings are not available with every provider. `GET /api/providers` lists each provider's `unsupported_agent_fields`. The `param` field of the error names the setting.
+</Accordion>
+</AccordionGroup>
 
-## Model selection fails
+## Turns
 
-Read `client.models.list()` for endpoint models or the provider's catalog for provider-key models. A prefixed model requires your corresponding provider key and will not fall back to endpoint credentials. Check [models and provider keys](/providers) for unsupported field combinations.
+<AccordionGroup>
+<Accordion title="I read the history right after sending and the reply is missing">
+Sending returns before the agent answers. Wait for the turn to end first. See [turns and statuses](/turn-lifecycle).
+</Accordion>
+<Accordion title="A turn seems stuck">
+Check `sessions.retrieve(session_id)`:
 
-## A turn appears stuck
+- `requires_action` with a `function_call`: your application has to send the tool result. See [function tools](/guides/function-tools).
+- `requires_action` with `environment_connection`: your self-hosted executor is not connected.
+- `in_progress`: the agent is still working. Long tasks in a sandbox can take minutes. Look at the newest items to see what it is doing.
 
-Retrieve the latest turn and inspect its saved items. Your application may need to answer a pending function call. Check tool service availability and environment readiness. Do not submit the same task blindly: a client timeout or disconnected event stream does not cancel work. Use explicit cancellation if you want to stop execution.
+Do not resend the message; that adds it to the running turn or starts a second one. To stop, [cancel](/guides/streaming#cancel-a-turn).
+</Accordion>
+<Accordion title="My follow-up seems to finish instantly with the old answer">
+Your wait loop is seeing the previous turn, which is already `completed`. If the previous turn had ended before you sent the follow-up, remember its ID and wait for a turn with a different ID. (If it was still running, your message joined it, and no new turn appears.) Also skip subagent turns, which have a `subagent_id`.
+</Accordion>
+<Accordion title="The session is idle but nothing happened">
+`idle` only means no turn is running. Check the newest turn's status and `error`.
+</Accordion>
+<Accordion title="The stream disconnected">
+The turn keeps running. Read its status, then reconnect if needed. See [streaming](/guides/streaming#reconnecting-after-a-drop).
+</Accordion>
+</AccordionGroup>
 
-## The event stream disconnected
+## Tools and environments
 
-Reconnect to observe the session and read saved turns and items to recover the outcome. Do not treat `idle` as success. Distinguish `completed`, `failed`, and `cancelled`, and inspect output. See [streaming](/guides/streaming) and [reliability](/guides/reliability).
+<AccordionGroup>
+<Accordion title="Session creation fails with an MCP error">
+The server's origin is not approved on your deployment, the URL is not HTTPS, the server is unreachable, or no attached vault has a credential for that exact URL. See [MCP tools](/guides/mcp#troubleshooting).
+</Accordion>
+<Accordion title="The agent says it cannot run code">
+The session has `environment: {"type": "none"}`. Create a new session with a sandbox. See [execution environments](/guides/environments).
+</Accordion>
+<Accordion title="An environment type or network setting is rejected">
+Your deployment may not offer that environment type, or its sandbox backend may not support `restricted` network access. Ask your administrator what is enabled. Do not work around it by loosening the policy.
+</Accordion>
+<Accordion title="A self-hosted turn fails immediately">
+`workspace_directory` must be an absolute path with no symbolic links in it. On macOS `/tmp` is a symlink; use the real path.
+</Accordion>
+</AccordionGroup>
 
-## A tool or environment is rejected
+## Outputs
 
-Check that the tool shape, model settings, environment type, and network configuration are supported. An approved MCP origin is required for remote MCP access. Do not loosen policies or replace HTTPS with HTTP to work around a validation error. Your service administrator can confirm which execution features are enabled.
+<AccordionGroup>
+<Accordion title="There is no artifact to download">
+- The agent must write the file under `/workspace/outputs` (or `outputs` in your self-hosted workspace).
+- Artifacts are captured only when a turn **completes**.
+- The agent saying it saved a file does not mean it did. Check the items for the command it ran.
+- Artifacts are deleted with their session.
 
-## There is no artifact to download
+See [files and artifacts](/guides/files-and-artifacts).
+</Accordion>
+</AccordionGroup>
 
-An agent mentioning a filename does not prove an artifact exists. Check the session's artifact list after the producing turn completes. Output must be written to the supported output location (`/workspace/outputs` in managed execution). Download artifacts before deleting the session. See [files and artifacts](/guides/files-and-artifacts).
+## Reporting a problem
 
-## Report a reproducible issue
-
-Include the client language and package version, sanitized request shape, HTTP status, public error code, session/turn IDs where appropriate, and whether the issue repeats. Remove authorization headers, provider keys, vault contents, prompts containing private data, and sensitive file content. Public resource IDs may still be sensitive in your organization: share them only through an approved support channel.
+Include the client language and package version, the HTTP status and error `code`, a sanitized request body, the session and turn IDs, and whether it happens every time. Remove API keys, provider keys, vault contents, private prompts, and sensitive file content before sharing.

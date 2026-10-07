@@ -1,49 +1,194 @@
 ---
 title: Execution environments
-description: Choose no sandbox, a managed workspace, or your own executor.
+description: Give your agent a sandbox to run commands and work with files, either managed by Orca or on your own machine.
 ---
 
-At session creation choose `environment.type`: `none` for text and application function tools, `openai_hosted` for a managed sandbox, or `self_hosted` for a caller-owned executor. Environments belong to sessions; deleting a session releases managed compute. These are Orca behaviors, not a claim of full compatibility with the [upstream Agents API](https://developers.openai.com/api/docs/guides/agents-api/quickstart/). Use official clients Python `openai==3.13.0` or TypeScript `openai@7.15.0`; see [the quickstart](/quickstart).
+An **environment** is a computer the agent can use: it runs shell commands, reads and writes files, and executes code there. Without one, the agent can only talk and call tools. You choose the environment when you create a session, and it stays with that session until the session is deleted.
 
-## Managed workspace
+## Pick a type
 
-Your deployment must provide a configured managed sandbox. Stage inline file bytes as base64 or upload a file and stage by `file_id` (see [files](/guides/files-and-artifacts)). Example with a disabled network:
+| | `none` | `openai_hosted` (managed) | `self_hosted` |
+| --- | --- | --- | --- |
+| **What it is** | No machine | A fresh, isolated container that Orca creates for the session | A machine you run, connected to Orca by a small program |
+| **Agent can run commands** | No | Yes | Yes |
+| **Who runs it** | Nobody | Orca | You |
+| **Starts with** | Nothing | An empty `/workspace`, plus files and skills you stage | Whatever is in the folder you choose |
+| **Deleted with the session** | n/a | Yes | No. Orca disconnects; your machine and files remain. |
+| **Use it for** | Chat, Q&A, tool-only agents | Data analysis, code tasks, generating reports | Working on your own repositories, data, or private network |
+
+<Note>
+`openai_hosted` is the name the Agents API uses for a managed sandbox. On Orca it means "managed by your Orca deployment". Nothing runs at OpenAI.
+</Note>
+
+Whether managed and self-hosted environments are available depends on your deployment. Ask your administrator if creating one returns an error.
+
+## Managed sandbox
+
+A managed sandbox is a private Linux container created for one session. The agent works in `/workspace`. Anything it writes to `/workspace/outputs` is saved as a downloadable [artifact](/guides/files-and-artifacts) when a turn completes.
+
+### Create one
+
+Examples on this page assume `client` is an `OpenAI` client configured as in the [quickstart](/quickstart).
+
+Pass `environment` with `type: "openai_hosted"`. You can copy files in at the start, either inline (base64) or from an [uploaded file](/guides/files-and-artifacts).
 
 ```python
-import base64, os
-from openai import OpenAI
-client = OpenAI(api_key=os.environ["ORCA_API_KEY"], base_url=os.environ["ORCA_BASE_URL"])
+import base64
+import os
+
 agents = client.beta.agents
 agent = agents.create(model=os.environ["ORCA_MODEL"], name="workspace")
-try:
-    session = agents.sessions.create(agent_id=agent.id, environment={
-        "type": "openai_hosted", "network": {"access": "disabled"},
-        "files": [{"type": "inline", "path": "/workspace/input.txt",
-                   "data": base64.b64encode(b"hello").decode()}],
-    })
-    try:
-        env_id = session.environment.id
-        print(agents.environments.retrieve(env_id).status)
-        with agents.sessions.stream(session.id, input="Read input.txt") as stream:
-            for event in stream:
-                if event.type == "agent.session.turn.completed":
-                    print(event.turn.status)
-        print(agents.environments.files.list(env_id, path="/workspace").data)
-    finally:
-        agents.sessions.delete(session.id)
-finally:
-    agents.delete(agent.id)
-    client.close()
+
+session = agents.sessions.create(
+    agent_id=agent.id,
+    environment={
+        "type": "openai_hosted",
+        "network": {"access": "disabled"},
+        "files": [
+            {
+                "type": "inline",
+                "path": "/workspace/input.txt",
+                "data": base64.b64encode(b"hello").decode(),
+            }
+        ],
+    },
+)
+env_id = session.environment.id
+print(agents.environments.retrieve(env_id).status)
+
+with agents.sessions.stream(session.id, input="Read input.txt") as stream:
+    for event in stream:
+        if event.type == "agent.session.turn.completed":
+            print(event.turn.status)
+
+print(agents.environments.files.list(env_id, path="/workspace").data)
 ```
 
-`network.access` supports `disabled`, `enabled`, and (on supported managed backends) `restricted` with `allowed_domains`; Daytona and E2B reject restricted domain policies. Do not confuse server-side MCP/model access with sandbox command egress. `enabled` grants sandbox network access; use the least permissive setting that works. Reusable environment templates can combine files and skills (see [skills](/guides/skills)). `agents.environments.files.create(environment_id, type="inline", path="/workspace/notes.txt", data=base64_string)` can add a file after creation.
+### Choose network access
 
-## Self-hosted executor
+The sandbox's internet access is set by `network.access`. If you do not set it, it is `enabled`. Start with the least access that works.
 
-Enable this option on the deployment and create a session with `environment={"type":"self_hosted", "workspace_directory": "/absolute/real/workspace"}`. The environment starts `pending` and holds initial input until the executor connects. Start a **stock native Codex** executor on a host you control using the returned `session.environment.remote_url` and `session.environment.id`:
+| `network.access` | Sandbox can reach |
+| --- | --- |
+| `disabled` | Nothing. The safest choice for working on files you provide. |
+| `restricted` | Only the domains in `allowed_domains`, for example `["pypi.org", "files.pythonhosted.org"]`. Not available on every sandbox backend; your deployment rejects it if unsupported. |
+| `enabled` | The internet. |
+
+This setting only controls commands the agent runs **inside the sandbox**. Model calls and MCP tool calls are made by the Orca server and are not affected.
+
+### Configure the sandbox
+
+Besides `files` and `network`, a managed environment accepts:
+
+| Field | What it does |
+| --- | --- |
+| `packages` | Packages to install before the agent starts: `{"system": [...], "python": [...], "npm": [...]}` |
+| `setup_commands` | Shell commands run once, as root, before the agent starts. Use them for anything packages do not cover. |
+| `env` | Environment variables for commands the agent runs. Do not put secrets here; the agent can read them. |
+| `skills` | [Skills](/guides/skills) to install, as `{"type": "skill_reference", "skill_id": ..., "version": ...}` |
+
+```python
+import base64
+
+env_id = session.environment.id
+agents.environments.files.create(
+    env_id,
+    type="inline",
+    path="/workspace/notes.txt",
+    data=base64.b64encode(b"remember this").decode(),
+)
+print(agents.environments.files.list(env_id, path="/workspace").data)
+```
+
+### Add files later
+
+You can add a file to a running sandbox and list what is there:
+
+```python
+import base64
+
+env_id = session.environment.id
+agents.environments.files.create(env_id, type="inline", path="/workspace/notes.txt",
+                                 data=base64.b64encode(b"remember this").decode())
+print(agents.environments.files.list(env_id, path="/workspace").data)
+```
+
+### Reuse a setup with a template
+
+If many sessions need the same setup, save it once as an **environment template** and pass `environment_template_id` when creating a session. A template accepts the same fields as above. Fields you also set on the session override the template's, with one exception: a session can tighten the template's network policy but not loosen it. See [skills and templates](/guides/skills).
+
+### Idle sandboxes are paused
+
+A sandbox that has not been used for a while (ten minutes by default; your deployment may differ) is paused to free resources. Its status becomes `disconnected`. The next time the session needs it, Orca restores it automatically, with all files in `/workspace` intact. Programs that were running inside it, such as a server the agent started, do not survive the pause. Declared packages, environment variables, and network policy come back, and `setup_commands` run again during the restore, so keep setup commands safe to repeat.
+
+## Self-hosted environment
+
+A self-hosted environment lets the agent work on a machine **you** control: your laptop, a build server, a VM inside your network. Orca never logs in to that machine. Instead, you run a small program there, the **executor** (the stock `codex exec-server`), which connects out to Orca and carries out the agent's commands.
+
+```mermaid
+sequenceDiagram
+    participant App as Your application
+    participant Orca
+    participant Exec as Executor on your machine
+    App->>Orca: create session (self_hosted, workspace_directory)
+    Orca-->>App: environment id + remote_url (status: pending)
+    App->>Exec: start codex exec-server --remote remote_url
+    Exec->>Orca: connect with your Orca API key
+    Note over Orca: status: connected, held input is released
+    Orca->>Exec: run commands in workspace_directory
+```
+
+### Steps
+
+<Steps>
+<Step title="Create the session">
+
+Give the folder the agent should work in. The path must be absolute and must not go through a symbolic link. On macOS, `/tmp` is a symlink, so use the real path (for example from `realpath`).
+
+```python
+session = agents.sessions.create(agent_id=agent.id, environment={
+    "type": "self_hosted",
+    "workspace_directory": "/home/me/projects/demo",
+})
+print(session.environment.id, session.environment.remote_url)
+```
+
+The environment starts as `pending` and the session as `requires_action` (`environment_connection`). Any input you send is held until the executor connects.
+
+</Step>
+<Step title="Start the executor">
+
+On the machine, run the stock Codex executor with the values from the previous step and an Orca API key for the same account:
 
 ```sh
 CODEX_API_KEY="$ORCA_API_KEY" codex exec-server --remote "$REMOTE_URL" --environment-id "$ENVIRONMENT_ID"
 ```
 
-Use a tenant-matching Orca API key; wait for `agents.environments.retrieve(id).status == "connected"`. Use an absolute path without symlink components (resolve `/tmp` on macOS). Self-hosted `capability_directories` must be empty; stage files inside the workspace. **Self-hosted shell commands have the executor process's host privileges**: the workspace path limits file tools but is not an OS isolation boundary. Deleting the session revokes access but does not terminate your process or remove arbitrary host files. If the executor disconnects, the session requires an `environment_connection` action; reconnect before sending more input. See [reliability](/guides/reliability), [managed/self-hosted runnable examples](/examples), and [environment reference](/reference/resources#environments-and-files).
+</Step>
+<Step title="Wait for it to connect">
+
+Poll `agents.environments.retrieve(environment_id).status` until it is `connected`. Then use the session as normal.
+
+</Step>
+</Steps>
+
+Artifacts work the same way: files under `<workspace_directory>/outputs` are captured when a turn completes.
+
+### What you must know about trust
+
+<Warning>
+Commands from the agent run with **the same permissions as the executor process**. The workspace folder limits Orca's file tools, but a shell command can read or change anything the executor's user can. Run the executor as a dedicated low-privilege user, in a container or VM, or on a machine with nothing sensitive on it.
+</Warning>
+
+- **If the executor disconnects**, the environment becomes `disconnected`, any running turn stops, and the session shows `requires_action` until an executor connects again. The interrupted turn is not re-run.
+- **Deleting the session** cuts the executor off, but does not stop the process or delete files on your machine. Clean those up yourself.
+- **`capability_directories`** must be empty for self-hosted environments. Put any files the agent needs inside the workspace folder.
+
+## Common mistakes
+
+- **Choosing `none` and asking the agent to run code.** It has no machine. Create a new session with an environment.
+- **Expecting files outside `/workspace/outputs` to become artifacts.** Only that folder is captured.
+- **Leaving network access at its default.** The default is `enabled`. Set `disabled` or `restricted` unless the task needs the internet.
+- **A relative or symlinked `workspace_directory`.** It is rejected when the first turn runs, so the turn fails rather than the create call.
+
+See also: [files and artifacts](/guides/files-and-artifacts), [runnable managed and self-hosted examples](/examples), and the [environments reference](/reference/resources#environments-and-files).

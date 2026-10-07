@@ -1,0 +1,62 @@
+---
+title: "Glossary"
+description: "Short definitions of the terms used across the Orca docs."
+---
+
+Terms are listed alphabetically. Each links to the page that explains it in full.
+
+**Agent**: A saved configuration of model, instructions, and tools. It does not run on its own; a session uses it. See [how Orca works](/concepts#agent-what-the-ai-is).
+
+**Agents API**: The HTTP API Orca implements. It is the same API as OpenAI's Agents API, which is why the official `openai` client libraries work with Orca. You find it under `client.beta.agents`.
+
+**Artifact**: A copy of a file the agent wrote to its outputs folder, saved when a turn completes. Artifacts do not change after they are saved. See [files and artifacts](/guides/files-and-artifacts).
+
+**Base URL**: Your Orca endpoint plus `/v1`, for example `https://orca.example.com/v1`. Pass it as `base_url` (Python) or `baseURL` (TypeScript).
+
+**Cancel**: Stopping a running turn by sending an `agent.session.input.cancel` event. Closing a stream does not cancel. See [streaming and cancellation](/guides/streaming).
+
+**Credential**: One secret stored in a vault, such as a bearer token for one MCP server URL. Orca never returns it after you store it. See [credentials and vaults](/guides/credentials).
+
+**Environment**: The machine where the agent runs commands and works with files. One of `none`, `openai_hosted` (a managed sandbox), or `self_hosted` (your own machine). See [execution environments](/guides/environments).
+
+**Environment template**: A reusable recipe for a managed sandbox: files to copy in, skills to install, network policy. See [skills and templates](/guides/skills).
+
+**Event**: A message on a session's live stream (output) or a request you post to a session (input). Output events show progress; input events send messages, tool results, and cancellations. See [events reference](/reference/events).
+
+**Executor**: The program that connects a self-hosted machine to Orca. Orca uses the stock Codex `exec-server`. See [self-hosted executor](/guides/environments#self-hosted-environment).
+
+**Function tool**: A tool that your application implements. When the model calls it, Orca pauses the turn until your code sends back a result. See [function tools](/guides/function-tools).
+
+**Idempotency key**: A unique value you send in the `Idempotency-Key` header so that retrying a request does not do the work twice. See [reliable session workflows](/guides/reliability).
+
+**Item**: One entry in a session's saved history: a message, a tool call, a tool result, a command, and so on. See [how Orca works](/concepts#items-the-saved-history).
+
+**Managed sandbox**: An `openai_hosted` environment. Orca creates it for the session and deletes it with the session. It runs on your Orca deployment, not at OpenAI.
+
+**MCP (Model Context Protocol)**: An open protocol for exposing tools over HTTP. An MCP server offers tools; Orca connects to it and lets the agent call them. See [MCP tools](/guides/mcp).
+
+**Provider key**: Your own API key for a model provider such as Anthropic or OpenRouter, stored in Orca so your agents can use that provider. See [models and provider keys](/providers).
+
+**`required_actions`**: The list on a session that says what the agent is waiting for: a function result, or a self-hosted executor connection. See [turns and statuses](/turn-lifecycle#when-the-session-needs-you).
+
+**Sandbox**: Informal name for an environment that can run code, either managed or self-hosted.
+
+**Session**: One conversation with an agent, plus its environment and attached vaults. Keep its ID to continue the conversation. See [sessions and turns](/guides/sessions).
+
+**Skill**: A versioned folder containing a `SKILL.md` file of instructions (and optionally scripts or data) that teaches the agent a specific procedure. See [skills and templates](/guides/skills).
+
+**SSE (server-sent events)**: The HTTP streaming format Orca uses for events. The `openai` clients handle it for you.
+
+**Steering**: Sending a message while a turn is running. The message joins the running turn instead of starting a new one. See [turns and statuses](/turn-lifecycle#sending-a-message-while-a-turn-is-running).
+
+**Subagent**: A helper conversation that an agent starts to handle part of a task. Its result goes back to the parent agent. See [subagents](/guides/subagents).
+
+**Tenant**: Your account on an Orca deployment. Your API key determines your tenant, and you can only see your own tenant's resources.
+
+**Terminal status**: A turn status that means the turn is over: `completed`, `failed`, or `cancelled`.
+
+**Turn**: All the work the agent does in response to one message, from the first model call to the final answer. See [turns and statuses](/turn-lifecycle).
+
+**Vault**: A container for credentials that a session's MCP tools can use. The agent uses them without ever seeing them. See [credentials and vaults](/guides/credentials).
+
+**Workspace**: The working folder inside an environment. In a managed sandbox it is `/workspace`; in a self-hosted environment it is the `workspace_directory` you choose.

@@ -3,7 +3,9 @@ title: Resources
 description: Environments, files, skills, and vaults.
 ---
 
-All routes here are relative to `/v1`. Files and skills are supporting resources; vaults and templates can be reused by sessions. A resource's existence does not imply that every environment can stage or execute it.
+Supporting resources that sessions use: sandboxes (environments) and their templates, uploaded files, skills, and credential vaults. For what each one is for, see [how Orca works](/concepts#supporting-resources). Paths are relative to `/v1`.
+
+There is no endpoint to create an environment directly: an environment is created with its session, and its ID is `session.environment.id`.
 
 ## Environment templates
 

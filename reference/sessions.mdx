@@ -3,7 +3,9 @@ title: Sessions
 description: Conversations, turns, items, subagents, and artifacts.
 ---
 
-Paths are relative to `/v1`. A session needs `environment` and either a saved `agent_id` or an inline `agent` configuration. `input` is optional; supplying it starts a turn. Use `{"type":"none"}` when no execution environment is needed. Hosted and self-hosted environments have different capabilities; do not assume tools work with `none`.
+A session is one conversation with an agent; see [sessions and turns](/guides/sessions) for how to use one. Paths are relative to `/v1`.
+
+To create a session, send `environment` plus either `agent_id` (a saved agent) or `agent` (an inline configuration). `input` is optional; if present, it starts the first turn. Other optional fields are `vault_ids` and `metadata`. Use `{"type":"none"}` when no sandbox is needed.
 
 ## Sessions
 
@@ -55,5 +57,17 @@ curl -X POST "$BASE_URL/agents/sessions/$SESSION_ID" \
   -H "Authorization: Bearer $API_KEY" -H 'Content-Type: application/json' \
   -d '{"metadata":{"project":"demo"}}'
 ```
+
+## Statuses
+
+| Object | `status` values |
+| --- | --- |
+| Session | `idle`, `in_progress`, `requires_action`, `failed` |
+| Turn | `queued`, `in_progress`, `waiting`, `completed`, `failed`, `cancelled` |
+| Subagent | `active`, `closed` |
+
+See [turns and statuses](/turn-lifecycle) for what each means.
+
+## Notes
 
 `GET .../turns` lists subagent turns alongside the session's own; they carry a non-null `subagent_id`, while session items list only the session's own conversation. `POST /agents/sessions/{session_id}` updates metadata only. List sessions accepts `agent_id`, `after`, `limit`, `order`; history and artifact lists accept `after`, `limit`, `order` (artifacts also accept `environment_id`). A turn may still be in progress after session creation: inspect its status or subscribe to [events](/reference/events). Artifact content is binary, not a JSON resource. Deleting a session does not delete its saved agent.
