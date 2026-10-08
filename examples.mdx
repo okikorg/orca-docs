@@ -49,7 +49,7 @@ The examples create real resources and may call paid models when pointed at a li
 
 - **MCP:** set `ORCA_MCP_URL` to your MCP service and use an HTTPS origin approved by your Orca administrator. Do not use the repository's fixture credentials with a real service.
 - **Managed sandbox:** your endpoint must have managed execution available. A sandbox image and Docker are requirements for the local example runner, not dependencies of your application client.
-- **Self-hosted executor:** the recipe requires `ORCA_EXECUTOR_BASE_URL` and `ORCA_CODEX_BIN` plus a compatible native Codex binary. Read the [environment guide](/guides/environments) before connecting it; do not assume any public hostname is supported by stock executor authentication.
+- **Self-hosted executor:** runs against an Orca server on your own machine; on hosted Orca self-hosted is coming soon. The recipe requires `ORCA_EXECUTOR_BASE_URL` (a loopback origin) and `ORCA_CODEX_BIN` plus a compatible native Codex binary. Read the [environment guide](/guides/environments) before connecting it; do not assume any public hostname is supported by stock executor authentication.
 - **Resource lifecycle:** check that file uploads, skill bundles, and tool credential use are enabled for your account.
 
 ## Local contributor runner

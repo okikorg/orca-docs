@@ -95,7 +95,7 @@ An **environment** is the machine where the agent runs shell commands and reads 
 | --- | --- | --- |
 | `none` | No machine. The agent can still talk, call your function tools, and call MCP tools. | Chat, Q&A, and workflows where your application does the work |
 | `openai_hosted` | A managed sandbox that Orca creates for this session and deletes with it. Despite the name, it runs on your Orca deployment, not at OpenAI. | Running code, analyzing files, producing reports |
-| `self_hosted` | A machine you run yourself, which connects to Orca | Working against your own files, network, or hardware |
+| `self_hosted` | A machine you run yourself, which connects to Orca. Coming soon on hosted Orca. | Working against your own files, network, or hardware |
 
 Each session has its own environment; sessions never share one. See [execution environments](/guides/environments).
 

@@ -7,7 +7,7 @@ An **environment** is a computer the agent can use: it runs shell commands, read
 
 ## Pick a type
 
-| | `none` | `openai_hosted` (managed) | `self_hosted` |
+| | `none` | `openai_hosted` (managed) | `self_hosted` (coming soon on hosted Orca) |
 | --- | --- | --- | --- |
 | **What it is** | No machine | A fresh, isolated container that Orca creates for the session | A machine you run, connected to Orca by a small program |
 | **Agent can run commands** | No | Yes | Yes |
@@ -20,7 +20,7 @@ An **environment** is a computer the agent can use: it runs shell commands, read
 `openai_hosted` is the name the Agents API uses for a managed sandbox. On Orca it means "managed by your Orca deployment". Nothing runs at OpenAI.
 </Note>
 
-Whether managed and self-hosted environments are available depends on your deployment. Ask your administrator if creating one returns an error.
+Self-hosted environments are coming soon to hosted Orca. Until then, creating one there returns `400` with "Self-hosted environments are coming soon to Orca"; use `openai_hosted`. They work today with an Orca server you run on the same machine as the executor.
 
 ## Managed sandbox
 
@@ -122,6 +122,10 @@ If many sessions need the same setup, save it once as an **environment template*
 A sandbox that has not been used for a while (ten minutes by default; your deployment may differ) is paused to free resources. Its status becomes `disconnected`. The next time the session needs it, Orca restores it automatically, with all files in `/workspace` intact. Programs that were running inside it, such as a server the agent started, do not survive the pause. Declared packages, environment variables, and network policy come back, and `setup_commands` run again during the restore, so keep setup commands safe to repeat.
 
 ## Self-hosted environment
+
+<Note>
+Coming soon on hosted Orca. The stock executor connects with an API key only to OpenAI hosts or to `localhost`, so today this section applies to an Orca server you run on the same machine, as in the [examples](/examples).
+</Note>
 
 A self-hosted environment lets the agent work on a machine **you** control: your laptop, a build server, a VM inside your network. Orca never logs in to that machine. Instead, you run a small program there, the **executor** (the stock `codex exec-server`), which connects out to Orca and carries out the agent's commands.
 
