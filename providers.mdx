@@ -1,29 +1,38 @@
 ---
 title: "Models and provider keys"
-description: "Discover models and connect your own provider credentials."
+description: "Choose who pays for a model: Orca credit, or your own provider key."
 ---
 
-Every agent needs a model. On Orca there are two ways to get one, and the agent's `model` field decides which:
+Every agent needs a model, and its `model` field says where the model runs and who pays:
 
-| | Endpoint models | Your own provider key |
+| | Orca credit | Your own provider key |
 | --- | --- | --- |
-| **`model` looks like** | A bare name, such as `YOUR_MODEL` | `<provider>/<model>`, such as `anthropic/claude-sonnet-4-5` |
-| **Provider account used** | Your Orca deployment's | Yours |
+| **`model` looks like** | `orca/openrouter/<OpenRouter id>`, such as `orca/openrouter/anthropic/claude-sonnet-4.5` | `<provider>/<id>`, such as `anthropic/claude-sonnet-4-5` or `openrouter/anthropic/claude-sonnet-4.5` |
+| **Runs on** | OpenRouter, with Orca's key | That provider, with your key |
+| **Who pays** | Your Orca credit: OpenRouter's price plus OpenRouter's 5.5% credit fee, passed on at cost | You, at that provider |
 | **Setup** | None | Store your provider key in Orca once |
 | **Find model names** | `client.models.list()` | That provider's catalog |
 
+A model name always says who pays. A name with no provider part (`gpt-5`) is refused, and Orca never translates a name from one catalog into another's: `anthropic/claude-sonnet-4.5` is OpenRouter's name for that model, not Anthropic's, so it does not run on your Anthropic key.
+
 Provider keys are separate from your Orca API key and from [tool credentials in vaults](/guides/credentials).
 
-## Discover endpoint models
+## Discover Orca credit models
 
 With the client configured as in the [quickstart](/quickstart):
 
 ```python
 for model in client.models.list().data:
-    print(model.id)
+    print(model.id)  # orca/openrouter/<OpenRouter id>
 ```
 
-`GET /v1/models` lists the configured endpoint's model catalog. It does not combine every provider catalog or guarantee every listed model supports every agent setting.
+`GET /v1/models` lists OpenRouter's catalog as Orca credit models. A listed model is not a promise that every agent setting or tool works with it.
+
+## What Orca credit costs
+
+Each call on Orca credit is charged what OpenRouter reports it cost, including its cache and reasoning tokens, plus OpenRouter's credit fee (5.5% today). Orca adds no markup and keeps no price list: the price is OpenRouter's at the time of the call. Your usage shows each call's cost, the provider's cost and the fee.
+
+`web_search` always runs on Orca credit, on one search model Orca configures, whoever pays for the agent's model; the answer comes back to your agent's own model.
 
 ## Connect a provider
 
@@ -59,28 +68,29 @@ Submit keys from trusted backend code or your secret-management workflow. Do not
 
 ## Select the model explicitly
 
-For your own provider key, use `<provider>/<model-id>` as the agent's `model`. For example, an OpenRouter model ID already containing a namespace becomes `openrouter/<vendor>/<model-name>`. Get the actual model ID from that provider's catalog rather than copying a stale example.
+Use `orca/openrouter/<OpenRouter id>` for Orca credit, or `<provider>/<id>` for your own key. An OpenRouter id already contains a namespace, so it becomes `orca/openrouter/<vendor>/<model-name>` or `openrouter/<vendor>/<model-name>`. Get the actual id from the catalog rather than copying a stale example.
 
 ```python
 agent = client.beta.agents.create(
-    model="openai/YOUR_MODEL_ID",
+    model="orca/openrouter/YOUR_OPENROUTER_MODEL_ID",
     instructions="Be concise and state uncertainty.",
 )
 ```
 
-A bare model name uses the endpoint's configured model access. A recognized provider prefix selects your key for that provider; it does **not** fall back to endpoint credentials if your key is missing. A session with a prefixed model and no corresponding key is rejected with HTTP 400 on `agent.model`.
+A name with no provider part, or `orca/` with any provider but OpenRouter, is rejected with HTTP 400: on `model` when you save an agent, on `agent.model` when you create a session. A session whose model names your own key for a provider where you have none is rejected with HTTP 400 on `agent.model`. Nothing ever falls back from your key to Orca credit, or from Orca credit to your key.
 
 ## Check capability limits
 
 - Inspect `unsupported_agent_fields` before sending provider-specific settings.
 - Anthropic does not accept JSON-schema `text.format`, non-default `text.verbosity`, or non-`auto` `service_tier` in this integration.
-- Provider-key models cannot be combined with `web_search` here.
+- `web_search` accepts `allowed_domains`, `location`, `context_size` and `mode` `live` or `disabled`; `mode: cached` is not available.
 - `reasoning.summary` is not available on any route; reasoning summaries are not exposed. Saved agents that set it are rejected on create or update.
 - A catalog entry is not a promise of tool support or availability on your provider account.
 
 ## Rotate and remove keys carefully
 
-Orca looks up your key on every model call, so changes take effect immediately, even for sessions that are already running.
+Who pays is fixed when a turn starts: Orca reads your keys then, and every call of that turn, its subagents' included, runs on them. Saving, replacing or removing a key applies from the next turn.
 
+Removing a key makes the next turn of sessions using it fail with HTTP 400 on `agent.model`; it never moves them to Orca credit. Restore a valid key before continuing affected sessions.
 
-Removing a key makes the next model request for sessions using it fail with `authentication_error`; it does not silently change providers. Restore a valid key before continuing affected sessions, and inspect turn status before resubmitting work.
+When credit runs out on either side, the turn ends with `usage_limit_exceeded` and a `param` that says whose: `orca_credit` for your Orca credit, `provider_quota` for your own key's provider account. See [errors](/reference/errors#turn-errors).

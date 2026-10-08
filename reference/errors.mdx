@@ -23,6 +23,18 @@ The envelope uses `type: "server_error"` for 5xx and `type: "invalid_request_err
 
 An established [SSE stream](/reference/events) can carry an `error` event instead of a new HTTP error response. Observe terminal session/turn events and retrieve the turn if you need a durable outcome. Interrupted turns are marked failed rather than replaying external actions on restart; sending new input creates a subsequent turn.
 
+## Turn errors
+
+A turn that fails carries `error.code` and `error.message`, and, when credit ran out, `error.param` naming whose:
+
+| `code` | `param` | Meaning |
+| --- | --- | --- |
+| `usage_limit_exceeded` | `orca_credit` | Your Orca credit ran out. Add credit, then continue the session. |
+| `usage_limit_exceeded` | `provider_quota` | Your own provider account is out of credits or over its billing limit. |
+| `server_error` | none | "Orca credit is temporarily unavailable": Orca's own OpenRouter account refused the call. Retry later. |
+
+Nothing switches who pays on its own. A message refused at admission for lack of credit is HTTP 429 `insufficient_quota`.
+
 ## Uncertain mutation outcomes
 
 A keyed retry can return HTTP 409 if the original operation is still pending or was interrupted, rather than a replayed response. Reconcile the resource or turn state and check any external effects before deciding what to do next. Do not bypass an uncertain outcome by generating a new key and blindly repeating the action.

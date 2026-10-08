@@ -26,12 +26,12 @@ An agent is a saved configuration: model, instructions, and tools. It does not r
 | `reasoning`, `text`, `service_tier` | Model settings; support varies by [provider](/providers) |
 | `metadata` | Your own key-value labels |
 
-`POST /agents/{agent_id}` updates only the fields you send. Model availability depends on your endpoint and [provider keys](/providers).
+`POST /agents/{agent_id}` updates only the fields you send. `model` is `orca/openrouter/<OpenRouter id>` for Orca credit or `<provider>/<id>` with your own key; any other name is rejected with HTTP 400 on `model`. See [models and provider keys](/providers).
 
 ```bash
 curl -X POST "$BASE_URL/agents" \
   -H "Authorization: Bearer $API_KEY" -H 'Content-Type: application/json' \
-  -d '{"model":"your-model-id","name":"Research helper","instructions":"Be concise."}'
+  -d '{"model":"orca/openrouter/your-openrouter-model-id","name":"Research helper","instructions":"Be concise."}'
 curl -H "Authorization: Bearer $API_KEY" "$BASE_URL/agents?limit=20"
 curl -X POST "$BASE_URL/agents/$AGENT_ID" \
   -H "Authorization: Bearer $API_KEY" -H 'Content-Type: application/json' \

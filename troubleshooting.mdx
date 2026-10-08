@@ -28,7 +28,10 @@ Check the host and port, and that the URL uses `https://` unless you are talking
 
 <AccordionGroup>
 <Accordion title="The turn fails with a model error">
-Read `turn.error`. Common causes: a model name the endpoint does not offer (check `client.models.list()`), or a provider-prefixed model such as `anthropic/...` with no key stored for that provider. Prefixed models never fall back to the endpoint's own credentials. See [models and provider keys](/providers).
+Read `turn.error`. Common causes: an OpenRouter id OpenRouter does not offer (check `client.models.list()`), or a credit running out: `usage_limit_exceeded` with `param` `orca_credit` (add Orca credit) or `provider_quota` (your own provider account is out of quota). A model on your own key never falls back to Orca credit. See [models and provider keys](/providers).
+</Accordion>
+<Accordion title="400 on agent.model or model">
+A model name must say who pays: `orca/openrouter/<OpenRouter id>` for Orca credit, or `<provider>/<id>` with your own key. A bare name such as `gpt-5` is refused, and so is a model on your own key when no key for that provider is stored. See [models and provider keys](/providers).
 </Accordion>
 <Accordion title="400 on an agent setting">
 Some settings are not available with every provider. `GET /api/providers` lists each provider's `unsupported_agent_fields`. The `param` field of the error names the setting.

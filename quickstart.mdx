@@ -20,12 +20,12 @@ You need three connection details for your Orca deployment:
 
 - **Base URL**: your Orca address ending in `/v1`. Not `/agents`, and not `api.openai.com`.
 - **API key**: create an Orca key in the dashboard under Settings, API keys (it is shown once). An OpenAI key does not work here.
-- **Model**: the name of a model your endpoint offers. If you are unsure, [list the available models](/providers#discover-endpoint-models).
+- **Model**: `orca/openrouter/<OpenRouter id>` to run on your Orca credit, or `<provider>/<id>` with your own provider key. If you are unsure, [list the Orca credit models](/providers#discover-orca-credit-models).
 
 ```bash
 export ORCA_BASE_URL="https://YOUR_ORCA_HOST/v1"
 export ORCA_API_KEY="YOUR_ORCA_KEY"
-export ORCA_MODEL="YOUR_AVAILABLE_MODEL"
+export ORCA_MODEL="orca/openrouter/YOUR_OPENROUTER_MODEL_ID"
 ```
 
 Treat the key like a password: keep it in your backend or a secret manager, never in browser code or source control. Use plain `http://` only for a local development server.

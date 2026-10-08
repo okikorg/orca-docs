@@ -26,7 +26,7 @@ Create an agent once and reuse it for many conversations. Each session copies th
 
 ```python
 agent = client.beta.agents.create(
-    model="YOUR_MODEL",
+    model="orca/openrouter/YOUR_OPENROUTER_MODEL_ID",
     name="support-bot",
     instructions="Answer billing questions. Be brief.",
 )
