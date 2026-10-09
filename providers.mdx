@@ -55,10 +55,10 @@ Each call on Orca credit is charged what OpenRouter reports it cost, including i
 
 ## Connect a provider
 
-Provider management is an **Orca extension** under `/api/providers`, outside the OpenAI `/v1` surface. Use ordinary authenticated HTTP requests, not `client.beta.agents` methods. Use your Orca origin without `/v1`:
+Provider management is an **Orca extension** under `/api/providers`, outside the OpenAI `/v1` surface. Use ordinary authenticated HTTP requests, not `client.beta.agents` methods, at `https://api.orcapods.ai` without `/v1`. Setting and removing a key needs the [admin role](/organizations#roles); in the dashboard it is under **Settings**, **Providers**.
 
 ```bash
-export ORCA_ORIGIN="https://YOUR_ORCA_HOST"
+export ORCA_ORIGIN="https://api.orcapods.ai"
 # See which providers are supported and which you have keys for
 curl --fail-with-body "$ORCA_ORIGIN/api/providers" -H "Authorization: Bearer $ORCA_API_KEY"
 

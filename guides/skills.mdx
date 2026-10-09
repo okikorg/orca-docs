@@ -45,7 +45,7 @@ When you reference a skill, you can pin a specific `version`. Pinning makes runs
 
 Examples on this page assume `client` is an `OpenAI` client configured as in the [quickstart](/quickstart).
 
-The upload is a zip file containing the skill folder.
+The upload is a zip file containing the skill folder. The zip can be at most 32 MiB, with at most 2,048 entries, each at most 32 MiB, and at most 128 MiB once unpacked.
 
 ```python
 import io

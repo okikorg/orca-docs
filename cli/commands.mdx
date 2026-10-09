@@ -1,0 +1,148 @@
+---
+title: "CLI commands"
+description: "Every command in CLI 1.0, grouped by what it manages, with output and exit codes."
+---
+
+Run `orca <command> --help` for every flag. Where a command takes `[agent]` or another positional in brackets, leaving it out in a terminal opens a picker; in a script it is required. An `<agent>` is an agent ID or the name of exactly one agent.
+
+## Sign-in and setup
+
+```text
+orca login | orca auth login [--api-url u] [--label l] [--no-browser] [--with-token orca_sk_...]
+orca whoami | orca auth whoami
+orca auth status
+orca auth logout [--revoke] [--yes]
+orca context list | use [name] | show
+orca doctor [--strict]
+orca update [--check] [--tag t] [--force]
+```
+
+See [install and sign in](/cli/install).
+
+## Chat
+
+```text
+orca chat [agent] [prompt...] [--session id] [--sandbox] [--template id] [--vault id]...
+```
+
+- **With no prompt** in a terminal, `orca chat` opens a conversation. Ctrl-C cancels a running turn on the server, then exits and prints the command that resumes the session.
+- **With a prompt or piped input** it runs one turn and streams the answer to stdout. The session ID goes to stderr, so a script can continue with `--session`.
+- Without `--session` it creates a session first, with no sandbox. `--sandbox` gives it a managed sandbox, `--template` builds the sandbox from an environment template, and `--vault` lets its tools use a vault's credentials.
+
+```bash
+orca chat support                                   # a conversation
+orca chat support "summarize the open tickets"      # one turn
+echo "and the oldest?" | orca chat support --session sess_123
+```
+
+When a turn ends because Orca credit or your provider account's quota ran out, `orca chat` in a terminal says which, shows the warning about switching, and asks whether to top up or switch who pays for this session. Outside a terminal it prints the reason and the session ID and exits 1. See [switch who pays](/providers#switch-who-pays-for-one-session).
+
+## Agents and sessions
+
+```text
+orca agents list
+orca agents get [agent]
+orca agents create -f agent.yaml           # YAML or JSON; - reads stdin
+orca agents update <agent> -f fields.yaml  # only the fields in the file change
+orca agents delete [agent] [--yes]
+
+orca sessions list [--agent agent]
+orca sessions get <id>                     # includes the session's cost, tokens, and machine time
+orca sessions create --agent <agent> [--sandbox] [--template id] [--vault id]...
+orca sessions items <id> [--limit n]
+orca sessions delete <id> [--yes]
+```
+
+The file for `agents create` is the body of `POST /v1/agents`. The model says who pays:
+
+```yaml
+model: orca/openrouter/openai/gpt-5.6-luna   # or anthropic/claude-sonnet-4-5 on your Anthropic key
+name: support
+instructions: |
+  You answer support questions.
+reasoning: { effort: medium }
+```
+
+In a terminal, a file with no `model` opens a picker of every model you can use, grouped by who pays. The server checks every field and the CLI prints its message. See [models and provider keys](/providers).
+
+## Skills, vaults, and files
+
+```text
+orca skills list | get <id> | delete <id> [--yes]
+orca skills create <folder>                # a folder with SKILL.md
+
+orca vaults list | create <name> | delete <id> [--yes]
+orca vaults credentials list <vault>
+orca vaults credentials add <vault> --name n --server https://... [--token t]
+orca vaults credentials delete <vault> <id> [--yes]
+
+orca files list
+orca files upload <path> [--name filename]
+orca files download <id> [-o path|-]
+orca files delete <id> [--yes]
+```
+
+Creating and deleting vaults and credentials needs the admin role. `credentials add` reads the token from `--token`, stdin, or a hidden prompt.
+
+## Kits
+
+```text
+orca kits list
+orca kits make --name n [--description d] [--author who] [--readme file] [--agent a]... [--skill id]... [--template id]...
+orca kits edit <kit-id> [same flags]       # a selection flag replaces the whole selection
+orca kits publish | withdraw <kit-id>
+orca kits show <link|public-id>            # no login needed
+orca kits copy <link|public-id> [--name key=name]... [--skip key]... [--dry-run] [--yes]
+```
+
+See [kits](/kits).
+
+## API keys
+
+```text
+orca keys list
+orca keys create [name]
+orca keys revoke <id> [--yes]
+```
+
+`keys create` prints the key once. In a pipe, stdout carries only the key: `ORCA_API_KEY=$(orca keys create ci </dev/null)`.
+
+## Billing and usage
+
+```text
+orca usage [--days n] [--group-by model|provider|credential|session|agent] [--session id] [--meter m]
+orca usage events [--meter m]
+
+orca billing wallet                          # balance, plan, period, and packs on sale
+orca billing buy pro|max|pack:<cents> [--no-open]
+orca billing manage [--no-open]              # the billing portal
+```
+
+`billing buy` and `billing manage` need the admin role. They print the Polar link and open it in a browser. See [wallet and credit](/wallet) and [plans](/plans).
+
+## MCP server
+
+```text
+orca mcp serve
+```
+
+See [use Orca from coding agents](/cli/mcp).
+
+## Output
+
+- `--json` on any list or get command prints the raw API response.
+- When stdout is not a terminal, output is plain tab-separated lines, so `orca agents list | cut -f1` works.
+- List commands take `--limit N` (1 to 100, default 10), `--after <id>`, and `--all`.
+
+| Exit code | Meaning |
+| --- | --- |
+| `0` | Success |
+| `1` | API or network error, or a chat turn failed |
+| `2` | Usage or validation error |
+| `3` | Missing or invalid key, or not allowed for your role |
+| `4` | Not found, or gone |
+| `130` | Interrupted with Ctrl-C |
+
+## Commands that ended
+
+CLI 1.0 removed the commands for features that ended with Orca 1.x: `run` and `runs`, `pools`, `workflows`, `memory`, `storage`, `stats`, `topology`, `bundles`, `apps`, `secrets` (now `vaults`), `credit`, `billing cap`, `agents publish` and `agents keys`, and the MCP server catalog (`mcp list`, `mcp add`, and the rest). `kit add` is now `kits copy`. Running one of them gives `unknown command`. See [bring your agents to the new Orca](/migration).

@@ -1,0 +1,51 @@
+---
+title: "Providers and API keys"
+description: "Save your own model provider keys, and create and revoke Orca API keys, in the dashboard."
+---
+
+Two kinds of keys live under **Settings**, and they do different jobs:
+
+| | Provider key | Orca API key |
+| --- | --- | --- |
+| **What it is** | Your key for a model provider, such as Anthropic | A key for your code and the CLI to call Orca |
+| **Used for** | Running agents whose model is `<provider>/<id>` on your account with that provider | The bearer token on every API request |
+| **Where** | **Settings**, **Providers** | **Settings**, **API keys** |
+| **Who can change it** | Admins | Anyone creates their own; admins revoke any |
+
+## Save a provider key
+
+You need the admin role.
+
+1. Open **Settings**, then **Providers**.
+2. On the provider's card, choose **Set key** (or **Replace** if one is saved).
+3. Paste the key into **API key** and choose **Save key**. The provider checks the key before it is saved. It is stored encrypted and never shown again.
+
+Supported providers are OpenAI, Anthropic, OpenRouter, Vercel, and cheaperinference. Once a key is saved, that provider's models appear in the model picker, billed by your provider. Orca charges nothing for their tokens.
+
+A model name says who pays. `orca/openrouter/anthropic/claude-sonnet-4.5` runs on Orca credit; `anthropic/claude-sonnet-4-5` runs on your Anthropic key. Nothing moves between them on its own. See [models and provider keys](/providers).
+
+### Remove a provider key
+
+Choose **Remove** on the card. From then on, the next turn of any session on that provider is refused until a key is set again. Sessions never move to Orca credit on their own; to keep one going, [switch who pays](/dashboard/agents-and-sessions#switch-who-pays-for-one-session) for it.
+
+## Create an API key
+
+1. Open **Settings**, then **API keys**, and choose **Create key**.
+2. Give it a **Name**, such as "CI deploys", and choose **Create key**.
+3. Copy the key. This is the only time it is shown, so store it in your secret manager.
+
+Keys start with `orca_sk_`. Use one as the bearer token with the OpenAI SDKs and the CLI:
+
+```python
+from openai import OpenAI
+
+client = OpenAI(base_url="https://api.orcapods.ai/v1", api_key="orca_sk_...")
+```
+
+A key acts for this organization with your role. It keeps working until it is revoked, even after you leave the organization. See [organizations and roles](/organizations#api-keys-carry-a-role).
+
+## Revoke an API key
+
+In the key's row menu, choose **Revoke key**, then **Revoke**. Every request with that key fails from then on with HTTP 401, and it cannot be undone.
+
+Members see and revoke the keys they created. Admins see and revoke every key in the organization.

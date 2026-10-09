@@ -1,0 +1,49 @@
+---
+title: "The dashboard"
+description: "Sign in to app.orcapods.ai, find your way around, and approve a CLI login."
+---
+
+The dashboard at [app.orcapods.ai](https://app.orcapods.ai) is where you create agents, give them tasks, and manage keys, credit, and your plan. Everything you do there you can also do with the [API](/quickstart) or the [CLI](/cli/install).
+
+## Sign in
+
+Open [app.orcapods.ai](https://app.orcapods.ai) and sign in, or create an account. The first time, you choose or create your [organization](/organizations). A new account starts with $20 of Orca credit.
+
+To sign out, open your avatar menu at the top right.
+
+## Find your way around
+
+The left rail has:
+
+| Item | What it is for |
+| --- | --- |
+| **Overview** | Counts of agents, sessions, environments, and vaults, and a code sample to connect with the OpenAI SDK |
+| **Agents**: All agents, Sessions | Create agents, give them tasks, and read conversations. See [agents and sessions](/dashboard/agents-and-sessions). |
+| **Environments**: All environments, Templates | The sandboxes sessions run in, and saved sandbox setups |
+| **Resources**: Skills, Files, Vaults, Kits | [Skills](/guides/skills), uploaded [files](/guides/files-and-artifacts), [vaults](/guides/credentials), and [kits](/kits) |
+| **Usage** | What your organization used and what it cost. See [wallet and usage](/dashboard/wallet-and-usage). |
+| **Wallet** | Your balance, machine time, and credit packs |
+| **Settings** | General, Providers, API keys, and Plans |
+
+The organization switcher sits at the top of the rail. Search pages with ⌘K (Ctrl K on Windows and Linux).
+
+What you can change depends on your [role](/organizations#roles). Members see an admin's settings but cannot change them; the dashboard says "Ask an admin of this organization to do this".
+
+## Approve a CLI login
+
+`orca login` prints a one-time code and a link to the dashboard's **Log in the CLI** page (`app.orcapods.ai/device`).
+
+1. Open the link, signed in to the dashboard.
+2. Check that the code on the page matches the one in your terminal. The page shows the login's name, such as "CLI on laptop", and the organization it will use.
+3. Choose **Approve**. The CLI receives an API key with your role in that organization.
+
+Choose **Deny** if you did not start the login. A code that expired or was already used shows "This code is not waiting for approval"; run `orca login` again. See [install and sign in](/cli/install#sign-in).
+
+## Next
+
+<CardGroup cols={2}>
+  <Card title="Agents and sessions" icon="robot" href="/dashboard/agents-and-sessions">Create an agent and give it a task.</Card>
+  <Card title="Providers and API keys" icon="key" href="/dashboard/providers-and-keys">Use your own model keys, and create keys for your code.</Card>
+  <Card title="Wallet and usage" icon="wallet" href="/dashboard/wallet-and-usage">Buy credit, change your plan, and see what you spent.</Card>
+  <Card title="Organizations and roles" icon="users" href="/organizations">Members, admins, and what each can do.</Card>
+</CardGroup>

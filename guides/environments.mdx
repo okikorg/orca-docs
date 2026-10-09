@@ -17,14 +17,16 @@ An **environment** is a computer the agent can use: it runs shell commands, read
 | **Use it for** | Chat, Q&A, tool-only agents | Data analysis, code tasks, generating reports | Working on your own repositories, data, or private network |
 
 <Note>
-`openai_hosted` is the name the Agents API uses for a managed sandbox. On Orca it means "managed by your Orca deployment". Nothing runs at OpenAI.
+`openai_hosted` is the name the Agents API uses for a managed sandbox. On Orca it means "managed by Orca". Nothing runs at OpenAI.
 </Note>
 
 Self-hosted environments are coming soon to hosted Orca. Until then, creating one there returns `400` with "Self-hosted environments are coming soon to Orca"; use `openai_hosted`. They work today with an Orca server you run on the same machine as the executor.
 
 ## Managed sandbox
 
-A managed sandbox is a private Linux container created for one session. The agent works in `/workspace`. Anything it writes to `/workspace/outputs` is saved as a downloadable [artifact](/guides/files-and-artifacts) when a turn completes.
+A managed sandbox is a private Linux machine created for one session, with 1 vCPU, 2 GiB of memory, and 5 GiB of disk. The agent works in `/workspace`. Anything it writes to `/workspace/outputs` is saved as a downloadable [artifact](/guides/files-and-artifacts) when a turn completes.
+
+A managed sandbox uses [machine time](/plans#machine-time) from your plan while it runs, and it needs at least $0.50 of [Orca credit](/wallet#when-credit-runs-low) in your wallet, even within your included hours.
 
 ### Create one
 
@@ -71,10 +73,10 @@ The sandbox's internet access is set by `network.access`. If you do not set it, 
 | `network.access` | Sandbox can reach |
 | --- | --- |
 | `disabled` | Nothing. The safest choice for working on files you provide. |
-| `restricted` | Only the domains in `allowed_domains`, for example `["pypi.org", "files.pythonhosted.org"]`. Not available on every sandbox backend; your deployment rejects it if unsupported. |
+| `restricted` | Only the domains in `allowed_domains`. Not available on hosted Orca: a session that asks for it is refused with HTTP 400 on `network`, "Configured cloud sandbox provider cannot enforce restricted-domain networking". |
 | `enabled` | The internet. |
 
-This setting only controls commands the agent runs **inside the sandbox**. Model calls and MCP tool calls are made by the Orca server and are not affected.
+On hosted Orca, choose `disabled` or `enabled`. This setting only controls commands the agent runs **inside the sandbox**. Model calls and MCP tool calls are made by the Orca server and are not affected.
 
 ### Configure the sandbox
 
@@ -83,21 +85,21 @@ Besides `files` and `network`, a managed environment accepts:
 | Field | What it does |
 | --- | --- |
 | `packages` | Packages to install before the agent starts: `{"system": [...], "python": [...], "npm": [...]}` |
-| `setup_commands` | Shell commands run once, as root, before the agent starts. Use them for anything packages do not cover. |
+| `setup_commands` | Shell commands run once, as root, before the agent starts, each as `{"command": ..., "cwd": ...}` (`cwd` is optional and absolute), up to 64. Use them for anything packages do not cover. |
 | `env` | Environment variables for commands the agent runs. Do not put secrets here; the agent can read them. |
 | `skills` | [Skills](/guides/skills) to install, as `{"type": "skill_reference", "skill_id": ..., "version": ...}` |
 
 ```python
-import base64
-
-env_id = session.environment.id
-agents.environments.files.create(
-    env_id,
-    type="inline",
-    path="/workspace/notes.txt",
-    data=base64.b64encode(b"remember this").decode(),
+session = agents.sessions.create(
+    agent_id=agent.id,
+    environment={
+        "type": "openai_hosted",
+        "network": {"access": "enabled"},
+        "packages": {"python": ["requests"]},
+        "setup_commands": [{"command": "mkdir -p /workspace/outputs"}],
+        "env": {"REPORT_TITLE": "Weekly report"},
+    },
 )
-print(agents.environments.files.list(env_id, path="/workspace").data)
 ```
 
 ### Add files later
@@ -119,7 +121,7 @@ If many sessions need the same setup, save it once as an **environment template*
 
 ### Idle sandboxes are paused
 
-A sandbox that has not been used for a while (ten minutes by default; your deployment may differ) is paused to free resources. Its status becomes `disconnected`. The next time the session needs it, Orca restores it automatically, with all files in `/workspace` intact. Programs that were running inside it, such as a server the agent started, do not survive the pause. Declared packages, environment variables, and network policy come back, and `setup_commands` run again during the restore, so keep setup commands safe to repeat.
+A sandbox that has not been used for 5 minutes is paused to free resources. Until then it counts as machine time; while paused, it does not. Its status becomes `disconnected`. The next time the session needs it, Orca restores it automatically, with all files in `/workspace` intact. Programs that were running inside it, such as a server the agent started, do not survive the pause. Declared packages, environment variables, and network policy come back, and `setup_commands` run again during the restore, so keep setup commands safe to repeat.
 
 ## Self-hosted environment
 
@@ -192,7 +194,7 @@ Commands from the agent run with **the same permissions as the executor process*
 
 - **Choosing `none` and asking the agent to run code.** It has no machine. Create a new session with an environment.
 - **Expecting files outside `/workspace/outputs` to become artifacts.** Only that folder is captured.
-- **Leaving network access at its default.** The default is `enabled`. Set `disabled` or `restricted` unless the task needs the internet.
+- **Leaving network access at its default.** The default is `enabled`. Set `disabled` unless the task needs the internet.
 - **A relative or symlinked `workspace_directory`.** It is rejected when the first turn runs, so the turn fails rather than the create call.
 
 See also: [files and artifacts](/guides/files-and-artifacts), [runnable managed and self-hosted examples](/examples), and the [environments reference](/reference/resources#environments-and-files).

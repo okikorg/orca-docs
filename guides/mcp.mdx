@@ -7,6 +7,10 @@ description: Connect your agent to remote tool servers that speak the Model Cont
 
 When you give an agent an MCP tool, Orca connects to that server, discovers its tools, and lets the model call them. Unlike [function tools](/guides/function-tools), your application does not need to be online to answer: Orca calls the MCP server directly.
 
+<Warning>
+Remote MCP servers are currently blocked on hosted Orca. A session whose agent has an `mcp` tool is refused with HTTP 400 on `server_url`: "Destination is not enabled in the server egress policy". If you need a remote MCP server, write to support@okik.io.
+</Warning>
+
 ## How it fits together
 
 ```mermaid
@@ -17,16 +21,15 @@ flowchart LR
     Orca -->|"HTTPS + token"| MCP["MCP server"]
 ```
 
-Three pieces work together:
+Two pieces work together:
 
 1. **The agent** lists the MCP server's URL and, optionally, which of its tools the model may use.
 2. **A vault credential** holds the server's access token, if it needs one. You attach the vault to the session. The token is never shown to the model.
-3. **Your Orca administrator** must approve the server's origin (scheme, host, and port). Orca refuses to connect to servers that are not on the approved list.
 
 ## Before you start
 
-- Ask your Orca administrator to allow the MCP server's HTTPS origin, for example `https://mcp.example.com`. Without this, sessions that use the server fail.
-- Get a token for the MCP server if it requires authentication.
+- Remote MCP servers are currently blocked on hosted Orca; see the note above.
+- Get a token for the MCP server if it requires authentication. An admin stores it in a vault.
 
 ## Example
 
@@ -104,7 +107,8 @@ Put tokens in a vault, never in the agent. Orca rejects agents whose MCP `header
 
 | Symptom | Check |
 | --- | --- |
-| Session creation fails mentioning the MCP URL | The origin is not approved by your administrator, or the URL is not HTTPS. |
+| Session creation fails with "Destination is not enabled in the server egress policy" | Remote MCP servers are currently blocked on hosted Orca. Write to support@okik.io if you need one. |
+| Session creation fails mentioning the MCP URL | The URL is not HTTPS, or the server is unreachable. |
 | Session creation fails mentioning a credential | No credential in the attached vaults matches `server_url` exactly (watch for trailing slashes and paths). |
 | The model never calls the tool | The tool is missing from `allowed_tools`, or its description does not make clear when to use it. |
 

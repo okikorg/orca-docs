@@ -38,12 +38,13 @@ print(session.id, session.status)
 
 ## Send a follow-up message
 
-There are two ways. Both add the message to the same conversation.
+There are two ways. Both add the message to the same conversation; use one or the other.
+
+**Post an input event.** It returns as soon as the message is accepted, whether or not a turn is running:
 
 ```python
 sessions = client.beta.agents.sessions
 
-# 1. Post an input event. Returns as soon as the message is accepted.
 sessions.events.create(
     session.id,
     events=[
@@ -58,8 +59,11 @@ sessions.events.create(
         }
     ],
 )
+```
 
-# 2. Or use the stream helper: sends the message and streams the turn to its end.
+**Or use the stream helper.** It sends the message and streams the turn to its end. It needs a session whose status is `idle`. Otherwise, for example while a turn is running, it raises `ValueError`; send with `sessions.events.create` and follow the turn with `sessions.events.stream` instead (see [streaming](/guides/streaming#watch-a-session-from-somewhere-else)).
+
+```python
 with sessions.stream(session.id, input="What should we do next?") as stream:
     for event in stream:
         pass

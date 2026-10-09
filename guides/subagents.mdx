@@ -22,7 +22,8 @@ flowchart LR
 
 | | Shared with the parent | Its own |
 | --- | --- | --- |
-| Model and tools | Yes | |
+| Model, and who pays for it | Yes. Subagents run on the parent's model, and are paid for the same way, fixed when the parent's turn starts. | |
+| Tools | Yes | |
 | Sandbox and files | Yes, the same environment | |
 | Conversation history | | Yes. It sees only the task the parent wrote. |
 | Turns and items | | Yes, listed under the subagent |
@@ -33,7 +34,7 @@ Subagents cannot start subagents of their own. Delegation is one level deep.
 
 Examples on this page assume `client` is an `OpenAI` client configured as in the [quickstart](/quickstart).
 
-Set `multi_agent` on the agent. `max_concurrent_subagents` limits how many helpers run at once.
+Set `multi_agent` on the agent. `max_concurrent_subagents` limits how many helpers run at once; it is 6 if you leave it out.
 
 ```python
 import os
@@ -74,7 +75,7 @@ The iterators fetch all pages. For a single helper turn, `sessions.subagents.tur
 
 - **Helper turns appear in the session's turn list.** They have a `subagent_id`. When you wait for your own turn to finish, skip them, or you may stop waiting too early. See [turns and statuses](/turn-lifecycle#subagent-turns-appear-in-the-same-list).
 - **A closed helper is not a successful helper.** The `agent.session.subagent.closed` event means the helper stopped. Check its turns to see whether it completed or failed.
-- **Cost and time.** Every helper makes its own model calls. Delegation can finish sooner but usually uses more tokens.
+- **Cost and time.** Every helper makes its own model calls, on the parent's model and paid for the same way. Delegation can finish sooner but usually uses more tokens.
 - **Same trust level.** A helper has the same tools and sandbox as its parent. Delegation is not a security boundary.
 - **Keep the session** until you have read the helper histories and downloaded any [artifacts](/guides/files-and-artifacts) you need.
 

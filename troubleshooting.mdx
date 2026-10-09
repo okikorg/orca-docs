@@ -15,12 +15,21 @@ The installed `openai` package is too old, or your code is running in a differen
 The API key is missing, wrong, or revoked, or it is an OpenAI key. Orca needs an **Orca** key, sent as `Authorization: Bearer ...`. Look for stray whitespace or quotes in the environment variable.
 </Accordion>
 <Accordion title="404 on every request">
-The base URL must end in `/v1`, for example `https://orca.example.com/v1`. Do not add `/agents`; the client adds it. Provider management is the exception: it lives at the origin without `/v1`, as `/api/providers`.
+The base URL must be `https://api.orcapods.ai/v1`. Do not add `/agents`; the client adds it. Orca's own extensions are the exception: they live at `https://api.orcapods.ai` without `/v1`, such as `/api/providers`.
 
 A 404 on one specific resource means it does not exist, was deleted, or belongs to another account.
 </Accordion>
 <Accordion title="Connection refused or TLS errors">
-Check the host and port, and that the URL uses `https://` unless you are talking to a local development server.
+Check that the URL is `https://api.orcapods.ai/v1`, spelled exactly, with `https://`.
+</Accordion>
+<Accordion title="403 permission_denied">
+"This action requires the admin role". Setting provider keys, writing vaults and credentials, buying credit, and changing the plan need an admin. Ask an admin of your organization, or have them change your role. See [organizations and roles](/organizations).
+</Accordion>
+<Accordion title="429 rate_limit_exceeded">
+"Your plan runs 1 session at once" (or 5, or 20): your organization already has as many sessions with a running turn as your plan allows. Send the message again when one ends, or [upgrade](/plans#sessions-at-once). "Rate limit reached. Retry after N seconds." means too many requests in a minute; wait that long, as the `Retry-After` header says.
+</Accordion>
+<Accordion title="429 insufficient_quota">
+"Out of Orca credit: add credit, then continue the session". Your balance is under the $0.50 minimum, so Orca credit models and managed sandboxes are paused. [Add credit](/wallet#buy-credit), or use a model on your own key in a session without a sandbox.
 </Accordion>
 </AccordionGroup>
 
@@ -74,16 +83,19 @@ The turn keeps running. Read its status, then reconnect if needed. See [streamin
 
 <AccordionGroup>
 <Accordion title="Session creation fails with an MCP error">
-The server's origin is not approved on your deployment, the URL is not HTTPS, the server is unreachable, or no attached vault has a credential for that exact URL. See [MCP tools](/guides/mcp#troubleshooting).
+"Destination is not enabled in the server egress policy" means the server was refused: remote MCP servers are currently blocked on hosted Orca. Write to support@okik.io if you need one. Otherwise, the URL is not HTTPS, the server is unreachable, or no attached vault has a credential for that exact URL. See [MCP tools](/guides/mcp#troubleshooting).
 </Accordion>
 <Accordion title="The agent says it cannot run code">
 The session has `environment: {"type": "none"}`. Create a new session with a sandbox. See [execution environments](/guides/environments).
 </Accordion>
 <Accordion title="An environment type or network setting is rejected">
-Your deployment may not offer that environment type, or its sandbox backend may not support `restricted` network access. Ask your administrator what is enabled. Do not work around it by loosening the policy.
+On hosted Orca, `self_hosted` environments are coming soon, and `network.access: "restricted"` is not available. Use `openai_hosted` with `disabled` or `enabled` network access. Do not loosen the policy further than the task needs.
 </Accordion>
 <Accordion title="A self-hosted turn fails immediately">
-`workspace_directory` must be an absolute path with no symbolic links in it. On macOS `/tmp` is a symlink; use the real path.
+Only with an Orca server you run yourself. `workspace_directory` must be an absolute path with no symbolic links in it. On macOS `/tmp` is a symlink; use the real path.
+</Accordion>
+<Accordion title="A turn fails with usage_limit_exceeded and no param">
+"This plan's included machine hours for this period are used up": a Free plan has used its 3 hours of machine time. Upgrade to Pro or Max, or wait for the next month. See [plans](/plans#machine-time).
 </Accordion>
 </AccordionGroup>
 

@@ -59,7 +59,7 @@ The session has its own status. It summarizes what the session is doing right no
 | `idle` | No turn is running. The last one ended (or there has not been one yet). | Send the next message when you are ready. |
 | `in_progress` | A turn is running. | Wait. |
 | `requires_action` | The session is waiting for **you**. See `required_actions`. | Do what it asks; see below. |
-| `failed` | The most recent turn failed. `session.error` has the message. | Inspect the failure. You can still send another message; it starts a new turn. |
+| `failed` | The most recent turn failed. `session.error` has the message. | Inspect the failure. You can still send another message with `sessions.events.create`; it starts a new turn. |
 
 <Note>
 `idle` does not mean your request succeeded. It only means nothing is running. Always check the turn's own status.

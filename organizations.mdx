@@ -1,0 +1,39 @@
+---
+title: "Organizations and roles"
+description: "Who owns your agents and credit, what admins and members can do, and how API keys carry a role."
+---
+
+Everything in Orca belongs to an **organization**: agents, sessions, files, skills, vaults, kits, API keys, the wallet, and the plan. People sign in as themselves and work inside an organization. You only ever see your own organization's resources; anything else returns `404`.
+
+## Your organization
+
+When you first sign in to the [dashboard](/dashboard/overview), you choose or create your organization. The organization switcher at the top of the dashboard's left rail shows which one you are in. If you belong to more than one, switch there; the dashboard then shows only that organization's resources.
+
+The switcher also opens the organization's settings, where admins invite people by email and change or remove members.
+
+An API key always acts in the organization it was created in. To work in another organization, use a key created there.
+
+## Roles
+
+There are two roles. Every member has one.
+
+| Role | Can |
+| --- | --- |
+| **Member** | Create, run, and delete agents, sessions, files, skills, and environment templates. Make, publish, and copy kits. Attach vaults to sessions and read vault and credential names. Read the wallet, the plans, and usage. Create API keys and revoke their own. Switch a session's model. |
+| **Admin** | Everything a member can, plus: set and remove [provider keys](/providers); create, rotate, and delete [vaults and credentials](/guides/credentials); buy credit and change the plan; see and revoke every API key in the organization. |
+
+There is no owner role. An action that needs the admin role returns HTTP 403 `permission_denied`: "This action requires the admin role". The dashboard says "Ask an admin of this organization to do this".
+
+## API keys carry a role
+
+An API key acts with the role of the person who created it, in the organization it was created in.
+
+- A key a member creates can do what a member can.
+- A key belongs to the organization, not the person. It keeps working until it is revoked, including after the person who created it leaves. When someone leaves, an admin should revoke their keys.
+- Members see their own keys. Admins see every key in the organization.
+
+Create and revoke keys in the dashboard under **Settings**, **API keys** (see [providers and API keys](/dashboard/providers-and-keys)), with `orca keys`, or with the `/api/keys` routes in the [API reference](/reference/overview#orca-extensions).
+
+## Without an organization
+
+A dashboard request made without an active organization returns HTTP 403 `organization_required`: "Choose or create an organization to continue". Choose an organization in the switcher and try again.

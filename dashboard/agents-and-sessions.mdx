@@ -1,0 +1,68 @@
+---
+title: "Agents and sessions"
+description: "Create an agent in the dashboard, give it a task, follow the conversation, and switch who pays when credit runs out."
+---
+
+An **agent** is a saved model, instructions, and tools. A **session** is one conversation with it. See [how Orca works](/concepts) for the full picture.
+
+## Create an agent
+
+1. Open **Agents** and choose **Create agent**.
+2. Under **Model**, pick a model. The list is grouped by who pays: first **Orca credit, plus OpenRouter's 5.5% fee**, with each model's price per million tokens, then one group for each provider whose key you saved, **billed by your provider**. You can also type a name, such as `orca/openrouter/openai/gpt-5.6-luna`. See [models and provider keys](/providers).
+3. Optionally give it a **Name** and **Instructions**, the system prompt every session starts with.
+4. Choose **Create agent**.
+
+The other sections are optional: **Behaviour** (service tier, reasoning, verbosity, output format), **Multi-agent** (let the agent start [subagents](/guides/subagents)), **Metadata**, and **Advanced**, where **Tools** takes a JSON array of [function](/guides/function-tools), [MCP](/guides/mcp), or web search tool definitions.
+
+The model is checked when you save. If Orca refuses it, the message under the field says what to use instead. If the provider's model list could not be read, the agent is saved and the dashboard shows "Saved without checking the model".
+
+To change an agent, open it and choose **Edit agent**. Sessions that already exist keep the settings they started with.
+
+## Give it a task
+
+Click an agent's row, or open the agent and stay on its **Task** tab. Type into **Give *name* a task…** and choose **Submit task**. This creates a session and opens its conversation.
+
+Choose **More options** to set up the session first:
+
+| Field | What it sets |
+| --- | --- |
+| **Environment** | **None** for no sandbox, or **OpenAI hosted** for a [managed sandbox](/guides/environments#managed-sandbox) where the agent can run commands. Self hosted is coming soon. |
+| **Template** | An [environment template](/guides/skills#environment-templates) to build the sandbox from |
+| **Vaults** | [Vaults](/guides/credentials) whose credentials the agent's tools may use |
+| **First message** | The task |
+
+Then choose **Create session**. A note under the form says who pays for the agent's model, for example "Runs on Orca credit, through OpenRouter." If the agent's model is on a provider key you have not saved, the session will not start: set the key, or edit the agent.
+
+## Follow a session
+
+**Sessions** lists every session with its status, environment, and token usage. Open one to see its conversation.
+
+- **Send a follow-up** in the box at the bottom. Sending while the agent works adds your message to the running turn.
+- **Stop the agent** cancels the current turn. The turn shows "Turn cancelled", and you can send another message.
+- **Subagents** appears as a tab when the agent used [subagents](/guides/subagents).
+- **Show session details** shows the agent, the model the next turn uses, who pays, the environment, and the session's cost, tokens, web searches, and machine time.
+
+The dashboard does not download the files a session produces. Use the API to [list and download artifacts](/guides/files-and-artifacts#get-results-back-as-artifacts).
+
+## When credit runs out
+
+If your Orca credit, or your own provider account's quota, runs out during a turn, the turn pauses with a notice: **Out of Orca credit**, or **Your *provider* account is out of quota**. The conversation is saved.
+
+- **Add credit** opens the [Wallet](/dashboard/wallet-and-usage).
+- **Continue** sends "Continue" to pick up where the turn stopped, once you have topped up.
+- **Switch who pays** moves this session to the other side.
+
+Nothing switches on its own.
+
+### Switch who pays for one session
+
+1. Choose **Switch who pays**.
+2. Read the warning: "Switching may re-send this conversation without the provider's cache, which uses more tokens. The model may behave differently through another route, and work in progress may not carry over correctly."
+3. Pick a model on the other side. When the same OpenRouter model exists there, it is already picked.
+4. Choose **Switch**, then **Continue**.
+
+The switch applies from the session's next turn, and to this session only. The agent and its other sessions keep their model. The session details then show the new model, the agent's own model beneath it, and who pays. To run a session on your own key you need a saved key; see [providers and API keys](/dashboard/providers-and-keys). The same switch is `POST /api/sessions/{session_id}/model` in the [API](/providers#switch-who-pays-for-one-session).
+
+## Delete
+
+An agent's or session's row menu has **Delete agent** or **Delete session**. Deleting a session deletes its conversation, its artifacts, and its sandbox. Deleting an agent does not delete its sessions.

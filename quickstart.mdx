@@ -11,24 +11,24 @@ In this quickstart you write one short program that:
 4. Prints the saved conversation.
 5. Sends a follow-up message in the same conversation.
 
-It takes about five minutes. No sandbox is involved, so it works on any Orca endpoint. If any of these words are new, [how Orca works](/concepts) explains them, but you do not need it to follow along.
+It takes about five minutes. No sandbox is involved, so it uses no machine time. If any of these words are new, [how Orca works](/concepts) explains them, but you do not need it to follow along.
 
 <Steps>
 <Step title="Get your connection details">
 
-You need three connection details for your Orca deployment:
+You need three connection details:
 
-- **Base URL**: your Orca address ending in `/v1`. Not `/agents`, and not `api.openai.com`.
+- **Base URL**: `https://api.orcapods.ai/v1`. Not `/agents`, and not `api.openai.com`.
 - **API key**: create an Orca key in the dashboard under Settings, API keys (it is shown once). An OpenAI key does not work here.
 - **Model**: `orca/openrouter/<OpenRouter id>` to run on your Orca credit, or `<provider>/<id>` with your own provider key. If you are unsure, [list the Orca credit models](/providers#discover-orca-credit-models).
 
 ```bash
-export ORCA_BASE_URL="https://YOUR_ORCA_HOST/v1"
+export ORCA_BASE_URL="https://api.orcapods.ai/v1"
 export ORCA_API_KEY="YOUR_ORCA_KEY"
 export ORCA_MODEL="orca/openrouter/YOUR_OPENROUTER_MODEL_ID"
 ```
 
-Treat the key like a password: keep it in your backend or a secret manager, never in browser code or source control. Use plain `http://` only for a local development server.
+Treat the key like a password: keep it in your backend or a secret manager, never in browser code or source control.
 
 </Step>
 <Step title="Install the OpenAI client">
@@ -43,6 +43,7 @@ python -m pip install openai==3.13.0
 ```
 ```bash TypeScript
 npm init -y
+npm pkg set type=module
 npm install openai@7.15.0
 ```
 </CodeGroup>
@@ -59,7 +60,7 @@ Save this as `quickstart.py` or `quickstart.ts`. The comments mark each of the f
 ```python
 """Create an agent, run one turn, and read the answer.
 
-Needs: a running Orca Agent Server. Set ORCA_BASE_URL and ORCA_API_KEY.
+Needs: an Orca API key. Set ORCA_BASE_URL, ORCA_API_KEY, and ORCA_MODEL.
 """
 
 import os
@@ -164,7 +165,7 @@ finally:
 /**
  * Create an agent, run one turn, and read the answer.
  *
- * Needs: a running Orca Agent Server. Set ORCA_BASE_URL and ORCA_API_KEY.
+ * Needs: an Orca API key. Set ORCA_BASE_URL, ORCA_API_KEY, and ORCA_MODEL.
  */
 import OpenAI from 'openai';
 
@@ -287,7 +288,7 @@ In your own application, treat `failed` and `cancelled` as real outcomes, not ju
 | `AttributeError: ... has no attribute 'agents'` | An older `openai` package. Install the version above. |
 | `401` | The API key is wrong, or it is an OpenAI key instead of an Orca key. |
 | `404` on every request | The base URL does not end in `/v1`, or has `/agents` appended. |
-| The turn ends `failed` | Print `turn.error`. A common cause is a model name your endpoint does not offer; [list the available models](/providers#discover-endpoint-models). |
+| The turn ends `failed` | Print `turn.error`. A common cause is a model name Orca does not offer; [list the available models](/providers#discover-orca-credit-models). |
 
 More in [troubleshooting](/troubleshooting).
 

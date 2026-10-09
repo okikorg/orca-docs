@@ -11,7 +11,7 @@ Terms are listed alphabetically. Each links to the page that explains it in full
 
 **Artifact**: A copy of a file the agent wrote to its outputs folder, saved when a turn completes. Artifacts do not change after they are saved. See [files and artifacts](/guides/files-and-artifacts).
 
-**Base URL**: Your Orca endpoint plus `/v1`, for example `https://orca.example.com/v1`. Pass it as `base_url` (Python) or `baseURL` (TypeScript).
+**Base URL**: `https://api.orcapods.ai/v1`, the address of the Orca API. Pass it as `base_url` (Python) or `baseURL` (TypeScript).
 
 **Cancel**: Stopping a running turn by sending an `agent.session.input.cancel` event. Closing a stream does not cancel. See [streaming and cancellation](/guides/streaming).
 
@@ -31,13 +31,25 @@ Terms are listed alphabetically. Each links to the page that explains it in full
 
 **Item**: One entry in a session's saved history: a message, a tool call, a tool result, a command, and so on. See [how Orca works](/concepts#items-the-saved-history).
 
-**Managed sandbox**: An `openai_hosted` environment. Orca creates it for the session and deletes it with the session. It runs on your Orca deployment, not at OpenAI.
+**Kit**: A published bundle of agents, skills, and environment templates that anyone can read and copy. See [kits](/kits).
+
+**Machine time**: The time your sessions' managed sandboxes run, counted in minutes. Each plan includes some. See [plans](/plans#machine-time).
+
+**Managed sandbox**: An `openai_hosted` environment. Orca creates it for the session and deletes it with the session. Orca manages it; nothing runs at OpenAI.
 
 **MCP (Model Context Protocol)**: An open protocol for exposing tools over HTTP. An MCP server offers tools; Orca connects to it and lets the agent call them. See [MCP tools](/guides/mcp).
+
+**Orca credit**: The prepaid balance in your wallet. It pays for models named `orca/openrouter/<id>`, web searches, and extra machine time. See [wallet and credit](/wallet).
+
+**Organization**: The account everything in Orca belongs to: agents, sessions, keys, the wallet, and the plan. Your API key acts in one organization, and you only see its resources. See [organizations and roles](/organizations).
+
+**Plan**: Free, Pro, or Max. It sets the included machine time and how many sessions run at once. See [plans](/plans).
 
 **Provider key**: Your own API key for a model provider such as Anthropic or OpenRouter, stored in Orca so your agents can use that provider. See [models and provider keys](/providers).
 
 **`required_actions`**: The list on a session that says what the agent is waiting for: a function result, or a self-hosted executor connection. See [turns and statuses](/turn-lifecycle#when-the-session-needs-you).
+
+**Role**: Admin or member. Admins also manage provider keys, vaults, billing, and every API key. See [roles](/organizations#roles).
 
 **Sandbox**: Informal name for an environment that can run code, either managed or self-hosted.
 
@@ -51,12 +63,14 @@ Terms are listed alphabetically. Each links to the page that explains it in full
 
 **Subagent**: A helper conversation that an agent starts to handle part of a task. Its result goes back to the parent agent. See [subagents](/guides/subagents).
 
-**Tenant**: Your account on an Orca deployment. Your API key determines your tenant, and you can only see your own tenant's resources.
+**Tenant**: The API's word for your [organization](/organizations).
 
 **Terminal status**: A turn status that means the turn is over: `completed`, `failed`, or `cancelled`.
 
 **Turn**: All the work the agent does in response to one message, from the first model call to the final answer. See [turns and statuses](/turn-lifecycle).
 
 **Vault**: A container for credentials that a session's MCP tools can use. The agent uses them without ever seeing them. See [credentials and vaults](/guides/credentials).
+
+**Wallet**: Your organization's Orca credit balance. See [wallet and credit](/wallet).
 
 **Workspace**: The working folder inside an environment. In a managed sandbox it is `/workspace`; in a self-hosted environment it is the `workspace_directory` you choose.

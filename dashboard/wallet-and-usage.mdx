@@ -1,0 +1,47 @@
+---
+title: "Wallet and usage"
+description: "Check your balance and machine time, buy credit, change your plan, and see what you spent, in the dashboard."
+---
+
+## Check your balance
+
+Open **Wallet**. It shows your plan and the current period, and four figures:
+
+| Figure | Meaning |
+| --- | --- |
+| **Balance** | Everything credited minus everything charged. It says "Paid work paused" when the balance is under your plan's minimum. |
+| **Credited** | Purchases, grants, and signup credit |
+| **Charged** | Platform usage, all time |
+| **Machine time** | Time used this period, out of what your plan includes |
+
+When the balance is under the $0.50 minimum, the page says "Paid work is paused" and asks you to add credit. See [when credit runs low](/wallet#when-credit-runs-low).
+
+## Buy credit
+
+You need the admin role.
+
+1. Open **Wallet**. Under **Credit packs**, each pack shows its price, the credit it adds, and its fee.
+2. Choose **Buy** on a pack and pay in the Polar checkout.
+3. You come back to the Wallet. It shows "Credit added to your wallet." once Polar confirms the payment.
+
+If the payment fails, the Wallet says "The payment did not go through. Nothing was charged."
+
+## Change your plan
+
+You need the admin role.
+
+1. Open **Settings**, then **Plans**. Each card shows the plan's price, machine time, extra machine time, sessions at once, and what tokens cost.
+2. Choose **Compare** on the plan you want.
+3. From Free, choose **Continue to checkout** and pay. From a paid plan, choose **Open billing portal** to change or cancel your plan with Polar.
+
+On a paid plan, **Manage plan** on the Wallet opens the same billing portal. See [plans and machine time](/plans).
+
+## See what you spent
+
+Open **Usage** and pick a period: **24h**, **7d**, or **30d**. The top row totals model tokens, model calls, compute time, storage, tool calls, and web searches. Three tabs break it down:
+
+- **Daily**: usage and cost per day.
+- **Model tokens**: tokens and cost grouped by model, provider, credential, session, or agent.
+- **Events**: the latest usage rows, each with its meter, quantity, cost, session, and model.
+
+A session's own cost, tokens, web searches, and machine time are in its details on the session page. The same figures come from `GET /api/usage` and `orca usage`; see [wallet and credit](/wallet#read-the-wallet-and-your-usage).
