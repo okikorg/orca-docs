@@ -12,12 +12,16 @@ When a request fails, Orca returns an HTTP error status and a JSON body in the s
 | HTTP status | Common meaning | Typical code |
 | --- | --- | --- |
 | `400 Bad Request` | Invalid field, unsupported configuration, malformed event input or cursor | `invalid_request` |
-| `401 Unauthorized` | Missing or invalid bearer key | `invalid_api_key` |
+| `401 Unauthorized` | Missing, invalid, or revoked bearer key | `invalid_api_key` |
+| `403 Forbidden` | Your role does not allow this ("This action requires the admin role"), or a dashboard request has no organization | `permission_denied`, `organization_required` |
 | `404 Not Found` | Missing resource (including resources outside the caller's scope) | `not_found` |
-| `409 Conflict` | Conflicting state or incompatible environment use | `conflict` |
+| `409 Conflict` | Conflicting state or incompatible environment use; a kit copy whose name is taken | `conflict`, `name_taken` |
+| `410 Gone` | A withdrawn kit, or a route from Orca 1.x ("This CLI is too old for Orca. Run orca update.") | `kit_withdrawn`, `cli_outdated` |
 | `413 Payload Too Large` | Request exceeds a supported size limit | `invalid_request` |
+| `429 Too Many Requests` | Too many requests a minute, or your plan's [sessions at once](/plans#sessions-at-once) are all running; out of Orca credit | `rate_limit_exceeded`, `insufficient_quota` |
 | `500 Internal Server Error` | Operation could not be completed | `server_error` |
 | `502 Bad Gateway` | Downstream failure | `server_error` |
+| `503 Service Unavailable` | Sandbox capacity is full, or your balance could not be read. Retry after `Retry-After`. | `sandbox_capacity`, `balance_unavailable` |
 
 The envelope uses `type: "server_error"` for 5xx and `type: "invalid_request_error"` for client errors. `param` can identify an invalid request field; do not parse English messages as stable machine codes. Framework-level errors are normalized to the same envelope but may use generic codes. Other HTTP failures can occur; inspect the actual status and body. Do not automatically retry a validation error. For uncertain mutation outcomes, use an `Idempotency-Key` (one nonempty value, at most 512 bytes) and retry with the same request; the server supports idempotency on mutations, including session event submission. A mismatched replay can conflict.
 
@@ -31,9 +35,11 @@ A turn that fails carries `error.code` and `error.message`, and, when credit ran
 | --- | --- | --- |
 | `usage_limit_exceeded` | `orca_credit` | Your Orca credit ran out. Add credit, then continue the session. |
 | `usage_limit_exceeded` | `provider_quota` | Your own provider account is out of credits or over its billing limit. |
+| `usage_limit_exceeded` | none | "This plan's included machine hours for this period are used up" (Free plan). See [plans](/plans#machine-time). |
 | `server_error` | none | "Orca credit is temporarily unavailable": Orca's own OpenRouter account refused the call. Retry later. |
+| `request_timeout` | none | "Model request failed: no response from the provider for 10 minutes". Send the message again. |
 
-Nothing switches who pays on its own. A message refused at admission for lack of credit is HTTP 429 `insufficient_quota`.
+Nothing switches who pays on its own. A message refused at admission for lack of credit is HTTP 429 `insufficient_quota`: "Out of Orca credit: add credit, then continue the session". See [when credit runs low](/wallet#when-credit-runs-low).
 
 ## Uncertain mutation outcomes
 

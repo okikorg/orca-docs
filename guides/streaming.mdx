@@ -23,7 +23,7 @@ The full list is in the [events reference](/reference/events). New event types c
 
 Examples on this page assume `client` is an `OpenAI` client configured as in the [quickstart](/quickstart).
 
-`sessions.stream(session_id, input=...)` sends a message **and** streams the turn it starts. This is the easiest option when your code both sends and displays.
+`sessions.stream(session_id, input=...)` sends a message **and** streams the turn it starts. This is the easiest option when your code both sends and displays. The session's status must be `idle`; otherwise the helper raises `ValueError`, and you use the two calls in the next section instead.
 
 ```python
 import os

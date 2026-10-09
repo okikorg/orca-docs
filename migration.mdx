@@ -1,0 +1,137 @@
+---
+title: "Bring your agents to the new Orca"
+description: "What changed from Orca 1.x, what ended, and how to rebuild your agents and skills on Orca 2.0."
+---
+
+Orca 2.0 replaces Orca 1.x. It runs your agents through the OpenAI Agents API at `https://api.orcapods.ai/v1`, with the official `openai` packages, the [dashboard](/dashboard/overview), and [CLI 1.0](/cli/install). This page says what carried over, what you need to do, and how to rebuild an agent you saved from Orca 1.x.
+
+## What carried over
+
+- **Your account and organization.** You sign in to the dashboard at [app.orcapods.ai](https://app.orcapods.ai) as before.
+- **Your balance and your plan.** Your Orca credit balance and your Free, Pro, or Max plan are the same. A negative balance starts at zero. See [plans](/plans) and [wallet](/wallet).
+- **Okik's kit links.** Okik's own kits are coming soon under their existing links. Until each one is published, its link says "This kit is coming soon". You can also [make and publish your own kits](/kits).
+
+Your own agents, skills, memory, and files were **not** carried over. Rebuild them as described below.
+
+## What you need to do
+
+1. **Create new API keys.** Keys from Orca 1.x do not work on Orca 2.0. Create new ones in the dashboard under **Settings**, **API keys**, and replace them wherever you use them. New keys start with `orca_sk_`.
+2. **Update the CLI.** Run `orca update` to get CLI 1.0, then `orca login`. An older CLI is told "This CLI is too old for Orca. Run orca update." See [install and sign in](/cli/install).
+3. **Move your code to the Agents API.** Point the official `openai` package at `https://api.orcapods.ai/v1`. There is no Orca SDK. Start with the [quickstart](/quickstart).
+4. **Rebuild your agents and skills** from what you saved, or ask us for an export.
+
+## What changed
+
+| Orca 1.x | Orca 2.0 |
+| --- | --- |
+| Agent profile with a runtime (`pi`, `claude`, `codex`, `vercel`, `marlin`) | An [agent](/concepts#agent-what-the-ai-is) with a model name. One harness runs every agent. |
+| A bare model name, such as `claude-sonnet-5` | A name that says who pays: `orca/openrouter/anthropic/claude-sonnet-5` on Orca credit, or `<provider>/<id>` on your own key. See [models and provider keys](/providers). |
+| System prompt | The agent's `instructions` |
+| Tools and MCP servers on the profile | The agent's `tools`. Remote MCP servers are currently blocked on hosted Orca; see [MCP tools](/guides/mcp). |
+| Pod (a lead and members) | One lead agent with [subagents](/guides/subagents). Subagents run on the lead's model. |
+| Runs | [Turns](/turn-lifecycle) in a [session](/guides/sessions) |
+| Secrets (`secret://`) | [Vault credentials](/guides/credentials), added again by an admin |
+| Sandbox settings on the profile | A session's [environment](/guides/environments), or an environment template |
+| Skills attached to a profile | [Skills](/guides/skills) installed in a session's sandbox |
+| `ao_` API keys | New `orca_sk_` keys, created in the dashboard or with `orca keys create` |
+| Generated Orca SDKs | The official `openai` package for Python or TypeScript |
+
+## What ended
+
+These are not part of Orca 2.0:
+
+- **Runtimes.** Every agent runs on one harness; you choose only the model.
+- **Pods.** Use one agent with subagents.
+- **Memory banks** and pod files. Keep that content outside Orca. To give an agent files, upload them and stage them into its sandbox, or put fixed reference material in a skill.
+- **Prompts and contexts** (the prompts library). Put the text in the agent's instructions or in a skill.
+- **Workflows.**
+- **Connected apps.**
+- **Published agents, public and embedded chat, and the chat gateway API** (`chat.orcapods.ai`). Call your agent from your own backend with the Agents API instead.
+
+Schedules are coming soon to Orca. Until then, start a session from your own scheduler with the API or `orca chat`.
+
+## Rebuild an agent
+
+If you saved your agents with CLI 0.9 before the switch, you have one JSON file per agent from `orca agents get <agent-name> --json`. It looks like this:
+
+```json
+{
+  "name": "support-bot",
+  "runtime": "claude",
+  "model": "claude-sonnet-5",
+  "systemPrompt": "You answer support questions.",
+  "skills": ["orca-docs"],
+  "mcpServers": [{ "name": "docs", "transport": "http", "url": "https://mcp.example.com/docs" }],
+  "sandbox": { "provider": "e2b" }
+}
+```
+
+Map each field to the new agent:
+
+| 0.9 field | On Orca 2.0 |
+| --- | --- |
+| `name` | `name` |
+| `systemPrompt` | `instructions` |
+| `model` | `model`, with who pays in front: `orca/openrouter/<OpenRouter id>` or `<provider>/<id>`. [List every name you can use](/providers#discover-orca-credit-models). |
+| `runtime` | Nothing. Leave it out. |
+| `mcpServers` | An `mcp` entry in `tools` per server. Remote MCP servers are currently blocked on hosted Orca. |
+| `skills` | Skills you upload again and install in the session's sandbox. See [rebuild a skill](#rebuild-a-skill). |
+| `sandbox`, `workerMode`, `fs` | Nothing on the agent. Choose a managed sandbox when you create a session (`--sandbox` in the CLI). |
+| `tools` such as `"@orchestration"` | Nothing. To let the agent delegate, set `multi_agent`. |
+
+Write the new agent as a file:
+
+```yaml
+# support-bot.yaml
+name: support-bot
+model: orca/openrouter/anthropic/claude-sonnet-5
+instructions: |
+  You answer support questions.
+```
+
+Then create it with the CLI, the dashboard, or the API:
+
+<Tabs>
+<Tab title="CLI">
+```bash
+orca agents create -f support-bot.yaml
+orca chat support-bot "Hello"
+```
+</Tab>
+<Tab title="Dashboard">
+Open **Agents**, choose **Create agent**, and fill in **Name**, **Model**, and **Instructions**.
+</Tab>
+<Tab title="Python">
+```python
+from openai import OpenAI
+
+client = OpenAI(base_url="https://api.orcapods.ai/v1", api_key="YOUR_ORCA_KEY")
+agent = client.beta.agents.create(
+    name="support-bot",
+    model="orca/openrouter/anthropic/claude-sonnet-5",
+    instructions="You answer support questions.",
+)
+```
+</Tab>
+</Tabs>
+
+The model is checked when you save. If the name is wrong, the message says what to use instead. See [models and provider keys](/providers#select-the-model-explicitly).
+
+## Rebuild a skill
+
+If you saved a skill with CLI 0.9 (`orca skills get <skill-name> --json`, and `orca skills get <skill-name> --resource <path>` for each file), rebuild it as a folder:
+
+1. Make a folder named after the skill, with letters, digits, `_` and `-` only.
+2. Write `SKILL.md` in it: front matter with the skill's `name` and `description`, then the saved `body`. If the body already starts with front matter, keep it as it is.
+3. Put each saved resource file at its path inside the folder.
+4. Upload it with `orca skills create <folder>`, or as a zip with the API. See [skills and templates](/guides/skills).
+
+## Ask for an export
+
+If you did not save something, write to **support@okik.io** from the email address you use with Orca. We send back your organization's agent definitions (name, runtime, model, system prompt, and tool and MCP server names) and skills, and, if you ask, memory and workspace files. Secrets are never exported. An export of the whole organization needs an owner or admin of it on Orca 1.x.
+
+Orca 1.x data is kept for at least six months from 7 October 2026.
+
+## Old documentation links
+
+Links to the Orca 1.x documentation lead to the closest page here. Pages for features that ended lead to this page.

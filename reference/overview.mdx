@@ -15,15 +15,15 @@ This reference lists every route Orca supports, grouped by resource. If you are 
 
 ## Base URL
 
-All paths in this reference are relative to your Orca base URL, which ends in `/v1`:
+All paths in this reference are relative to the Orca base URL:
 
 ```text
-https://YOUR_ORCA_HOST/v1
+https://api.orcapods.ai/v1
 ```
 
 The official clients take this as `base_url` (Python) or `baseURL` (TypeScript). Agents, sessions, environments, and vaults are under `client.beta.agents`; files and skills are under `client.files` and `client.skills`.
 
-Provider key management is an Orca addition outside `/v1`; see [models and provider keys](/providers).
+Orca's own extensions live outside `/v1`; see [Orca extensions](#orca-extensions).
 
 ## Authentication
 
@@ -35,10 +35,12 @@ curl -H "Authorization: Bearer $API_KEY" "$BASE_URL/agents?limit=10"
 
 ```python
 from openai import OpenAI
-client = OpenAI(api_key="YOUR_ORCA_KEY", base_url="https://YOUR_ORCA_HOST/v1")
+client = OpenAI(api_key="YOUR_ORCA_KEY", base_url="https://api.orcapods.ai/v1")
 ```
 
-The key determines your account (tenant). You only see resources your account created; anything else returns `404`. Use HTTPS for any remote endpoint, and keep keys out of source control.
+The key determines your [organization](/organizations) and your role in it. You only see your organization's resources; anything else returns `404`. An action your role does not allow returns `403`. Keep keys out of source control.
+
+Create keys in the dashboard under **Settings**, **API keys**, with `orca keys create`, or with `POST /api/keys`.
 
 JSON requests use `Content-Type: application/json`. File and skill uploads use `multipart/form-data`.
 
@@ -64,5 +66,31 @@ Orca implements the OpenAI Agents API. The [OpenAI Agent API quickstart](https:/
 
 - **Supported routes** are exactly those listed in this reference. They were checked against the official clients at **Python `openai` 3.13.0** and **TypeScript `openai` 7.15.0**.
 - **Other client versions** may add or rename methods that Orca does not support.
-- **Features differ by deployment.** Which models, sandbox types, and network policies are available depends on how your Orca endpoint is configured.
+- **On hosted Orca**, `self_hosted` environments are coming soon, `network.access: "restricted"` is not available, and remote MCP servers are currently blocked.
 - **Event payloads**: Orca sends the event types listed in [events](/reference/events). Handle unknown event types gracefully.
+
+## Rate limits
+
+Each key can make 300 requests a minute, and each organization 600. Past that, requests return HTTP 429 `rate_limit_exceeded`, "Rate limit reached. Retry after N seconds.", with a `Retry-After` header. Your plan also limits how many [sessions run at once](/plans#sessions-at-once).
+
+## Orca extensions
+
+These routes are Orca's own, outside the OpenAI Agents API. They live at `https://api.orcapods.ai`, without `/v1`. Call them with plain HTTP and the same bearer key; the `openai` clients have no methods for them.
+
+| Method | Path | Purpose | Guide |
+| --- | --- | --- | --- |
+| GET | `/v1/models` | Orca credit models, as `orca/openrouter/<id>` | [Models](/providers#discover-orca-credit-models) |
+| GET | `/api/models` | Every model you can pick, grouped by who pays, with Orca credit prices | [Models](/providers#discover-orca-credit-models) |
+| GET, POST | `/api/sessions/{session_id}/model` | Read or switch the model one session's next turn uses | [Switch who pays](/providers#switch-who-pays-for-one-session) |
+| GET | `/api/providers`, `/api/providers/{provider}` | Supported providers and whether you have a key | [Provider keys](/providers#connect-a-provider) |
+| PUT, DELETE | `/api/providers/{provider}/key` | Set or remove a provider key (admin) | [Provider keys](/providers#connect-a-provider) |
+| GET | `/api/providers/{provider}/models` | That provider's model list | [Provider keys](/providers#connect-a-provider) |
+| GET | `/api/whoami` | The organization, person, and role your key acts as | |
+| GET, POST | `/api/keys` | List or create API keys. A new key's `secret` is returned once. | [Roles](/organizations#api-keys-carry-a-role) |
+| DELETE | `/api/keys/{key_id}` | Revoke a key | [Roles](/organizations#api-keys-carry-a-role) |
+| GET | `/api/billing/wallet` | Balance, plan, machine time, and packs on sale | [Wallet](/wallet#read-the-wallet-and-your-usage) |
+| POST | `/api/billing/checkout` | Start a Polar checkout for a pack or plan (admin) | [Wallet](/wallet#buy-credit) |
+| GET | `/api/billing/checkouts/{checkout_id}` | A checkout's state | [Wallet](/wallet#buy-credit) |
+| POST | `/api/billing/portal` | A link to Polar's billing portal (admin) | [Plans](/plans#change-your-plan) |
+| GET | `/api/usage`, `/api/usage/events` | Usage totals and rows, with their cost | [Wallet](/wallet#read-the-wallet-and-your-usage) |
+| | `/api/kits/...`, `/api/public/kits/{public_id}` | Make, publish, and copy kits | [Kits](/kits#routes) |

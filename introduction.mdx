@@ -13,8 +13,8 @@ You talk to Orca with the **official OpenAI client libraries** (`openai` for Pyt
 from openai import OpenAI
 
 client = OpenAI(
-    base_url="https://YOUR_ORCA_HOST/v1",  # your Orca endpoint, not api.openai.com
-    api_key="YOUR_ORCA_KEY",               # an Orca key, not an OpenAI key
+    base_url="https://api.orcapods.ai/v1",  # Orca, not api.openai.com
+    api_key="YOUR_ORCA_KEY",                # an Orca key, not an OpenAI key
 )
 agents = client.beta.agents                # the Agents API lives under beta.agents
 ```
@@ -42,11 +42,11 @@ Orca stores all of this durably. If your application disconnects or restarts, th
 
 ## What you need
 
-- **An Orca endpoint URL** ending in `/v1`, such as `https://orca.example.com/v1`.
-- **An Orca API key.** It identifies your account (your *tenant*) on that endpoint. It is not an OpenAI key.
+- **An Orca account.** Sign up at [app.orcapods.ai](https://app.orcapods.ai). A new account starts with $20 of Orca credit on the Free plan.
+- **An Orca API key.** Create one in the dashboard under **Settings**, **API keys**. It acts for your [organization](/organizations). It is not an OpenAI key.
 - **A model name**: an Orca credit model (`orca/openrouter/<id>`), or one on your own provider key (see [models and provider keys](/providers)).
 
-Whoever runs your Orca deployment can give you all three.
+The base URL is `https://api.orcapods.ai/v1`.
 
 ## Where to go next
 
@@ -56,6 +56,19 @@ Whoever runs your Orca deployment can give you all three.
   <Card title="Turns and statuses" icon="arrows-spin" href="/turn-lifecycle">What each status means and how to tell when work is done.</Card>
   <Card title="Glossary" icon="book" href="/glossary">Short definitions of every term these docs use.</Card>
 </CardGroup>
+
+## Other ways to use Orca
+
+<CardGroup cols={2}>
+  <Card title="The dashboard" icon="browser" href="/dashboard/overview">Create agents, give them tasks, and manage keys and credit at app.orcapods.ai.</Card>
+  <Card title="The CLI" icon="terminal" href="/cli/install">Manage Orca from your terminal, and from Claude Code, Cursor, and Codex.</Card>
+  <Card title="Plans and billing" icon="wallet" href="/plans">What each plan includes, and how Orca credit works.</Card>
+  <Card title="Kits" icon="box" href="/kits">Share agents, skills, and templates as one link.</Card>
+</CardGroup>
+
+<Note>
+Coming from Orca 1.x? Read [bring your agents to the new Orca](/migration).
+</Note>
 
 ## Choose what your agent can do
 
@@ -74,5 +87,5 @@ Whoever runs your Orca deployment can give you all three.
 The [OpenAI Agent API quickstart](https://developers.openai.com/api/docs/guides/agents-api/quickstart/) describes the same API from OpenAI's side and is useful background. These docs describe what Orca supports and how it behaves.
 
 <Note>
-Orca is a separate service, not an OpenAI endpoint. Your Orca key works only with Orca, and an OpenAI key does not work with Orca. OpenAI's docs may describe features or defaults that your Orca deployment does not have. Check the [compatibility notes](/reference/overview#compatibility) before you copy an example from OpenAI's docs.
+Orca is a separate service, not an OpenAI endpoint. Your Orca key works only with Orca, and an OpenAI key does not work with Orca. OpenAI's docs may describe features or defaults that Orca does not have. Check the [compatibility notes](/reference/overview#compatibility) before you copy an example from OpenAI's docs.
 </Note>

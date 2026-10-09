@@ -94,7 +94,7 @@ An **environment** is the machine where the agent runs shell commands and reads 
 | `environment.type` | What the agent gets | Use it for |
 | --- | --- | --- |
 | `none` | No machine. The agent can still talk, call your function tools, and call MCP tools. | Chat, Q&A, and workflows where your application does the work |
-| `openai_hosted` | A managed sandbox that Orca creates for this session and deletes with it. Despite the name, it runs on your Orca deployment, not at OpenAI. | Running code, analyzing files, producing reports |
+| `openai_hosted` | A managed sandbox that Orca creates for this session and deletes with it. Despite the name, Orca manages it; nothing runs at OpenAI. | Running code, analyzing files, producing reports |
 | `self_hosted` | A machine you run yourself, which connects to Orca. Coming soon on hosted Orca. | Working against your own files, network, or hardware |
 
 Each session has its own environment; sessions never share one. See [execution environments](/guides/environments).
@@ -113,9 +113,9 @@ This matters for security and debugging, because it tells you which machine make
 | --- | --- | --- |
 | The agent loop and model calls | Orca server | You never call the model directly. |
 | [Function tools](/guides/function-tools) | **Your application** | Orca pauses the turn and waits for your answer. |
-| [MCP tools](/guides/mcp) | Orca server, calling the remote MCP server | The MCP server must be approved by your Orca administrator. Can be switched to connect from the sandbox. |
+| [MCP tools](/guides/mcp) | Orca server, calling the remote MCP server | Remote MCP servers are currently blocked on hosted Orca. |
 | Shell commands, file edits, code | The session's sandbox | Only if the session has an environment. |
-| [Subagents](/guides/subagents) | Same as the parent | Share the parent's sandbox and tools. |
+| [Subagents](/guides/subagents) | Same as the parent | Share the parent's sandbox, tools, and model. |
 
 ## Supporting resources
 

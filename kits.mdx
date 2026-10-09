@@ -1,0 +1,97 @@
+---
+title: "Kits"
+description: "Share agents, skills, and environment templates as one link, and copy a kit someone else published."
+---
+
+A **kit** bundles some of your organization's agents, skills, and environment templates under one link. Anyone can read a published kit, and members of any organization can copy it. A copy becomes ordinary resources in the copier's organization, with no link back to the kit.
+
+Use a kit to hand a working setup to a customer, a teammate in another organization, or the public.
+
+<Note>
+Okik's own kits are coming soon. Their links show "This kit is coming soon" until they are published.
+</Note>
+
+## What a kit carries
+
+- **Agents**, with their model, instructions, and tools.
+- **Skills**, with every file in them.
+- **Environment templates**, with their inline files, packages, setup commands, and network policy.
+
+**Secrets never travel.** Vault credentials and the values of template environment variables are left out. The kit lists them as credentials the copier adds after copying. A template that mounts uploaded files cannot go in a kit; use inline files instead.
+
+A kit has a name, a description, a README, and an author, which its page shows. It holds at most 50 of each kind of resource.
+
+## Make and publish a kit
+
+Any member can make, publish, and withdraw kits.
+
+<Tabs>
+<Tab title="Dashboard">
+1. Open **Kits** and choose **Make kit**.
+2. Fill in **Name**, **Author**, **Description**, and **README**, and pick the agents, skills, and templates to include. Choose **Make kit**.
+3. In the kit's row menu, choose **Publish**. Then **Copy link** to share it.
+</Tab>
+<Tab title="CLI">
+```bash
+orca kits make --name "Support desk" --author "Example Co" --agent support --skill skill_123
+orca kits publish kit_abc        # prints the share link
+```
+</Tab>
+<Tab title="API">
+```bash
+curl --fail-with-body -X POST "$ORCA_ORIGIN/api/kits" \
+  -H "Authorization: Bearer $ORCA_API_KEY" -H "Content-Type: application/json" \
+  -d '{"name": "Support desk", "description": "A support agent and its skill",
+       "selection": {"agents": ["agent_..."], "skills": ["skill_..."], "templates": []}}'
+curl --fail-with-body -X POST "$ORCA_ORIGIN/api/kits/$KIT_ID/publish" \
+  -H "Authorization: Bearer $ORCA_API_KEY"
+```
+</Tab>
+</Tabs>
+
+**Publishing takes a snapshot.** Edits you make to the kit or to its agents, skills, and templates afterwards do not reach the public page until you publish again, which adds a new version under the same link. The link looks like `https://app.orcapods.ai/kits/kit-` followed by 17 letters and digits.
+
+**Withdrawing** a kit makes its link say it was withdrawn, and nobody can copy it. Publishing again brings it back under the same link. Copies already made are not affected.
+
+Every agent's model is checked when you publish, as on any [save](/providers#select-the-model-explicitly).
+
+## Copy a kit
+
+Open the kit's link.
+
+- **Signed out:** choose **Get started** to make your Orca account and your own copy.
+- **Signed in:** choose **Get started**, then choose what to copy and what to call each copy, and choose **Copy**.
+
+From the CLI:
+
+```bash
+orca kits show kit-xxxxxxxxxxxxxxxxx              # what it contains, no login needed
+orca kits copy kit-xxxxxxxxxxxxxxxxx --dry-run    # what a copy would create
+orca kits copy kit-xxxxxxxxxxxxxxxxx --name agent-1=my-support --skip skill-1 --yes
+```
+
+With the API, read the kit with `GET /api/public/kits/{public_id}` (no key needed), then `POST /api/kits/{public_id}/copy` with `{"assets": [{"key": "agent-1", "name": "my-support"}]}`, listing each asset to copy and its new name.
+
+A copy is all or nothing. It is refused, and nothing is copied, when:
+
+- **A name is taken.** A copy would take a name already used by the same kind of resource: HTTP 409 `name_taken`. Choose other names and copy again.
+- **A model needs a key you do not have.** Each agent's model is checked as on any save, so an agent that runs on its author's own provider key needs your key for the same provider. Without it the response is HTTP 400 on `assets`, such as "own cannot be copied: Add your OpenAI key in Settings, Providers, or choose an Orca credit model". Add the key and copy again.
+
+After a copy, add the credentials the kit lists: an MCP server's credential goes in a vault, and an environment variable goes on the copied template.
+
+A withdrawn kit returns HTTP 410 `kit_withdrawn`.
+
+## Routes
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| GET | `/api/kits` | Your organization's kits |
+| POST | `/api/kits` | Make a draft kit |
+| GET | `/api/kits/{kit_id}` | Read one |
+| PATCH | `/api/kits/{kit_id}` | Edit its name, description, README, author, or selection |
+| POST | `/api/kits/{kit_id}/publish` | Publish the next version |
+| POST | `/api/kits/{kit_id}/withdraw` | Withdraw it |
+| POST | `/api/kits/{public_id}/copy` | Copy a published kit into your organization |
+| GET | `/api/public/kits/{public_id}` | A published kit's public page, no key needed |
+
+Paths are relative to `https://api.orcapods.ai`, without `/v1`.

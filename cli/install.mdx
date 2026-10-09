@@ -1,0 +1,90 @@
+---
+title: "Install and sign in"
+description: "Install CLI 1.0, keep it up to date, sign in with a one-time code, and use it in CI."
+---
+
+The `orca` CLI manages agents, sessions, skills, vaults, files, kits, keys, and billing from your terminal, and serves Orca to coding agents over MCP. It is a single binary; it does not need Node.
+
+## Install
+
+On macOS and Linux:
+
+```bash
+curl -fsSL https://orcapods.ai/install.sh | sh
+```
+
+The script picks the binary for your system, checks its SHA-256 checksum, and installs it to `~/.local/bin/orca`. To pin a version, set `ORCA_VERSION=cli-v1.0.0`; to install somewhere else, set `ORCA_INSTALL_DIR`.
+
+On Windows, download `orca-windows-x64.tar.gz` from the [releases page](https://github.com/okikorg/orca-cli/releases).
+
+Check it worked:
+
+```bash
+orca -v
+```
+
+## Update
+
+```bash
+orca update            # update to the latest release
+orca update --check    # only report whether a newer version exists
+orca update --tag cli-v1.0.0
+```
+
+`orca update` needs no login. An older CLI that talks to Orca 2.0 is told "This CLI is too old for Orca. Run orca update." On Windows, a running `.exe` cannot replace itself, so download the new release instead.
+
+## Sign in
+
+```bash
+orca login
+```
+
+The CLI signs in with a one-time code, which works anywhere, including over SSH and inside coding agents:
+
+1. It prints the code and a link to the dashboard: "First, copy your one-time code", then "Then open:" and the link. In a terminal it opens the link for you.
+2. In the dashboard, check that the code matches and choose **Approve**. See [approve a CLI login](/dashboard/overview#approve-a-cli-login).
+3. The CLI receives a new API key with your role and stores it. It prints "Logged in to Orca as" your role and organization.
+
+Use `--no-browser` to only print the code and link. The login is named after the machine, such as "CLI on laptop"; change it with `--label`.
+
+```bash
+orca whoami         # organization, actor, and role the stored key acts as
+orca auth status    # the API URL, dashboard, masked key, and where each value came from
+orca auth logout --revoke   # revoke the key on the server, then forget it here
+```
+
+Plain `orca auth logout` forgets the key on this machine only; the key keeps working.
+
+## Where the CLI keeps its key
+
+Keys are stored per **context** in `~/.config/orca/config.json`, readable only by you. A context is a named API URL and key, like a kubectl context: `orca context list`, `orca context use <name>`, or `--context <name>` on one command. The default API URL is `https://api.orcapods.ai`.
+
+## Use it in CI
+
+CI needs no config file. Set the key in the environment:
+
+```bash
+ORCA_API_KEY="$ORCA_API_KEY" orca agents list --json
+```
+
+Create a key for CI in the dashboard or with `orca keys create ci`. To store a key without the code flow, use `orca login --with-token orca_sk_...`.
+
+| Variable | Meaning |
+| --- | --- |
+| `ORCA_API_KEY` | The Orca API key |
+| `ORCA_API_URL` | The API URL. Defaults to `https://api.orcapods.ai`. |
+| `ORCA_DASHBOARD_URL` | The dashboard URL, for kit share links |
+| `ORCA_CONTEXT` | The context to use |
+| `ORCA_CONFIG_DIR` | Where the config file lives |
+
+A flag wins over an environment variable, which wins over the config file.
+
+## Check your setup
+
+```bash
+orca doctor
+```
+
+`orca doctor` checks the config file, the server, your key and role, and your credit, and prints a fix for each problem it finds. It only reads; it never creates anything.
+
+Next: [commands](/cli/commands), or [use Orca from Claude Code, Cursor, and Codex](/cli/mcp).

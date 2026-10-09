@@ -1,0 +1,56 @@
+---
+title: "Plans and machine time"
+description: "What Free, Pro, and Max include, how machine time is counted, and what happens at a limit."
+---
+
+Every organization is on one plan. The plan sets how much sandbox time is included each period and how many sessions can run at once. Model tokens are not part of the plan: they are paid from your [Orca credit or your own provider key](/providers).
+
+| | Free | Pro | Max |
+| --- | --- | --- | --- |
+| **Price** | $0 | $20 a month | $200 a month |
+| **Machine time included** | 3 hours | 60 hours | 1,000 hours |
+| **Extra machine time** | Not available | $0.25 an hour | $0.17 an hour |
+| **Sessions at once** | 1 | 5 | 20 |
+
+Every new account starts with $20 of Orca credit. Plans are billed monthly through Polar, and credit is bought separately; see [wallet and credit](/wallet).
+
+## Change your plan
+
+An admin of the organization changes the plan:
+
+- **In the dashboard**, open **Settings**, then **Plans**, and choose **Compare** on a plan. From Free, **Continue to checkout** opens a Polar checkout. From a paid plan, **Open billing portal** opens Polar's billing portal, where you change or cancel the plan.
+- **From the CLI**, `orca billing buy pro` or `orca billing buy max` opens a checkout, and `orca billing manage` opens the billing portal. See [CLI commands](/cli/commands#billing-and-usage).
+
+Members see the plans but cannot change them.
+
+## Machine time
+
+Machine time is the time your sessions' managed sandboxes run. Sessions with `environment: {"type": "none"}` use none.
+
+- **Every sandbox is the same machine:** 1 vCPU, 2 GiB of memory, and 5 GiB of disk.
+- **It is counted in whole minutes** while a sandbox is connected, whether the agent is working or waiting. Each minute a sandbox is running counts as one minute.
+- **An idle sandbox is paused after 5 minutes.** Paused time is not counted. The sandbox resumes, with its files, the next time the session needs it. See [execution environments](/guides/environments#idle-sandboxes-are-paused).
+- **The period** is your subscription's billing period on Pro and Max, and the calendar month (UTC) on Free. Included time is counted per period and does not carry over.
+
+When the included time is used up:
+
+| Plan | What happens |
+| --- | --- |
+| Pro, Max | Sandboxes keep running. Each extra minute is charged from your Orca credit at the plan's hourly rate. |
+| Free | Sandboxes stop. A running turn ends `failed` with `usage_limit_exceeded`: "This plan's included machine hours for this period are used up". Upgrade to keep going. |
+
+The dashboard's **Wallet** page shows the time used in this period next to what the plan includes.
+
+## Sessions at once
+
+**Sessions at once** is how many of your organization's sessions can have a turn running at the same time. Idle sessions do not count, so you can keep as many conversations open as you like.
+
+Orca checks it when a turn starts. If the limit is already reached, the message is refused with HTTP 429 `rate_limit_exceeded`, such as "Your plan runs 1 session at once". Nothing is lost: send the message again when another session's turn ends, or upgrade.
+
+## Paid work needs a minimum balance
+
+Even included machine time needs Orca credit in the wallet. When your balance is below **$0.50**, Orca pauses paid work: model calls on Orca credit, web searches, and managed sandboxes. A turn on an Orca credit model, or in a session with a managed sandbox, is then refused. Turns on your own provider key in a session without a sandbox keep working. See [wallet and credit](/wallet#when-credit-runs-low).
+
+## Schedules
+
+Schedules are coming soon to Orca. Until then, start a session from your own scheduler, such as a cron job, with the API or `orca chat`.

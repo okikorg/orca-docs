@@ -44,6 +44,14 @@ When you create a session, list files under `environment.files`. Each needs a `p
 
 You can also add files to a running sandbox later; see [execution environments](/guides/environments#add-files-later).
 
+Size limits:
+
+| What | Limit |
+| --- | --- |
+| An uploaded file (`client.files.create`) | 512 MiB |
+| An `inline` file in `environment.files` | 16 MiB |
+| Everything staged into one sandbox at session start | 64 MiB |
+
 ## Get results back as artifacts
 
 Tell the agent to save its results under **`/workspace/outputs`**. When a turn completes, Orca copies every regular file in that folder (including subfolders) into an artifact. Then list and download them:

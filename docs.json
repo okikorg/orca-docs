@@ -2,7 +2,7 @@
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
   "name": "Orca",
-  "description": "Build agent applications with Orca using the official OpenAI clients. Guides, runnable examples, and an Agents API reference.",
+  "description": "Orca 2.0 documentation: run agents through the OpenAI Agents API at api.orcapods.ai, with the dashboard, the CLI, plans, and billing.",
   "colors": {
     "primary": "#111111",
     "light": "#F5F5F5",
@@ -64,7 +64,8 @@
                   "quickstart",
                   "concepts",
                   "turn-lifecycle",
-                  "glossary"
+                  "glossary",
+                  "migration"
                 ]
               },
               {
@@ -79,7 +80,16 @@
                   "guides/skills",
                   "guides/subagents",
                   "guides/credentials",
-                  "providers"
+                  "providers",
+                  "kits"
+                ]
+              },
+              {
+                "group": "Plans and billing",
+                "pages": [
+                  "plans",
+                  "wallet",
+                  "organizations"
                 ]
               },
               {
@@ -87,6 +97,33 @@
                 "pages": [
                   "guides/reliability",
                   "troubleshooting"
+                ]
+              }
+            ]
+          },
+          {
+            "tab": "Dashboard",
+            "groups": [
+              {
+                "group": "Dashboard",
+                "pages": [
+                  "dashboard/overview",
+                  "dashboard/agents-and-sessions",
+                  "dashboard/providers-and-keys",
+                  "dashboard/wallet-and-usage"
+                ]
+              }
+            ]
+          },
+          {
+            "tab": "CLI",
+            "groups": [
+              {
+                "group": "CLI 1.0",
+                "pages": [
+                  "cli/install",
+                  "cli/commands",
+                  "cli/mcp"
                 ]
               }
             ]
@@ -203,5 +240,262 @@
   },
   "footer": {
     "socials": {}
-  }
+  },
+  "redirects": [
+    {
+      "source": "/start-here",
+      "destination": "/quickstart",
+      "permanent": true
+    },
+    {
+      "source": "/dashboard-and-api",
+      "destination": "/quickstart",
+      "permanent": true
+    },
+    {
+      "source": "/sdk/:slug*",
+      "destination": "/quickstart",
+      "permanent": true
+    },
+    {
+      "source": "/build-with-your-coding-agent",
+      "destination": "/cli/mcp",
+      "permanent": true
+    },
+    {
+      "source": "/agents/claude-code",
+      "destination": "/cli/mcp",
+      "permanent": true
+    },
+    {
+      "source": "/agents/cursor",
+      "destination": "/cli/mcp",
+      "permanent": true
+    },
+    {
+      "source": "/agents/codex",
+      "destination": "/cli/mcp",
+      "permanent": true
+    },
+    {
+      "source": "/agents/mcp",
+      "destination": "/cli/mcp",
+      "permanent": true
+    },
+    {
+      "source": "/agents/headless-auth",
+      "destination": "/cli/install",
+      "permanent": true
+    },
+    {
+      "source": "/cli/overview",
+      "destination": "/cli/install",
+      "permanent": true
+    },
+    {
+      "source": "/cli/installation",
+      "destination": "/cli/install",
+      "permanent": true
+    },
+    {
+      "source": "/cli/authentication",
+      "destination": "/cli/install",
+      "permanent": true
+    },
+    {
+      "source": "/agents/cli",
+      "destination": "/cli/commands",
+      "permanent": true
+    },
+    {
+      "source": "/cli/output-and-scripting",
+      "destination": "/cli/commands",
+      "permanent": true
+    },
+    {
+      "source": "/cli/agent-documents",
+      "destination": "/cli/commands",
+      "permanent": true
+    },
+    {
+      "source": "/cli/reference/billing",
+      "destination": "/plans",
+      "permanent": true
+    },
+    {
+      "source": "/cli/reference/:slug*",
+      "destination": "/cli/commands",
+      "permanent": true
+    },
+    {
+      "source": "/concepts/profiles",
+      "destination": "/concepts",
+      "permanent": true
+    },
+    {
+      "source": "/concepts/architecture",
+      "destination": "/concepts",
+      "permanent": true
+    },
+    {
+      "source": "/platform-tools/:slug*",
+      "destination": "/concepts",
+      "permanent": true
+    },
+    {
+      "source": "/concepts/sessions",
+      "destination": "/guides/sessions",
+      "permanent": true
+    },
+    {
+      "source": "/concepts/runs",
+      "destination": "/turn-lifecycle",
+      "permanent": true
+    },
+    {
+      "source": "/concepts/pods",
+      "destination": "/guides/subagents",
+      "permanent": true
+    },
+    {
+      "source": "/concepts/pools",
+      "destination": "/guides/subagents",
+      "permanent": true
+    },
+    {
+      "source": "/concepts/skills",
+      "destination": "/guides/skills",
+      "permanent": true
+    },
+    {
+      "source": "/concepts/mcp-integration",
+      "destination": "/guides/mcp",
+      "permanent": true
+    },
+    {
+      "source": "/concepts/secrets",
+      "destination": "/guides/credentials",
+      "permanent": true
+    },
+    {
+      "source": "/concepts/sandboxes",
+      "destination": "/guides/environments",
+      "permanent": true
+    },
+    {
+      "source": "/concepts/storage",
+      "destination": "/guides/files-and-artifacts",
+      "permanent": true
+    },
+    {
+      "source": "/virtualfs/:slug*",
+      "destination": "/guides/files-and-artifacts",
+      "permanent": true
+    },
+    {
+      "source": "/concepts/kits",
+      "destination": "/kits",
+      "permanent": true
+    },
+    {
+      "source": "/concepts/templates",
+      "destination": "/kits",
+      "permanent": true
+    },
+    {
+      "source": "/runbooks/:slug*",
+      "destination": "/kits",
+      "permanent": true
+    },
+    {
+      "source": "/workbooks/:slug*",
+      "destination": "/kits",
+      "permanent": true
+    },
+    {
+      "source": "/concepts/api-keys",
+      "destination": "/dashboard/providers-and-keys",
+      "permanent": true
+    },
+    {
+      "source": "/concepts/billing",
+      "destination": "/plans",
+      "permanent": true
+    },
+    {
+      "source": "/concepts/access-control",
+      "destination": "/organizations",
+      "permanent": true
+    },
+    {
+      "source": "/api-reference/conductor",
+      "destination": "/reference/overview",
+      "permanent": true
+    },
+    {
+      "source": "/concepts/workflows",
+      "destination": "/migration",
+      "permanent": true
+    },
+    {
+      "source": "/concepts/automations",
+      "destination": "/migration",
+      "permanent": true
+    },
+    {
+      "source": "/concepts/contexts",
+      "destination": "/migration",
+      "permanent": true
+    },
+    {
+      "source": "/concepts/memory-bank",
+      "destination": "/migration",
+      "permanent": true
+    },
+    {
+      "source": "/concepts/connected-apps",
+      "destination": "/migration",
+      "permanent": true
+    },
+    {
+      "source": "/concepts/publishing",
+      "destination": "/migration",
+      "permanent": true
+    },
+    {
+      "source": "/guides/publishing",
+      "destination": "/migration",
+      "permanent": true
+    },
+    {
+      "source": "/api-reference/chat-gateway",
+      "destination": "/migration",
+      "permanent": true
+    },
+    {
+      "source": "/guides/local-development",
+      "destination": "/migration",
+      "permanent": true
+    },
+    {
+      "source": "/guides/docker-deployment",
+      "destination": "/migration",
+      "permanent": true
+    },
+    {
+      "source": "/guides/kubernetes",
+      "destination": "/migration",
+      "permanent": true
+    },
+    {
+      "source": "/guides/multi-runner",
+      "destination": "/migration",
+      "permanent": true
+    },
+    {
+      "source": "/guides/observability",
+      "destination": "/migration",
+      "permanent": true
+    }
+  ]
 }

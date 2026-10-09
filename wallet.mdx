@@ -1,0 +1,82 @@
+---
+title: "Wallet and credit"
+description: "What Orca credit pays for, how to buy it, what happens when it runs low, and how to read your usage."
+---
+
+Each organization has one **wallet** of Orca credit. Your balance is everything credited minus everything charged. Credit never expires.
+
+## What credit pays for
+
+| Charge | Price |
+| --- | --- |
+| Model tokens on an Orca credit model (`orca/openrouter/<id>`) | What OpenRouter charges for the call, plus OpenRouter's 5.5% credit fee. Orca adds no markup. See [models and provider keys](/providers#what-orca-credit-costs). |
+| Web searches | What OpenRouter charges for the search, plus the same fee, whoever pays for the agent's model |
+| Machine time past your plan's included hours | Your plan's hourly rate. See [plans](/plans#machine-time). |
+
+Tokens on your own provider key (`<provider>/<id>`) are billed by that provider. Orca charges nothing for them.
+
+## Where credit comes from
+
+- **Signup credit.** A new account starts with $20 of credit. It is given once per person: a second organization you create starts with none.
+- **Credit packs.** An admin buys a pack. Each pack's processing fee is taken from the pack: today 6.5% of the price plus $0.50, so a $20 pack adds $18.20. The packs on sale, with the credit each adds and its fee, are listed on the dashboard's **Wallet** page and by `orca billing wallet`.
+
+Plans do not add credit. A plan's included machine time is not a second balance.
+
+## Buy credit
+
+You need the admin role.
+
+<Tabs>
+<Tab title="Dashboard">
+Open **Wallet**. Under **Credit packs**, choose **Buy** on a pack. Pay in the Polar checkout. You come back to the Wallet, which shows "Credit added to your wallet." once Polar confirms the payment.
+</Tab>
+<Tab title="CLI">
+```bash
+orca billing wallet          # balance, plan, and the packs on sale
+orca billing buy pack:2000   # opens the checkout for the $20 pack
+```
+</Tab>
+<Tab title="API">
+```bash
+curl --fail-with-body -X POST "$ORCA_ORIGIN/api/billing/checkout" \
+  -H "Authorization: Bearer $ORCA_API_KEY" -H "Content-Type: application/json" \
+  -d '{"offer": "pack:2000"}'
+# {"url": "https://...polar...", "id": "..."}: open url to pay.
+# GET /api/billing/checkouts/{id} reports the checkout's state until the credit lands.
+```
+</Tab>
+</Tabs>
+
+`ORCA_ORIGIN` is `https://api.orcapods.ai`, without `/v1`. The `offer` is `pack:<cents>` for a pack, or `plan:pro` or `plan:max` for a plan.
+
+## When credit runs low
+
+Orca pauses **paid work** when your balance is below **$0.50**, the minimum balance on every plan. Paid work is model calls on Orca credit, web searches, and managed sandboxes, including their included machine time.
+
+- **A new message** that needs paid work is refused with HTTP 429 `insufficient_quota`: "Out of Orca credit: add credit, then continue the session".
+- **A running turn** that reaches the minimum ends `failed` with `usage_limit_exceeded` and `param: "orca_credit"`. The conversation is saved. A managed sandbox is paused with its files kept.
+- **Turns on your own provider key** in a session without a sandbox keep working.
+
+Nothing switches who pays on its own. To continue, add credit and send the message again (the dashboard's **Continue** button sends "Continue"), or [switch that session to your own key](/providers#switch-who-pays-for-one-session).
+
+The dashboard shows this as **Out of Orca credit** on the turn, with **Add credit**, **Switch who pays**, and **Continue**. `GET /api/billing/wallet` returns `paid_work_paused: true` while paid work is paused.
+
+## Read the wallet and your usage
+
+| Route | Returns |
+| --- | --- |
+| `GET /api/billing/wallet` | Balance, total credited and charged, the minimum balance, `paid_work_paused`, your plan and period, included and used machine time, the packs on sale, the processing fee, and OpenRouter's fee (`openrouter_fee_bps`) |
+| `GET /api/usage` | Totals per meter for a period (30 days by default, or `start` and `end` in Unix seconds), a daily series, and totals grouped by `model`, `provider`, `credential`, `session`, or `agent` with `group_by`. `session=<id>` narrows it to one session. |
+| `GET /api/usage/events` | The newest usage rows, each with its cost. Filter with `meter`, page with `limit` and `after`. |
+
+Money is in micro-USD (millionths of a dollar). Every member can read the wallet and usage.
+
+```bash
+curl --fail-with-body "$ORCA_ORIGIN/api/usage?group_by=model" -H "Authorization: Bearer $ORCA_API_KEY"
+```
+
+In the dashboard, **Usage** shows the same figures by day, by model, and as a list of events. From the CLI, `orca usage` and `orca usage events`.
+
+## Moving from Orca 1.x
+
+Balances and plans carried over to the new Orca. See [bring your agents to the new Orca](/migration).
