@@ -10,7 +10,7 @@ Each organization has one **wallet** of Orca credit. Your balance is everything 
 | Charge | Price |
 | --- | --- |
 | Model tokens on an Orca credit model (`orca/openrouter/<id>`) | What OpenRouter charges for the call, plus OpenRouter's 5.5% credit fee. Orca adds no markup. See [models and provider keys](/providers#what-orca-credit-costs). |
-| Web searches | What OpenRouter charges for the search, plus the same fee, whoever pays for the agent's model |
+| Web searches on an Orca credit model | What OpenRouter charges for the search, plus the same fee. A search on your own provider key is billed by that provider. |
 | Machine time past your plan's included hours | Your plan's hourly rate. See [plans](/plans#machine-time). |
 
 Tokens on your own provider key (`<provider>/<id>`) are billed by that provider. Orca charges nothing for them.
@@ -51,7 +51,7 @@ curl --fail-with-body -X POST "$ORCA_ORIGIN/api/billing/checkout" \
 
 ## When credit runs low
 
-Orca pauses **paid work** when your balance is below **$0.50**, the minimum balance on every plan. Paid work is model calls on Orca credit, web searches, and managed sandboxes, including their included machine time.
+Orca pauses **paid work** when your balance is below **$0.50**, the minimum balance on every plan. Paid work is model calls and web searches on Orca credit, and managed sandboxes, including their included machine time.
 
 - **A new message** that needs paid work is refused with HTTP 429 `insufficient_quota`: "Out of Orca credit: add credit, then continue the session".
 - **A running turn** that reaches the minimum ends `failed` with `usage_limit_exceeded` and `param: "orca_credit"`. The conversation is saved. A managed sandbox is paused with its files kept.
