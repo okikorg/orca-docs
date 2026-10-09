@@ -1,0 +1,56 @@
+---
+title: "Connect MCP servers"
+sidebarTitle: "MCP servers"
+description: "MCP servers add tools, resources, and prompts through a stdio process. Orcacode keeps discovery separate from schema selection so a large server catalog stays manageable."
+---
+
+## Add and manage a server
+
+```bash
+› /mcp
+› /mcp add fetch uvx mcp-server-fetch
+› /mcp add docs npx -y mcp-remote https://mcp.example.com/mcp
+› /mcp remove fetch
+```
+
+Use `/mcp` to open the server picker; space toggles the selected server. Servers persist in the config file and disabled entries retain their command.
+
+## How tools are exposed
+
+1. `mcp_search_tools` searches tool metadata across connected servers.
+2. `mcp_select_tool` accepts the exact name of any tool in the connected catalog, without requiring a preceding search; its schema is available on the next model turn.
+3. `mcp_features` reads resources, invokes prompts, and handles argument completion for a specific server.
+
+Selected remote tools still use ordinary dispatch, approval, cancellation, and concurrency controls. Guessed tool names are rejected until selection succeeds.
+
+## Discovery before execution
+
+Connected servers do not place every remote schema in the model context. The intended discovery path is to search compact metadata, then select one exact tool when needed.
+
+<Frame>
+  <img src="/orcacode/images/mcp-1.png" alt="03 / MCP TOOL FLOW Search metadata first; load one schema; execute it with the same approval, cancellation, and concurrency contracts as local tools." />
+</Frame>
+
+| Interface | Use |
+| --- | --- |
+| `mcp_search_tools` | Search capability metadata across all connected servers. |
+| `mcp_select_tool` | Expose one exact tool schema on the next model turn. |
+| `mcp_features` | Read resources, invoke prompts, and complete arguments for one server. |
+
+A guessed remote tool name is rejected until it has been selected. That keeps a large remote catalog from consuming context before it is useful.
+
+## Connection lifecycle
+
+Interactive startup and reload initialize MCP servers in the background, with up to four connections in flight and a 30-second total connection timeout per server. The underlying MCP client also bounds initialize and tools/list requests, but those request timeouts do not extend the CLI’s overall connection deadline. A startup notice indicates that MCP is connecting in the background and integration tools may be unavailable until initialization completes; local tools and the UI remain usable while integration tools are pending. Headless runs await initialization before running the prompt. Each configured stdio server is initialized and checked independently. A failed server reports its reason and does not prevent the others from connecting. Toggling one server reloads only what changed; use the MCP picker to enable, disable, and reconnect it.
+
+Completed initialization publishes integration tools at a worker command boundary, without changing the tool set of a running agent or resetting local background processes and Python/Bun interpreter state. Configuration changes during initialization queue one fresh reload; exiting cancels pending connection work.
+
+Remote tools remain normal harness tools once selected: approvals, cancellation, output limits, and keyed per-server concurrency still apply. Interrupted exchanges close the serialized server connection rather than reusing a potentially stale request.
+
+## Command and credential notes
+
+Standalone `/mcp add` names must contain only letters, digits, `-`, or `_`, and must not start with `-`. Commands must begin with a stdio executable, not an option or bare HTTP URL. Invalid registrations are rejected before saving; invalid existing entries remain visible but are not launched. Standalone MCP launch commands split on whitespace and run without a shell: no quoting, variable expansion, or per-server environment exists. Give a server credentials through the environment used to launch Orcacode. The UI redacts recognizable secrets in server commands where it can.
+
+<Note>
+**Plan mode:** Plan mode denies all MCP tools, including newly discovered tools, by design. Orchestrate mode also blocks MCP calls in the parent; delegate that work to a worker.
+</Note>

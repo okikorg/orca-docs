@@ -1,0 +1,24 @@
+---
+title: "Run one prompt"
+sidebarTitle: "Headless runs"
+description: "Headless mode is for scripts and CI-like workflows where you want a single invocation instead of an interactive terminal session."
+---
+
+## One prompt
+
+```bash
+$ orcacode -p "Summarize the test failures"
+$ orcacode --json -p "List changed files"
+$ orcacode --plan -p "Propose a migration plan"
+$ orcacode --auto -p "Run the focused tests and fix failures"
+```
+
+`-p` / `--prompt` supplies the request. Add `--json` to write newline-delimited JSON to stdout: a `metadata` record, harness event records, then a `summary` record. Use each record’s `type` field to distinguish them.
+
+## Automation and approvals
+
+Headless runs default to Normal mode. Because nobody is present to answer a prompt, gated actions are held unless the invocation supplies `--auto-approve` or selects `--auto` or `--yolo`. Use `--auto` for automatic admission and risk review, `--plan` for read-only investigation, `--orchestrate` for delegation-first operation with basic edits permitted, or `--yolo` only when all registered actions should proceed without review. `--orchestrate` does not bypass the headless approval gate: `subagent` calls and gated edits still require `--auto-approve`. Likewise, writing a plan file with `--plan` needs approval via that flag; it never permits writes outside the plan area. Bare `--auto-approve` retains the normal-mode path while permitting gated headless actions.
+
+<Note>
+**Scripting tip:** Pass `--workspace` explicitly in automation rather than relying on the caller’s current directory. Add `--no-session` for ephemeral jobs that should not write session history.
+</Note>

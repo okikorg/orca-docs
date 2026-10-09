@@ -1,0 +1,38 @@
+---
+title: "A narrow execution kernel"
+sidebarTitle: "Architecture"
+description: "Orca Harness owns the short path from a model response to correctly ordered tool results. Orcacode is the composition layer that turns that kernel into a local terminal agent."
+---
+
+## The execution boundary
+
+The harness owns agent configuration, context, model invocation, the agent loop, tool dispatch, concurrent execution, cancellation, deadlines, limits, tool-call/result pairing, deterministic result ordering, and the extension lifecycle. The core kernel leaves session persistence to its host; the optional extensions crate provides JSONL transcript storage, and the Rust SDK offers persistent sessions. Fleet-scale scheduling, microVM lifecycle, networking, tenancy, and control-plane APIs remain outside this local execution stack.
+
+<Frame>
+  <img src="/orcacode/images/architecture-1.png" alt="01 / EXECUTION BOUNDARY Orcacode composes the kernel into a local terminal agent. Fleet concerns remain intentionally outside the harness." />
+</Frame>
+
+## Runtime pieces
+
+| Crate / layer | Responsibility |
+| --- | --- |
+| `harness-core` | The agent contracts, loop, dispatcher, limits, and test primitives. |
+| `provider-auth` | Provider-neutral credential contracts. |
+| `model-providers` | Anthropic, OpenAI-compatible, OpenRouter, Codex, Vercel AI Gateway, and CheaperInference model adapters. |
+| `tools` | Workspace files, shell/processes, Python compute, subagents, workflows, and questions. A Bun REPL is included but currently broken on recent Bun: `bun-repl` refuses piped stdin. |
+| `tool-extensions` | Optional MCP, skills, and web integrations. |
+| `extensions` | Events, policy, compaction, truncation, retry, usage, and optional JSONL session persistence. |
+| `sdk` | Session APIs, including optional disk-backed sessions and background work. |
+| `orcacode` | The composition root: terminal UI, approvals, configuration, and runtime wiring. |
+
+The dependency direction is intentional: tools and extensions depend on the core contracts; the core does not depend on an individual provider, tool, terminal UI, or control plane.
+
+In SDK sessions, subagents, workflows, and processes share session-owned lifetimes. Typed host operations and model tools use the same underlying services; see [subagents](/orcacode/subagents#run-workers-in-the-background) and [the tool reference](/orcacode/tool-reference#execution-and-compute) for usage.
+
+## One turn
+
+1. The host builds a context from the session, instructions, mode, and active capabilities.
+2. The model emits text and, when needed, one or more tool calls.
+3. The dispatcher classifies calls, applies policy and approvals, then executes eligible calls concurrently.
+4. Results return to the model paired to the original call IDs and ordered by call position, even when execution completes out of order.
+5. Extensions observe or alter defined lifecycle seams without becoming part of the core loop.

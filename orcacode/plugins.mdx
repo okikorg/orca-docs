@@ -1,0 +1,130 @@
+---
+title: "Package portable local tools"
+sidebarTitle: "Plugins"
+description: "Agent Plugins 1.0 packages an MCP-over-stdio server with portable metadata. Orcacode links a reviewed local package, keeps it disabled until enabled, and routes its tools through the existing MCP policy path."
+---
+
+## Choose the right extension boundary
+
+Orcacode implements both portable components of **Agent Plugins 1.0**: Agent Skills under `skills/` and MCP servers declared by an optional root `mcp.json`. Version 1 starts only MCP entries with `"type": "stdio"`. Orcacode also defines lifecycle hooks under its reverse-domain client extension namespace; those hooks are deliberately Orcacode-specific, not a third portable Agent Plugins component.
+
+| Boundary | Choose it when | What it changes |
+| --- | --- | --- |
+| Agent Plugin | You want a local package combining portable guidance/tools and optional Orcacode lifecycle behavior. | Adds Agent Skills, MCP capabilities, and optionally Orcacode client-extension hooks without compiling them into the host. |
+| Native Rust `Extension` | You own host code or need streaming/around-tool continuation semantics. | Compiles into the Rust host and can use the complete extension lifecycle. |
+| WASM | Your embedding host already defines a WebAssembly component boundary. | Remains that host's concern; Agent Plugins v1 does not add a WASM loader. |
+| Rust SDK | You are building a custom Rust host rather than extending the Orcacode CLI. | Lets the application compose models, tools, extensions, state, skills, and MCP itself. |
+
+<Note>
+**Standard boundary:** Agent Plugins 1.0 standardizes Skills and MCP only. Its client-extension mechanism allows reverse-domain manifest data and directories but assigns them no portable behavior. Orcacode owns and documents `io.github.okikorg.orcacode/`; other clients may ignore it while continuing to load the portable package. Orcacode still does not start HTTP/SSE plugin transports, run setup scripts, provide a marketplace, or fetch remote packages.
+</Note>
+
+## Scaffold a package
+
+`plugin init` writes source and configuration only and refuses to overwrite a non-empty target. Python requires 3.11 or newer and uses `uv` with the stable-major MCP Python SDK. TypeScript requires Node 20 or newer, the 1.x MCP TypeScript SDK, Vitest, and esbuild.
+
+```bash
+$ orcacode plugin init rl-python --python
+$ cd rl-python
+$ uv sync
+$ uv run pytest
+
+$ cd ..
+$ orcacode plugin init rl-typescript --typescript
+$ cd rl-typescript
+$ npm install
+$ npm test
+$ npm run build
+```
+
+The aliases `--py` and `--ts` are equivalent. Each scaffold includes an intentionally empty, tracked `skills/` directory; add standard `skills/<name>/SKILL.md` packages as needed. It also includes an empty `io.github.okikorg.orcacode/hooks.json`; leaving it empty adds no runtime hook work. Orcacode does not directly run a dependency installer. The generated Python MCP launch does run `uv` with its environment and cache under `PLUGIN_DATA`, so its first executable test or enabled start may resolve packages there. Run `plugin test` successfully while online before offline use, or pre-populate that managed uv environment explicitly.
+
+| Python package | TypeScript package |
+| --- | --- |
+| `plugin.json` `skills/.gitkeep` `mcp.json` `io.github.okikorg.orcacode/hooks.json` `pyproject.toml` `README.md` and `.gitignore` `src/<package>/__init__.py` `src/<package>/server.py` `tests/test_server.py` | `plugin.json` `skills/.gitkeep` `mcp.json` `io.github.okikorg.orcacode/hooks.json` `package.json` and `package-lock.json` `tsconfig.json` `README.md` and `.gitignore` `src/index.ts` `test/server.test.ts` `dist/server.mjs` after build |
+
+Generated manifests use the canonical Agent Plugins 1.0 schema URLs and every MCP entry declares `"type": "stdio"`. A command is a bare executable; `${PLUGIN_ROOT}` and `${PLUGIN_DATA}` belong in arguments, environment values, or the working directory, not in `command`.
+
+## Validate, test, and register
+
+```bash
+$ orcacode plugin validate ./rl-python
+$ orcacode plugin test ./rl-python
+$ orcacode plugin install ./rl-python
+$ orcacode plugin inspect rl-python
+$ orcacode plugin enable rl-python
+$ orcacode plugin disable rl-python
+$ orcacode plugin uninstall rl-python
+```
+
+| Command | Boundary proved |
+| --- | --- |
+| `validate [PATH]` | Static manifest, Agent Skill, hook, path, placeholder, and server-entry checks only. It does not execute plugin code or create plugin data. |
+| `test [PATH]` | Reports valid Skills, probes every valid stdio MCP server, and executes each hook once with a representative event payload. |
+| `install [PATH]` | Registers the canonical local source path without copying it and records it disabled. |
+| `enable` / `disable` | Revalidates when enabling and changes saved state for the next process; no live process is reconfigured. |
+| `uninstall` | Removes registration only. Source and persistent plugin data remain. |
+
+Paths default to the current directory for `validate`, `test`, and `install`. `plugin list` reports saved state. Registering the same name and canonical path again is idempotent; the same name from a different path is rejected.
+
+## Manage and verify plugins in the TUI
+
+Enter `/plugin` or `/plugin list` to open the shared filterable picker. Type to filter, use arrow keys to move, press enter to toggle the selected registration, or press space to reveal actions. Typed forms mirror every CLI command and relative paths resolve from the TUI workspace.
+
+The picker deliberately separates **saved** from **live** state. `live · 1 tool · 1 skill · 2 hooks` means all three capability groups are active. `restart to load` means enablement is saved for the next launch. `off next run` means current components remain until exit. Use `/skills` and `/mcp` for read-only component detail; hook counts remain under `/plugin` because hooks are lifecycle behavior rather than model-callable tools.
+
+At interactive startup, enabled plugin MCP servers connect in the background. The TUI remains usable, but their tools may be unavailable until initialization completes. Connections run up to four at a time, with a 30-second timeout per server.
+
+<Note>
+**Process boundary:** `/plugin test` executes bounded MCP and hook probes but does not make those components available to the current agent. Install or enable changes become active only after restarting Orcacode.
+</Note>
+
+## Add Orcacode lifecycle hooks
+
+Place the client-owned configuration at `io.github.okikorg.orcacode/hooks.json`. The document is closed and versioned: `{"version":1,"hooks":{...}}`. Supported event keys are `on_agent_start`, `before_model`, `after_model`, `before_tool`, `after_tool`, `on_error`, and `on_agent_end`. Streaming `model_delta` and native `around_tool` continuation hooks are intentionally unavailable to subprocess hooks.
+
+```text
+{
+  "version": 1,
+  "hooks": {
+    "before_tool": [{
+      "command": "python",
+      "args": ["${PLUGIN_ROOT}/scripts/check_tool.py"],
+      "env": {"AUDIT_LOG": "${PLUGIN_DATA}/audit.jsonl"},
+      "cwd": "${PLUGIN_ROOT}",
+      "timeout_ms": 2000
+    }]
+  }
+}
+```
+
+Each entry accepts `command`, optional string-array `args`, string-map `env`, `cwd`, and `timeout_ms` from 1 through 30000. The default is 5000 ms. Orcacode sends one JSON object containing `version`, `event`, `plugin`, and event-specific `payload` to stdin. Observation hooks return no stdout or `{}`. A `before_tool` hook may return `{"decision":"continue"}`, `{"decision":"deny","reason":"..."}`, or `{"decision":"rewrite","arguments":{...}}`. An `after_tool` hook may return replacement `output` and `is_error` fields.
+
+<Note>
+**Failure policy:** Invalid output, non-zero exit, timeout, or launch failure from deterministic hooks stops the current agent run; Orcacode never silently bypasses a declared policy hook. `on_error` and `on_agent_end` are best-effort terminal observers because the native lifecycle cannot propagate failures from them. Hooks apply to interactive, headless, and spawned subagent execution.
+</Note>
+
+## Treat every plugin as local executable code
+
+`plugin.json`, `mcp.json`, and hook configuration are visible package data. Never put passwords, API keys, bearer tokens, or private configuration in them. Orcacode clears the ambient environment for plugin children, preserves a small set of runtime essentials, and overlays declared environment values plus its reserved paths. This reduces accidental secret inheritance; it is not a sandbox. Children retain the operating-system permissions of the user running Orcacode, so review source and dependencies before enabling a plugin.
+
+<Note>
+**Stdio contract:** Reserve stdout for MCP or hook protocol output. Send diagnostics to stderr. Hook output is capped at 1 MiB and input at 2 MiB.
+</Note>
+
+Orcacode resolves `PLUGIN_DATA` beneath `$ORCA_CONFIG_DIR/plugin-data/<plugin-name>/` immediately before an enabled executable component starts. Use it for runtime environments, caches, artifacts, checkpoints, audit logs, and durable state. On Unix, Orcacode creates and re-enforces this directory at mode `0700`. On non-Unix systems, protection relies on the containing configuration-tree and user-profile ACL.
+
+Make tools and hooks bounded and idempotent where practical. Prefer small, stable JSON schemas. Large binary values belong in contained artifact files, with paths and metadata returned through MCP instead of embedding payloads in JSON.
+
+## Model reinforcement-learning runtimes with handles
+
+A stateful simulator or training runtime should expose separate tools such as `create`, `reset`, `step`, and `close`. `create` returns an opaque handle; later calls accept that handle instead of trying to serialize an environment, tensor store, worker, or native runtime object.
+
+| Tool | Recommended contract |
+| --- | --- |
+| `create` | Validate an explicit configuration schema, allocate bounded state, and return a handle plus concise metadata. |
+| `reset` | Accept a handle and optional seed; make repeated resets idempotent and deterministic where the runtime permits. |
+| `step` | Accept a handle and schema-validated action; return compact observation, reward, termination flags, and artifact paths for large tensors or checkpoints. |
+| `close` | Release workers, files, and native resources; make repeated or already-closed calls idempotent. |
+
+Check cancellation between expensive phases and before committing checkpoint state. Keep caches, checkpoints, replay buffers, and recoverable handle metadata under `PLUGIN_DATA`. Default to one MCP server per plugin so handles share one supervised process and one lifecycle; split servers only when genuine process isolation or incompatible runtimes require it.

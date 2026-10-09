@@ -1,0 +1,98 @@
+---
+title: "Tools available now"
+sidebarTitle: "Tools & extensions"
+description: "This is the current Orcacode capability set—not a generic harness API list. Availability depends on session mode, optional configuration, and whether you are in the interactive terminal or a headless run."
+---
+
+## Read this reference
+
+<Note>
+**Availability rules:** **Normal mode** exposes the registered set; state-changing tools ask for approval interactively. **Plan mode** uses a strict allowlist and denies every unknown or action-capable tool. **Orchestrate mode** adds delegation and native file editing tools: the parent may make basic edits, but delegates significant implementation and testing. **Auto mode** bypasses review for known-safe observations and guarded native workspace mutations, then model-reviews actions with remaining scope or safety risk. **Yolo mode** keeps the registered set but bypasses approvals. Optional tools appear only after their prerequisite is available.
+</Note>
+
+| Marker | Meaning |
+| --- | --- |
+| Always | Registered in both interactive and headless Orcacode runs. |
+| Interactive | Registered only in the terminal interface. |
+| Conditional | Appears only with a key, configured server, or enabled content. |
+| Gated | Requires approval in normal interactive mode. |
+| Plan-safe | Allowed by the plan-mode allowlist. |
+
+## Workspace files and search
+
+| Tool | Use | Availability | Plan mode |
+| --- | --- | --- | --- |
+| `read_file` | Read a UTF-8 file relative to the workspace. | Always | Plan-safe |
+| `grep` | Find literal text and matching lines below the workspace. | Always | Plan-safe |
+| `glob` | Find files using `*`, `?`, and `**` patterns. | Always | Plan-safe |
+| `write_file` | Create or replace a workspace file. | Always · gated | Only Markdown directly in `docs/plan/` |
+| `edit_file` | Replace one exact text fragment in a workspace file, or apply an ordered, transactional `edits` batch of exact replacements or appends across existing files. | Always · gated | Only flat `docs/plan/*.md` files; every path in a batch |
+
+All paths are workspace-relative; absolute paths and upward escapes are rejected. In plan mode, every target in a batch must qualify. The orchestrate parent can use `write_file` and `edit_file` for basic edits. Existing files need a prior read before `write_file` replaces them. Use `edit_file` for an exact replacement that fails safely when its old text is absent.
+
+## Execution and compute
+
+| Tool | Use | Availability | Plan mode |
+| --- | --- | --- | --- |
+| `shell` | Run one command; return stdout, stderr, and exit status. | Always · gated | Interactive only; every command asks for approval |
+| `process` | Start, inspect, write to, poll, or stop persistent/background processes. Spawn can wait for finite work or wake the interactive agent on exit or one literal output match. | Always · gated | Denied |
+| `pykernel` | Run persistent Python; values and imports survive between calls. | Always · gated | Denied |
+| `bun_repl` | TypeScript/JavaScript REPL implementation with persistent state, imports, and top-level `await`. Known issue: the current bun-repl package refuses piped stdin on recent Bun, so this tool is broken there. | Always · gated · Bun on `PATH` (not sufficient on affected versions) | Denied |
+| `subagent` | Spawn a fresh independent worker for one bounded task. | Always · gated | Denied · allowed in orchestrate mode |
+
+Completed foreground `subagent` calls return token usage, runtime, step and tool-call counts, and bounded model/tool timing samples and cumulative durations. Overlapping calls can make cumulative tool time exceed wall time; detached acknowledgements do not contain this telemetry.
+
+`process.spawn` accepts `waitForExit` for one-call finite work, `notifyOnExit` (default `true` for detached processes), and one-shot literal `notifyOnMatch` for readiness or important output. Interactive notifications resume the model without a polling tool call and remain hidden from the user transcript. Persistent compute tools intentionally retain state during the session; use them for analysis that benefits from one continuous runtime rather than repeated shell invocations.
+
+## Coordination, memory, and recovery
+
+| Tool | Use | Availability | Plan mode |
+| --- | --- | --- | --- |
+| `memory_search` | Search global and current-workspace memory, or list recent accessible records. | Always | Plan-safe |
+| `memory_manage` | Explicitly save, update, or forget a workspace or global memory. | Always · gated | Denied |
+| `ask` | Request one to three structured multiple-choice clarifications. | Interactive | Plan-safe |
+| `read_tool_result` | Page through original output captured before truncation. | Interactive | Plan-safe |
+
+Memory recall itself is automatic and read-only; `memory_search` is for explicit inspection or a different query. The dedicated [Memory guide](/orcacode/memory) covers scope, storage, retrieval, and mutations. `read_tool_result` remains available in the terminal UI even when output truncation is currently disabled, so previously trimmed output can still be recovered. Headless runs stream their events/results directly and do not register the interactive clarification or result-paging tools.
+
+## Web and remote capabilities
+
+| Tool | Use | Availability | Plan mode |
+| --- | --- | --- | --- |
+| `web_fetch` | Fetch a public HTTP/S URL and return text or converted HTML. | Always | Plan-safe |
+| `web_search` | Search the web through Firecrawl. | Conditional · `FIRECRAWL_API_KEY` | Plan-safe |
+| `skill` | Load one enabled skill’s `SKILL.md` or a contained resource. | Conditional · enabled skill exists | Plan-safe |
+| `mcp_search_tools` | Search metadata for tools on configured MCP servers. | Conditional · connected MCP server | Denied |
+| `mcp_select_tool` | Select one searched MCP tool; its full schema appears next turn. | Conditional · connected MCP server | Denied |
+| `mcp_features` | Read MCP resources, invoke prompts, and complete arguments. | Conditional · connected MCP server | Denied |
+| `mcp__<server>__<tool>` | Invoke one selected remote MCP tool. | Conditional · selected tool | Denied |
+
+Web fetch uses the strict URL policy. MCP servers are not a privileged bypass: once selected, their remote tools go through ordinary dispatch, approval, cancellation, and per-server concurrency controls.
+
+## Extensions running around the tools
+
+Extensions subscribe to lifecycle seams around the agent loop. They are not tools the model invokes directly; they shape execution, visibility, persistence, and safety.
+
+| Extension | Current CLI behavior | Default |
+| --- | --- | --- |
+| `EventStream` | Feeds typed model/tool lifecycle events into the terminal activity UI or headless NDJSON stream. | Always on |
+| `PlanGate` | Enforces the plan-mode allowlist and the `docs/plan/` write fence, plus the parent orchestrate-mode allowlist, before approval is considered. Workers inherit plan restrictions live but treat orchestrate as normal mode. | Always on |
+| `AutoApproval` | In auto mode, locally clears guarded native workspace mutations, then reviews remaining final tool input against the root request. | Active only in auto mode |
+| `Approval` / `HeadlessGate` | Requests interactive approval or blocks action-capable headless calls unless auto-approved; auto delegates unresolved calls to `AutoApproval`, while yolo bypasses review. | Always on when applicable |
+| `SessionHandler` | Records per-workspace JSONL sessions and restores them when requested. | On unless `--no-session` |
+| `LongSession` | Compacts near the active context limit so interactive sessions can continue. | On; toggleable |
+| `Truncation` | Caps tool output at 16,000 characters; the original is retained for result paging. | On; toggleable |
+| `ToolRetry` | Retries eligible failures up to three times with 250ms backoff; deterministic native file-mutation errors are excluded. | Off; toggleable |
+| `UsageMeter` | Accumulates model-reported token usage for the run. | Used by the host |
+
+```bash
+› /extensions
+› /extensions enable retry
+› /extensions disable truncation
+```
+
+Toggleable extension choices persist in configuration and apply after the agent is rebuilt for the next run. Event streaming, safety gates, and the active UI wiring are intentionally not toggleable because disabling them would break the host contract.
+
+## What this CLI does not register
+
+The workspace also includes an `fs_admin_tools` library bundle—`copy_file`, `rename_file`, `delete_file`, `create_folder`, and `file_info`—for restricted shell-less hosts. **Orcacode does not register this bundle today.** File information in the terminal agent comes from normal reading/searching, and filesystem administration remains available through the gated shell where appropriate.

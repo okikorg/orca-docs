@@ -1,0 +1,69 @@
+---
+title: "Proceed without repeated prompts"
+sidebarTitle: "Auto mode"
+description: "Auto mode lets known-safe tools and guarded workspace edits run immediately, then reviews actions that still carry meaningful scope or safety risk."
+---
+
+## Let scoped work proceed
+
+```bash
+$ orcacode --auto
+$ orcacode --auto --workspace /path/to/project -p "Run the focused tests and fix failures"
+
+› /mode auto
+› /mode normal
+```
+
+Auto is an explicit startup mode. It replaces ordinary approval prompts with automatic review of actions that still carry meaningful scope or safety risk. The status line remains marked `auto`, and the mode is not persisted after the session. Use it when you want the agent to complete a bounded request without stopping for every shell command, write, or edit.
+
+Normal mode is the startup default: gated tools ask for approval in the interactive CLI, but are denied in headless runs unless `--auto-approve` is supplied. Pass `--auto` to opt into automatic admission and review. Explicit startup precedence is plan, orchestrate, normal, auto, then yolo. Bare `--auto-approve` retains its legacy normal-headless behavior; explicit `--auto` still enables review.
+
+## How one tool call is decided
+
+| Stage | What happens |
+| --- | --- |
+| 1. Existing gates | Plan policy and plugin `before_tool` rewrites run through the existing extension pipeline. |
+| 2. Safe bypass | Known-safe observation, instruction, and coordination tools; ordinary guarded workspace mutations; conservative single-command local shell checks; MCP search/selection; and process list/poll proceed without a review call. |
+| 3. Review packet | The reviewer receives the root user request, origin, tool name, and final effective arguments. |
+| 4. Decision | `clear` runs those exact arguments; `caution` returns a model-visible hold reason and runs nothing. |
+| 5. Recovery | The agent may choose a materially safer action, but an unchanged held action remains held for the current root turn. |
+
+<Note>
+**Exact action, final input:** When review is required, Auto reviews the arguments after plugin rewrites and passes the same value to the tool when cleared. A decision never authorizes a later, broader, or modified call.
+</Note>
+
+The exact bypass set is `read_file`, `grep`, `glob`, `file_info`, `read_tool_result`, `memory_search`, `skill`, `ask`, `write_file`, `edit_file`, `mcp_search_tools`, `mcp_select_tool`, and `process` actions `list` or `poll`. It also includes plain single-command forms of `true`, `pwd`, `ls`, `grep`, `rg`, non-mutating `find` and `sed -n`, selected read-only `git` commands, and local Cargo build, check, test, Clippy, or format-check commands. Native mutations retain their workspace, read-before-overwrite, exact-match, and transactional guards. Whole-file patch deletion and web access remain reviewed.
+
+<Note>
+**Conservative shell fast path:** Shell admission accepts one allowlisted command with workspace-local arguments. Existing symlink operands are resolved against the canonical workspace root. Composition, redirection, expansion, absolute or parent paths, symlink-following or command-capable flags, externally configured ripgrep options, write modes, unknown executables, and extra input fields fall back to exact-action review. This removes a reviewer round trip from routine checks without turning shell into a blanket safe tool.
+</Note>
+
+## The root request is the authority
+
+The reviewer asks whether the exact action is a reasonable step toward the current root user request and acceptably scoped. Intermediate exploration, validation, builds, project scripts, and no-op checks do not need to produce the final artifact themselves. Tool arguments are treated as proposed data, not as instructions to the reviewer. Subagents share the root authority and cannot replace it with their delegated task.
+
+| Usually clear | Usually held for caution |
+| --- | --- |
+| A routine, plausibly related development step. | A clearly unrelated action or one with a meaningful safety concern. |
+| A precisely scoped destructive action explicitly requested by the user. | Broad or compound effects beyond the requested change. |
+| An external action whose target and effect are clearly authorized. | Credential access, privilege changes, deployment, publication, or external messaging without clear authority. |
+
+Auto is therefore not a blanket denylist for destructive tools. A narrow deletion explicitly requested by the user can be cleared while a delete combined with unrelated inspection can be held. Normal workspace containment and tool-level validation still apply after a clear decision.
+
+## Which model reviews actions
+
+Auto does not hard-code a separate safety model. It reuses the active session's configured base provider and model through the same model path used for subagents. Switching provider or model therefore also switches the Auto reviewer. The reviewer does not receive skill or memory prompt wrappers; it receives only its narrow permission prompt and the decision packet.
+
+<Note>
+**Model-judged, not deterministic policy:** `clear` versus `caution` is a model judgment. Choose plan mode for a strict read-only allowlist, normal mode for human confirmation, or yolo only when no approval review is wanted.
+</Note>
+
+## What happens when review fails
+
+A missing root request, reviewer error, 30-second timeout, malformed response, unknown decision, or unexplained caution fails closed. The tool does not run and Orcacode returns the failure to the agent. Auto accepts either a single `permission_decision` tool call or a final response containing valid JSON. Both require `decision` and `reason` fields: the decision must be `clear` or `caution`, with a non-empty reason for caution.
+
+## Observed smoke-test behavior
+
+A 2026-08-31 headless test used an isolated temporary workspace and the configured `openai-codex` provider with `gpt-5.4-mini`. Auto read an input file, cleared a requested write, wrote the exact eight-byte result `total=18`, and verified it without opening an approval prompt.
+
+A second test showed the scope boundary: a combined delete and status command was held, a later narrow deletion explicitly authorized by the root request was cleared, and a deletion requested only as a safety-gate test was held with the sacrificial file left intact. These observations demonstrate current model behavior; they are not a deterministic promise that every future model will classify equivalent wording identically.

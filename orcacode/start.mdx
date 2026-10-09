@@ -1,0 +1,172 @@
+---
+title: "A prompt, your workflow, your product"
+sidebarTitle: "Start here"
+description: "Three steps from an empty terminal to Orcacode working in your repo unattended. Every command on this page runs as written on orcacode 0.7.0."
+---
+
+## How it works
+
+Orcacode connects a model to a small set of workspace-aware tools: files, shell, background processes, skills, subagents and MCP servers. The model proposes calls; the host applies policy, approvals, limits and session recording. This page walks it in three steps, each ending with something done. Every command runs as written on orcacode 0.7.0.
+
+Orcacode is open source under the Apache License 2.0. The source, issues and releases are on [GitHub](https://github.com/okikorg/orca-harness).
+
+01
+
+### A prompt
+
+Install one binary, point it at a model, ask it about the repo you are standing in.
+
+```bash
+$ orcacode --plan
+› Explain how this repo is laid out.
+```
+
+02
+
+### Your workflow
+
+Standing instructions, skills, MCP servers and sessions you can resume, fork and rewind.
+
+```bash
+$ orcacode --continue
+› /skills
+› /mcp add fetch uvx mcp-server-fetch
+```
+
+03
+
+### Your product
+
+Headless runs for scripts and CI, hooks and plugins around the loop, or the kernel embedded in Rust.
+
+```bash
+$ orcacode --json -p "Summarize the failing tests"
+$ orcacode plugin init hooks --python
+```
+
+<Note>
+**The boundary:** **Orcacode is a terminal host, not a hosted control plane.** It runs in your workspace with the permissions of the process you started.
+</Note>
+
+## 1. A prompt
+
+### 01. Install
+
+macOS and Linux, one command. It verifies the checksum and writes a single executable to `~/.local/bin`; Windows, pinning a version and other install locations are on [Install & run](/orcacode/install).
+
+```bash
+$ curl -fsSL https://orcapods.ai/orcacode.sh | sh
+```
+
+### 02. Point it at a model
+
+Any one of these works. Flags and environment variables always win over saved settings.
+
+| Provider | Do this |
+| --- | --- |
+| OpenAI API | Set `OPENAI_API_KEY`. The endpoint defaults to api.openai.com when it is set. |
+| OpenRouter, any model | Set `OPENROUTER_API_KEY` and pass `--openrouter`; the default model is `openrouter/auto`. |
+| ChatGPT subscription | Run `orcacode`, type `/provider`, pick `openai-codex`. A device login opens; an existing Codex login is imported. No API key. |
+| Local, no key | With nothing set it talks to `http://localhost:11434/v1` (Ollama) and asks for `qwen3.5:9b`. Pass `--base-url` and `--model` for any other OpenAI-compatible server. |
+
+`/models` lists the endpoint's catalog and `/settings` saves provider, model and key to `~/.config/orcacode/config.json`. Details on [Providers & models](/orcacode/providers).
+
+### 03. Ask about the repo you are in
+
+Run it from the repository you want the tools rooted in. `--plan` makes the first session read-only, so it can explore and propose but not edit or run shell.
+
+```bash
+$ cd your-repo
+$ orcacode --plan
+› Read the README and explain how this project is structured.
+
+□ Thinking · 1.4s · 1 update
+□ Work · 1 tool
+  └ ✓ glob * · 15 matches · 1ms
+□ Thinking · 1.3s · 1 update
+□ Work · 1 tool
+  └ ✓ read_file README.md · read 41.6 kB
+□ Thinking · 4.4s · 1 update
+I have explored the project structure based on the README ...
+done · 8.7s · 2 tools · ↑6 ↓1.1k
+
+│ ask anything · @ add files · /help commands
+openai-codex:gpt-5.6-sol · low
+```
+
+Drop `--plan` and shell, write and edit calls ask first. At the prompt, `y` allows once, `a` for the rest of the session, `A` saves the grant for this workspace (revoke in `/settings`), `n` denies. `/mode` switches between plan, normal, auto and yolo live. [Approvals](/orcacode/approvals) and [Plan mode](/orcacode/plan-mode) cover the policy behind each.
+
+<Note>
+**Check before you act:** `--yolo` runs every gated tool without asking for the whole session. Start in plan or normal mode unless you intend unattended local actions.
+</Note>
+
+## 2. Your workflow
+
+The second session is where Orcacode stops being a demo. Give it the rules of the repo, the procedures it should follow, and the tools it should reach for. Each of these is one file or one command, and each has its own page.
+
+| You want | Do this | Read |
+| --- | --- | --- |
+| Standing rules for the repo | Write `AGENTS.md` at the workspace root (or `.orca/AGENTS.md` to keep it out of the repo). Read at startup, appended to the system prompt. | [Skills & instructions](/orcacode/skills) |
+| Pick up where you left off | `orcacode --continue`, or `/sessions` to choose one. `/fork` branches, `/rewind` drops the last turns, `/clear` starts fresh. | [Sessions & controls](/orcacode/sessions) |
+| A procedure the agent follows | `/skills create release` writes a starter `SKILL.md` into `.orca/skills`; `/skills add owner/repo --skill release` installs one. Mention `$release` in a prompt to load it. | [Skills & instructions](/orcacode/skills) |
+| External tools | `/mcp add fetch uvx mcp-server-fetch`. Schemas load only when a tool is selected, so a big catalog costs nothing until it is used. | [MCP servers](/orcacode/mcp) |
+| Parallel work | Ask for independent tasks in one prompt; they fan out to bounded subagents and fan back in. `/subagents` sets the depth. | [Subagents](/orcacode/subagents) |
+| Things it should remember | Say so. The model proposes a memory record, you approve it, and later requests recall it automatically. | [Memory](/orcacode/memory) |
+
+### 04. Plan on one provider, delegate to others
+
+The parent and its workers do not have to share a provider. One setup: sign in with ChatGPT for the parent, add an OpenRouter key for workers, give each worker tier a model, then start in orchestrate mode so the parent plans and delegates the heavy work.
+
+```bash
+$ orcacode
+› /provider              # pick openai-codex; a device login opens
+› /provider              # pick openrouter and paste its key, then switch back
+› /subagents             # give local, fast, mid and frontier a model each
+$ orcacode --orchestrate
+```
+
+Tier choices persist and apply to new workers; the parent's model never changes when you pick one. [Subagents](/orcacode/subagents) covers routing policy and budgets, and [Orchestrate mode](/orcacode/orchestrate-mode) what the parent may still do itself.
+
+## 3. Your product
+
+### 01. Run it unattended
+
+`-p` runs one prompt and exits. This is a real run in a two-file project, output as printed:
+
+```bash
+$ orcacode --bare --no-session -p "List the files here and say in one sentence what this project is."
+• glob *
+  2 matches
+• read_file README.md
+• read_file calc.py
+  read 34 bytes
+  read 32 bytes
+Files:
+- `README.md`
+- `calc.py`
+
+This project is a tiny Python calculator module (currently just an `add(a, b)` function) with a short README.
+tokens: 445 in, 139 out
+```
+
+Tool rows and token counts go to stderr and the answer to stdout, so `2>/dev/null` keeps only the answer. A model that streams its reasoning prints that to stderr as well.
+
+`--bare` strips instructions, skills, memory, MCP and subagents and limits the tools to `read_file,grep,glob`, which is what a CI check usually wants. `--json` emits one NDJSON event per line instead of the transcript: an opening `metadata`, streaming `assistant_delta` and `reasoning_delta`, `tool_call`, `tool_started`, `tool_finished`, `tool_result`, `assistant`, `usage`, `result` and a closing `summary` with status, steps and duration. `--auto-approve` lets shell, write and edit run without a prompt. [Headless runs](/orcacode/headless) has the scripting rules.
+
+### 02. Put your own code around the loop
+
+A plugin packages skills, an MCP server and lifecycle hooks in Python or TypeScript. Hooks see `before_tool`, `after_tool`, `before_model` and `after_model`, can deny or rewrite a call, and fail closed: a hook that errors stops the run.
+
+```bash
+$ orcacode plugin init hooks --python
+$ orcacode plugin validate ./hooks
+$ orcacode plugin test ./hooks
+$ orcacode plugin install ./hooks
+$ orcacode plugin enable hooks
+```
+
+Enablement applies on the next launch. The hook contract, the `PLUGIN_DATA` directory and the handle pattern for stateful runtimes are on [Plugins](/orcacode/plugins).
+
+### 03. Embed the kernel
+
+To run the loop inside your own program, `orca-harness-sdk` composes models, tools, sessions, memory, skills and MCP in Rust; four calls run a session. See [Rust SDK](/orcacode/sdk).

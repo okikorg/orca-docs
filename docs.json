@@ -20,7 +20,7 @@
   "logo": {
     "light": "/assets/logo-light.svg",
     "dark": "/assets/logo-dark.svg",
-    "href": "/introduction"
+    "href": "https://orcapods.ai"
   },
   "favicon": "/assets/favicon.svg",
   "navbar": {
@@ -37,7 +37,7 @@
     "primary": {
       "type": "button",
       "label": "Get Started",
-      "href": "/quickstart"
+      "href": "https://orcapods.ai"
     }
   },
   "search": {
@@ -155,6 +155,85 @@
                 "group": "Runnable recipes",
                 "pages": [
                   "examples"
+                ]
+              }
+            ]
+          },
+          {
+            "tab": "Orcacode",
+            "groups": [
+              {
+                "group": "Start here",
+                "pages": [
+                  "orcacode/start"
+                ]
+              },
+              {
+                "group": "Getting started",
+                "pages": [
+                  "orcacode/install"
+                ]
+              },
+              {
+                "group": "Work safely",
+                "pages": [
+                  "orcacode/approvals",
+                  "orcacode/plan-mode",
+                  "orcacode/orchestrate-mode",
+                  "orcacode/auto-mode"
+                ]
+              },
+              {
+                "group": "Configure",
+                "pages": [
+                  "orcacode/providers"
+                ]
+              },
+              {
+                "group": "Use the agent",
+                "pages": [
+                  "orcacode/tools",
+                  "orcacode/tool-reference",
+                  "orcacode/memory",
+                  "orcacode/sessions"
+                ]
+              },
+              {
+                "group": "Extend",
+                "pages": [
+                  "orcacode/subagents",
+                  "orcacode/mcp",
+                  "orcacode/plugins",
+                  "orcacode/skills"
+                ]
+              },
+              {
+                "group": "Embed",
+                "pages": [
+                  "orcacode/sdk",
+                  "orcacode/sdk-first-agent",
+                  "orcacode/sdk-host-assembly",
+                  "orcacode/sdk-background-lifecycle"
+                ]
+              },
+              {
+                "group": "Automate",
+                "pages": [
+                  "orcacode/headless"
+                ]
+              },
+              {
+                "group": "Under the hood",
+                "pages": [
+                  "orcacode/architecture",
+                  "orcacode/philosophy",
+                  "orcacode/benchmarks"
+                ]
+              },
+              {
+                "group": "Reference",
+                "pages": [
+                  "orcacode/troubleshooting"
                 ]
               }
             ]
