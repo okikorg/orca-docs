@@ -1,0 +1,30 @@
+name: docs
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  check:
+    name: docs check
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      # The docs are checked against the server's contract (versions and
+      # routes). The server repo is private: ORCA_SERVER_READ_TOKEN is a
+      # fine-grained token with read access to okikorg/orca-agent-server.
+      - uses: actions/checkout@v5
+        with:
+          repository: okikorg/orca-agent-server
+          token: ${{ secrets.ORCA_SERVER_READ_TOKEN }}
+          path: server
+          sparse-checkout: contract
+      - run: python3 scripts/check_docs.py
+        env:
+          ORCA_SERVER_DIR: server
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - run: npm ci
+      - run: npx mint broken-links
