@@ -26,10 +26,6 @@
   "navbar": {
     "links": [
       {
-        "label": "Dashboard",
-        "href": "https://app.orcapods.ai"
-      },
-      {
         "label": "OpenAI Agent API",
         "href": "https://developers.openai.com/api/docs/guides/agents-api/quickstart/"
       }
