@@ -1,0 +1,46 @@
+---
+title: "Choose a provider and model"
+sidebarTitle: "Providers & models"
+description: "Orcacode supports local OpenAI-compatible servers, OpenAI API, OpenRouter, Vercel AI Gateway, CheaperInference, Anthropic, and the OpenAI Codex provider for a ChatGPT subscription."
+---
+
+## Choose interactively
+
+Open `/provider` to switch among local OpenAI-compatible servers, OpenAI API, OpenRouter, Vercel AI Gateway, CheaperInference, Anthropic, and OpenAI Codex, then `/models [filter]` to browse that endpoint’s catalog. `/settings` brings provider, model, theme, and API-key settings together.
+
+```bash
+› /provider
+› /models coding
+› /settings
+```
+
+## Supported providers
+
+| Provider | Credential |
+| --- | --- |
+| `local` | None. Any OpenAI-compatible server; defaults to Ollama at `http://localhost:11434/v1`. |
+| `openai` | `OPENAI_API_KEY` |
+| `openai-codex` | ChatGPT subscription through device login. |
+| `anthropic` | `ANTHROPIC_API_KEY`. Uses the native Messages API. |
+| `openrouter` | `OPENROUTER_API_KEY` |
+| `vercel` | `AI_GATEWAY_API_KEY` (Vercel AI Gateway) |
+| `cheaperinference` | `CHEAPERINFERENCE_API_KEY` |
+
+## Configure from the shell
+
+| Setting | Flag / environment |
+| --- | --- |
+| Model | `--model NAME` / `ORCA_MODEL` |
+| Endpoint | `--base-url URL` / `ORCA_BASE_URL` |
+| API key | `--api-key KEY` / selected provider’s environment key: OpenAI `OPENAI_API_KEY`, OpenRouter `OPENROUTER_API_KEY`, Vercel `AI_GATEWAY_API_KEY`, CheaperInference `CHEAPERINFERENCE_API_KEY`, or Anthropic `ANTHROPIC_API_KEY` |
+| OpenRouter | `--openrouter` / `OPENROUTER_API_KEY` |
+| Anthropic | `--anthropic` / `ANTHROPIC_API_KEY` |
+| Web tools | `--firecrawl-key KEY` / `FIRECRAWL_API_KEY` |
+
+Flags and environment values take precedence over saved values. An explicit `--api-key` takes precedence over the selected provider’s environment key, which in turn takes precedence over its saved key.
+
+## Saved configuration
+
+Orcacode stores the provider, last model per provider, theme, API keys, extension settings, MCP servers, skills overrides, and workspace-scoped approvals in `config.json`. The default directory is `~/.config/orcacode` on Unix-like systems, `$XDG_CONFIG_HOME/orcacode` when set, or `%APPDATA%\orcacode` on Windows. Set `ORCA_CONFIG_DIR` to override the directory.
+
+For an OpenAI ChatGPT subscription, select `openai-codex` in `/provider`; Orcacode opens a device login flow and can import an existing official Codex login as a fallback.

@@ -1,0 +1,43 @@
+---
+title: "Investigate, then plan"
+sidebarTitle: "Plan mode"
+description: "Plan mode is a read-only stance for exploration and design. It does not try to guess whether a shell command is safe; it allows only a small, explicit set of research tools."
+---
+
+## Enter plan mode
+
+```bash
+$ orcacode --plan
+
+› /mode plan
+› /mode normal
+```
+
+Use bare `/mode` to choose between normal, plan, orchestrate, auto, and yolo modes. Normal is the startup default. If multiple explicit startup modes are present, the safer mode wins: plan, then orchestrate, then normal, then auto, then yolo.
+
+## What can run
+
+Plan mode allows file reading, search, file metadata, paged tool-result reading, web fetch and search, skill loading, memory search, and clarification questions. Interactive plan mode also allows `shell`, but every command asks for approval, even when `shell` is always allowed in normal mode; headless `--plan` and subagent workers keep it denied. It denies processes, Python, Bun, general writes and edits, subagents, and every MCP tool.
+
+<Note>
+**Why an allowlist:** New skills and MCP servers can add tools the host has never seen. In plan mode, unknown tools are denied rather than assumed harmless.
+</Note>
+
+## One writable destination
+
+Markdown plans directly inside `docs/plan/` are the only writes plan mode permits. The recommended name is `docs/plan/YYYY-MM-DD-feature-name.md`.
+
+```bash
+docs/plan/2026-08-26-session-export.md
+```
+
+The agent decides whether the work warrants a file and what to call it. A short question may receive only an answer. A multi-step change should leave a durable plan you can review before implementation. In the interactive TUI, plan writes and edits still pass through ordinary tool approval; an always-allow grant cannot bypass the plan-directory fence. In [headless runs](/orcacode/headless#automation-and-approvals), plan-file writes require `--auto-approve` because nobody is present to approve them; the plan-directory fence still applies.
+
+## Approve and implement
+
+After a successful interactive turn writes or revises a plan, the TUI asks whether to approve it and start implementing, once queued prompts have finished. This is a separate yes/no decision from approving the file write.
+
+- `y` switches to normal mode and starts an implementation turn referencing the saved plans. Normal tool approvals still apply.
+- `n` keeps plan mode on. The prompt is not repeated until a plan is written or revised.
+
+A turn that only investigates does not trigger this prompt. You can also leave manually with `/mode normal`; the host reports plans successfully written during the episode. Headless runs do not perform this interactive approval-to-implementation handoff.

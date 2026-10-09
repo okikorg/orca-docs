@@ -1,0 +1,33 @@
+---
+title: "Keep the thread. Branch safely."
+sidebarTitle: "Sessions & controls"
+description: "Sessions are recorded per workspace as append-only JSONL, so routine exploration remains resumable without asking you to manage transcript files by hand."
+---
+
+## Continue and branch
+
+Slash commands work in the interactive TUI; the `--` options are CLI flags and can also be used with a headless prompt.
+
+| Command | Effect |
+| --- | --- |
+| `--continue` | Resume the latest recorded session for this workspace. |
+| `--resume ID` | Resume a saved session across workspaces; a unique prefix works. |
+| `/sessions` | Browse and resume saved sessions for this workspace. |
+| `/fork` | Start a new session from this conversation; retain the old one. |
+| `/rewind [n]` | Drop the most recent user turns from the active conversation. |
+| `/clear` | Preserve the transcript, start fresh, and stop session-owned background work, including detached subagents and running processes. |
+| `--no-session` | Do not record this run. |
+
+## Where sessions live
+
+By default, session files live under `~/.config/orcacode/sessions/`, grouped by workspace. Resuming uses the session’s recorded context. `/clear` starts a fresh conversation with the system prompt already loaded by this run; restart Orcacode to load edited project instructions.
+
+## Useful controls
+
+`ctrl+o` expands a turn’s activity tree. `ctrl+y` / `/copy` copies the latest answer; use `/copy code` for its final fenced code block, `/copy all` for the whole transcript, or `/copy tool` for the inspected tool.
+
+## Scroll and copy text out
+
+The mouse wheel scrolls the transcript; `shift+↑`/`shift+↓` scroll by line and `pgup`/`pgdn` by page. To select with the mouse, hold `option` (macOS terminals) or `shift` (most others) while dragging. A terminal selection takes whole rows, so in split view it spans both panes; use `/copy tool` for one pane.
+
+`/copy` uses OSC 52, so it reaches the clipboard of the terminal in front of you, including over `ssh`. Under `tmux`, set `set -g set-clipboard on`. Copying while an answer is still streaming takes the partial text and says so.

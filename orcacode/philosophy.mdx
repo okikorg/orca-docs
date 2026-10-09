@@ -1,0 +1,35 @@
+---
+title: "Keep the loop small"
+sidebarTitle: "Design philosophy"
+description: "The project is built around one constraint: the execution path that can act on a machine should stay understandable, measurable, and difficult to accidentally widen."
+---
+
+## “The loop is sacred”
+
+The core loop is the privileged path: it turns model output into local actions. It stays focused on execution contracts and lifecycle correctness. Capabilities with their own policy, dependency, or product tradeoff live outside it as extensions or host wiring.
+
+<Note>
+**The practical result:** Adding MCP, web tools, retries, output truncation, event streaming, typed workflows, or a terminal UI does not require those concerns to become inseparable from the dispatcher’s hot path. Workflows use the session’s subagent runtime to execute dependency graphs rather than a separate execution kernel.
+</Note>
+
+## Parallel, deterministic work
+
+Independent tools should not wait for one another. But concurrency must not make a model’s next step ambiguous. Within a tool-call batch, the dispatcher runs work in parallel when allowed, then restores the model-visible result order and original call/result pairing.
+
+| Classification | Guarantee |
+| --- | --- |
+| `Parallel` | Runs alongside other eligible work; this is the default. |
+| `Serial` | Runs exclusively; no other tool executes at the same time. |
+| `Keyed(key)` | Calls classified with a shared key serialize in call order within a batch; unrelated keys can still run concurrently. |
+
+Within a batch, Orcacode file writes are keyed by the supplied path string: writes using the same path value stay ordered, while distinct keys can run concurrently. Use consistent path spelling for concurrent writes; this scheduling does not lock out other agents or external filesystem access.
+
+<Frame>
+  <img src="/orcacode/images/philosophy-1.png" alt="02 / CONCURRENCY CONTRACT Independent work overlaps. Calls that share a key serialize. The next model turn sees results in call order." />
+</Frame>
+
+## Policy and observability
+
+`ToolPolicy` can allow, deny, or apply a custom decision before execution. `EventStream` exposes typed lifecycle events suitable for a UI or NDJSON stream. Truncation, retries, and usage metering attach to the hooks they need rather than becoming hidden behavior inside every tool. Orchestration reports worker usage and bounded model/tool timing samples; cumulative tool time can exceed wall time when calls overlap.
+
+In Orcacode, host wiring and extensions build on these seams to provide approvals, plan-mode enforcement, activity rails, and recovery for large output. Hosts can extend the agent without forking the kernel.
