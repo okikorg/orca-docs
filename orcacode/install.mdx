@@ -1,0 +1,61 @@
+---
+title: "Start in your workspace"
+sidebarTitle: "Install & run"
+description: "Run Orcacode from the workspace where you want its file tools to operate. It defaults to a local OpenAI-compatible endpoint when no API key is set."
+---
+
+## Install Orcacode
+
+On macOS and Linux, one command installs the binary:
+
+```bash
+$ curl -fsSL https://orcapods.ai/orcacode.sh | sh
+```
+
+The installer detects your OS and architecture, downloads the matching release, verifies its SHA-256 checksum, and writes a single executable to `~/.local/bin`. There is no runtime to install alongside it. If that directory is not on your `PATH`, the installer tells you how to add it.
+
+On Windows, run the PowerShell installer:
+
+```bash
+> irm https://orcapods.ai/orcacode.ps1 | iex
+```
+
+Every build is also attached to the [GitHub releases page](https://github.com/okikorg/orca-harness/releases) with a `SHA256SUMS` file. `orcacode update` installs the latest release in place.
+
+| Environment variable | Use it when |
+| --- | --- |
+| `ORCACODE_VERSION` | You want to pin a release tag, for example `orcacode-v0.7.0`, instead of taking the latest. |
+| `ORCACODE_INSTALL_DIR` | You want the binary somewhere other than `~/.local/bin`. |
+
+To work on the harness itself rather than use it, build from a checkout with `cargo run --release -p orcacode`.
+
+## Your first prompt
+
+Run `orcacode` from the workspace you want its file tools rooted in, or pass `--workspace DIR` to point them elsewhere.
+
+```bash
+$ orcacode
+
+› Read the README and explain how this project is structured.
+› Now identify the smallest test command for the CLI.
+```
+
+Use `/help` to open the command list. Type `/` to filter it. Press `Esc` to interrupt a running turn; prompts sent during a run are queued in order.
+
+## Useful launch options
+
+| Option | Use it when |
+| --- | --- |
+| `--workspace DIR` | Tools should be rooted in another directory. |
+| `--model NAME` | You know the model identifier to use. |
+| `--base-url URL` | Your compatible endpoint is not the default. |
+| `--openrouter` | You want OpenRouter as the active endpoint. |
+| `--plan` | You want a read-first planning session. |
+| `--normal` | You want to state the default human-approval mode explicitly. |
+| `--auto` | You want guarded edits to proceed automatically and remaining risks reviewed. |
+| `--orchestrate` | You want the agent to delegate substantial work while permitting basic direct edits. |
+| `--continue` | You want the latest session for this workspace. |
+
+<Note>
+**Check before you act:** Normal mode is the default and asks before gated actions in the interactive terminal. `--auto` replaces those prompts with automatic admission and review; `--yolo` removes review entirely. Use plan mode when no state-changing action should run.
+</Note>

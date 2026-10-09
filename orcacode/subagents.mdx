@@ -1,0 +1,137 @@
+---
+title: "Delegate bounded work"
+sidebarTitle: "Subagents"
+description: "A subagent is an independent worker with its own context, loop, and tools. Use it for one clearly defined result—not as a second copy of the entire conversation."
+---
+
+## Choose a delegation-first session
+
+Workers are not exclusive to orchestration mode. Use `/mode orchestrate` when the parent should focus on investigation and coordination, make only basic native edits, and delegate substantial implementation and testing. See [Orchestrate mode](/orcacode/orchestrate-mode) for the enforced parent restrictions and approval behavior. The routing and budget settings below configure workers separately from session mode.
+
+## Delegate deliberately
+
+Give a subagent one bounded task, the expected result, and an explicit stopping condition. Good examples include: “inspect this module and return the smallest safe patch plan,” or “run the focused test and report whether the regression reproduces.”
+
+<Note>
+**Keep the boundary:** A worker does not see the parent conversation. Put the relevant paths, constraints, expected deliverable, and stopping condition in its task. Use parallel workers for independent questions; serialize work only when the later task depends on the earlier result.
+</Note>
+
+## One worker, one result
+
+<Frame>
+  <img src="/orcacode/images/subagents-1.png" alt="05 / SUBAGENT FLOW Calls in one batch fan out. Each worker runs a complete task and returns a compact final result to the parent." />
+</Frame>
+
+Every subagent call builds a fresh agent with a fresh context and tool set. It returns its final answer plus token usage, runtime, step count, tool-call count, resolved provider/model identity, and bounded model/tool timing samples. A worker’s background processes are scoped to that worker; cancellation of the parent run reaches its foreground descendants. Detached workers are session-owned: they keep running past the parent turn and stop when the session is cleared or the host shuts down.
+
+## Route work across providers
+
+In `/subagents`, select the local, fast, mid, or frontier model row, choose a provider, then search its catalog and select a model. Each tier saves one provider/model assignment. Every provider in `/provider` is selectable: local compatible endpoints, OpenAI, the OpenAI Codex subscription, Anthropic, OpenRouter, Vercel AI Gateway, and CheaperInference. Configure credentials first using `/provider`. The routing policy below controls which saved assignments the orchestrator may use.
+
+<Frame>
+  <img src="/orcacode/images/subagents-2.png" alt="06 / PROVIDER ROUTING Parent providers can differ from worker providers. Each tier uses your selected provider and model; choosing a worker never changes the parent model." />
+</Frame>
+
+| Worker model ID | Availability | When to use it |
+| --- | --- | --- |
+| Parent model | Always | Keep one provider/model policy for the whole task. |
+| `local/…` | Once selected | Run a local Ollama or compatible model; no cloud credential is required. |
+| `flash/…` | Selected provider credentials | Fast, lower-cost delegated work. |
+| `mid/…` | Selected provider credentials | Longer coding or project reasoning tasks. |
+| `frontier/…` | Selected provider credentials | High-confidence, long-horizon work. |
+
+There is no built-in worker shortlist. Unconfigured tiers show “not selected”; inheritance remains available. Selections persist across sessions and parent-provider changes and apply to new spawns. Finish running subagents before changing a tier assignment; changes attempted while workers are active leave the selection untouched. A model selected from the active provider retains its custom endpoint URL. Existing shortlist-based configurations need their tier models selected again. Provider failures are surfaced without silently substituting another model.
+
+## Choose and enforce a routing policy
+
+Open `/subagents` and choose the default route before delegating. The choice is applied immediately, saved for later sessions, shown to the orchestrating model in the `subagent` tool description, and enforced again when the tool call arrives. The model cannot bypass a fixed user choice by naming a different worker.
+
+<Note>
+**Route policy is not a model ID:** `inherit`, `auto`, and `preference` control what the orchestrator may choose. `local`, `flash`, `mid`, and `frontier` lock delegation to the preferred model saved for that tier. The fast tier retains the `flash` configuration key. Model IDs use `tier/provider/model`, such as `local/local/my-model` or `flash/…`.
+</Note>
+
+| Default route | Models exposed to the orchestrator | If `model` is omitted | What is rejected |
+| --- | --- | --- | --- |
+| `inherit` | None. The model field is hidden. | The worker uses the immediate parent agent’s provider and model. | Every explicit model request. |
+| `auto` | Every host-approved worker model currently available. | The worker inherits the immediate parent model. | Unknown or unavailable model IDs. |
+| `preference` | Only the saved preferred model from each available tier. | Rejected. The orchestrator must choose one exposed preferred model. | Omission, unknown models, and approved models that are not preferred. |
+| `local`, `flash`, `mid`, or `frontier` | Only the preferred model saved for that selected tier. | The worker uses that preferred model. | Every explicit model except the exact exposed preferred model. |
+
+Each tier starts with the first available model as its preference; use the corresponding model row in `/subagents` to change it. `preference` therefore means “let the orchestrator choose among my per-tier preferences,” while selecting a tier means “always use this tier’s one preferred model.”
+
+### Resolution examples
+
+| Selected route | Tool call | Result |
+| --- | --- | --- |
+| `inherit`; parent is `local/local/my-model` | No `model` | Runs `local/local/my-model`. |
+| `inherit` | `model: "flash/…"` | Rejected because the user locked inheritance. |
+| `auto` | No `model` | Inherits the immediate parent model. |
+| `auto` | Any listed approved model | Runs the selected model. |
+| `preference` | A listed preferred model | Runs that preferred model. |
+| `preference` | No model, or another approved model | Rejected before a worker is spawned. |
+| `local`; preference is `local/local/my-model` | No model, or that exact model | Runs `local/local/my-model`. |
+| `local` | Any different model | Rejected before a worker is spawned. |
+
+### Nesting uses the same policy
+
+The route and preferred-model settings are shared through the complete subagent tree, up to the host-configured depth limit (the CLI default is 1; the TUI offers preset choices). Under `inherit`, each child inherits its immediate parent: if `auto` first creates a flash worker and that worker later inherits, its child also uses that flash model. Under `preference`, every nested call must choose one of the same currently preferred models. A fixed tier remains fixed at every level.
+
+```bash
+Main agent: local/local/my-model
+└─ auto chooses flash/openai/my-fast-model
+   └─ nested call omits model
+      └─ grandchild inherits flash/openai/my-fast-model
+```
+
+Model availability is still host-owned. Only your saved tier assignments are exposed to the orchestrator; provider credentials use the existing authentication configuration. If a fixed tier disappears from the catalog, Orcacode clears that invalid fixed route. `auto` and `preference` remain selected and use the catalog and preferences currently available. If `preference` has no available preferred model, no subagent call can pass until a model becomes available or you choose another route.
+
+## Set the worker budget
+
+`--subagent-depth N` sets nesting depth from 1–5; `ORCA_SUBAGENT_DEPTH` provides the environment equivalent. In the UI, `/subagents` configures model route, preferred model per tier, depth, step budget, timeout, output cap, and retries.
+
+| Default | Worker governance |
+| --- | --- |
+| Depth | 1; maximum is 5. |
+| Steps | 24 focused model steps (adjustable from 1–96). |
+| Timeout | 5 minutes (adjustable from 30 seconds to 30 minutes). |
+| Output cap | 8,000 characters (adjustable from 1,000–64,000). |
+
+At the depth limit, workers simply do not receive the `subagent` tool, so recursion stops without a failed call. The terminal nests live worker activity under the parent tool call and collapses it to the final record when complete.
+
+## Run workers in the background
+
+Subagent calls default to `background: true`. The tool returns immediately with a `spawnId` and a `running` or `queued` status while the worker continues independently. Its result, usage, runtime, and resolved provider/model identity are delivered to the parent automatically when ready, so the parent can continue other work.
+
+```text
+{"task":"inspect the authentication flow","background":true}
+```
+
+Set `background: false` when the parent must wait for the answer in the same tool call. Use `action: "list"` to inspect active background workers, including their tasks, statuses, and identities. Use `action: "cancel"` with a `spawnId`, or `action: "cancel_all"`, only when a worker should stop.
+
+<Note>
+**Keep work moving:** Do not sleep and poll for completion. Continue independent work; background results are batched into the next parent model step or wake the parent after its turn.
+</Note>
+
+## Keep a sidekick for follow-ups
+
+An ordinary worker answers once and is gone. A sidekick is a worker that stays alive for the rest of the session and keeps its own conversation, so you can send it follow-up tasks without re-explaining what it already found. Its bulky tool output stays in its context; the parent receives only the compact report.
+
+| Command | Effect |
+| --- | --- |
+| `/sidekick <task>` | Start a sidekick on the default route. |
+| `/sidekick local\|fast\|mid\|frontier <task>` | Start one on the preferred model saved for that tier in `/subagents`. |
+| `/sidekick stop` | Pick a running or idle sidekick and stop it. |
+
+The model manages sidekicks through the same `subagent` tool. `persistent: true` creates one and returns its stable `spawnId`; `action: "task"` sends it the next task; `action: "stop"` releases it.
+
+```text
+{"task":"trace the failing fixture","persistent":true}
+{"action":"task","spawnId":19,"task":"check the other fixtures"}
+{"action":"stop","spawnId":19}
+```
+
+A sidekick runs one task at a time and rejects a new one while it is busy. Tasks run in the background by default and report through the normal completion path; set `background: false` to wait for the answer. Between tasks it shows as idle in the agent browser.
+
+<Note>
+**Lifetime:** Sidekicks survive model and provider switches and reloads. `action: "cancel_all"` leaves them alone. They stop on `/sidekick stop`, `/clear`, loading another session, and exit; nothing carries over to the next session. They use the configured worker tools and approvals and gain no permissions of their own.
+</Note>

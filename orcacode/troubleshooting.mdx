@@ -1,0 +1,28 @@
+---
+title: "Find the blocked layer"
+sidebarTitle: "Troubleshooting"
+description: "Most setup issues are resolved by identifying which layer is refusing the work: the provider connection, the workspace guard, or a deliberate safety policy."
+---
+
+## Common fixes
+
+| Symptom | What to check |
+| --- | --- |
+| Cannot reach a model | Confirm `--base-url`, model ID, and provider credential. Without a configured provider Orcacode can use a local model endpoint. |
+| Write is refused | Read the current file first, use `edit_file` for an exact replacement, and confirm the path is inside the workspace. |
+| Tool denied in plan mode | This is expected for shell, writes outside `docs/plan/`, subagents, persistent compute, processes, and MCP. Switch to normal mode after reviewing the plan. |
+| MCP server will not connect | Check its executable is on `PATH`, the whitespace-split command is valid, and its credentials are in the parent environment. |
+| Changed AGENTS.md is ignored | Start a new Orcacode process to load edits; `/clear` starts a fresh conversation but reuses the instructions loaded at startup. |
+| Need prior long tool output | Use `read_tool_result` with the supplied call ID and page offset. |
+
+## Useful diagnostics
+
+```bash
+$ orcacode --help
+$ orcacode --list-models --openrouter
+› /settings
+› /extensions
+› /usage
+```
+
+Use `/usage` for token totals, cache traffic, and context occupancy. Use `/extensions` to inspect output truncation and tool retry settings.

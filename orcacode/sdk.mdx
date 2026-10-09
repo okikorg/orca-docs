@@ -1,0 +1,55 @@
+---
+title: "Embed Orca Harness in Rust"
+sidebarTitle: "Rust SDK"
+description: "The orca-harness-sdk crate (not yet on crates.io) is a CLI-independent facade for composing models, tools, extensions, sessions, memory, skills, MCP, events, cancellation, and long-context recovery in your own Rust host."
+---
+
+## Choose the SDK when you own the host
+
+`orca-harness-sdk` is the high-level Rust facade for embedding Orca Harness in your own process. It composes models, workspace tools, sessions, memory, skills, MCP, subagents, workflows, events, retries, truncation, and cancellation without importing the `orcacode` terminal UI or its configuration layer.
+
+<Note>
+**Host responsibility:** The SDK executes with the permissions of your process. Your application owns credential loading, approvals, configuration, process isolation, shutdown, and the set of exposed tools. A `ToolPolicy` authorizes registered calls; it is not an operating-system sandbox.
+</Note>
+
+| Choose | When |
+| --- | --- |
+| `orca-harness-sdk` | You want a batteries-included Rust composition API with sessions and common extensions. |
+| `orca-harness-core` | You need direct control over the minimal model → tool loop and will assemble every lifecycle component yourself. |
+| `orcacode` | You want the ready-made interactive or headless terminal host rather than an embedded library. |
+
+## Follow a focused guide
+
+The SDK documentation is split by the host behavior you are building. Start with the first-agent guide, then add only the lifecycle components your application needs.
+
+| Guide | What it covers |
+| --- | --- |
+| [First agent →](/orcacode/sdk-first-agent) | Install the crate, configure a provider, add tools and policy, observe events, and choose ephemeral, persistent, or imported session context. |
+| [Host assembly →](/orcacode/sdk-host-assembly) | Compose memory, skills, MCP, processes, subagents, workflows, retries, truncation, and evidence-based verification. |
+| [Background lifecycle →](/orcacode/sdk-background-lifecycle) | Drain run events, distinguish detached work, process completions, continue a conversation, cancel safely, and shut down. |
+
+## Supported model adapters
+
+`Harness::agent` accepts any implementation of the re-exported `Model` trait. Credentials are host inputs: the SDK does not read Orcacode’s saved configuration or launch an interactive login flow.
+
+| Adapter | Construction |
+| --- | --- |
+| Anthropic | `AnthropicModel::new("model").api_key(key)` |
+| OpenAI or compatible | `OpenAiModel::new("model").api_key(key)`; add `.base_url(url)` for a compatible endpoint. |
+| OpenRouter | `OpenRouterModel::new("provider/model").api_key(key)` |
+| ChatGPT/Codex | `OpenAiCodexModel::new("model", credential_source)`; the host owns acquisition, persistence, and refresh. |
+| Custom or test model | Implement `Model`. Repository examples use scripted models for deterministic offline tests. |
+
+## Run the checked-in examples
+
+The repository examples are executable documentation. Most use scripted models and temporary workspaces; `live_host_assembly` intentionally makes real provider calls.
+
+```bash
+$ cargo run -p orca-harness-sdk --example custom_tool_events
+$ cargo run -p orca-harness-sdk --example session_lifecycle
+$ cargo run -p orca-harness-sdk --example host_assembly
+$ cargo run -p orca-harness-sdk --example background_cancellation
+$ cargo run -p orca-harness-sdk --example recovery_compaction_retry
+```
+
+See `crates/sdk/examples/agent_tour.rs` for a broad single-file tour and `crates/sdk/examples/live_host_assembly.rs` for a fully composed live host. Validate SDK targets with `cargo test -p orca-harness-sdk` and `cargo clippy -p orca-harness-sdk --all-targets -- -D warnings`.

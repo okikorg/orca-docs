@@ -1,0 +1,185 @@
+---
+title: "Build your first SDK agent"
+sidebarTitle: "First agent"
+description: "Configure a model, expose only the tools your host intends to authorize, observe a run, and choose the right session lifetime."
+---
+
+## Add the crate
+
+The SDK is currently a workspace crate. From a checkout of this repository, add it by path together with a Tokio runtime:
+
+```bash
+$ cargo add --path crates/sdk orca-harness-sdk
+$ cargo add tokio --features macros,rt-multi-thread
+```
+
+<Note>
+**Versioning:** The facade is at `0.7.0` and is not yet on crates.io. Depend on it by git tag, for example `orcacode-v0.7.0`, and expect the API to change before 1.0.
+</Note>
+
+## Build your first agent
+
+A `Harness` owns workspace-scoped paths. An `Agent` is reusable configuration. A `Session` owns conversation context, and each run adds one turn.
+
+```bash
+use orca_harness_sdk::{Harness, OpenAiModel, ToolPreset};
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let model = OpenAiModel::new("gpt-4o-mini")
+        .api_key(std::env::var("OPENAI_API_KEY")?);
+
+    let harness = Harness::builder()
+        .workspace(std::env::current_dir()?)
+        .build()?;
+
+    let agent = harness
+        .agent(model)
+        .name("embedded-assistant")
+        .system_prompt("Be concise. Inspect before changing files.")
+        .tools(ToolPreset::ReadOnly)
+        .build()?;
+
+    let session = agent.new_session().ephemeral().open()?;
+    let result = session.run("Summarize this workspace").await?;
+    println!("{}", result.text);
+    Ok(())
+}
+```
+
+The workspace must already exist and is canonicalized during `build()`. State defaults to `<workspace>/.orca`; use `.state_dir(...)` when generated state should live elsewhere.
+
+### One shot or multiple turns
+
+`agent.run(...)` creates a fresh ephemeral session for each call. Retain a session when later requests need earlier context:
+
+```bash
+let session = agent.new_session().open()?; // ephemeral by default
+session.run("My preferred language is Rust.").await?;
+let answer = session.run("Which language did I mention?").await?;
+```
+
+## Add tools behind a policy
+
+`FnTool` turns an async Rust closure into a model-callable JSON boundary. Validate arguments in the closure even when the schema marks them as required.
+
+```bash
+use orca_harness_sdk::{FnTool, ToolError, ToolPolicy};
+use serde_json::json;
+
+let lookup = FnTool::new(
+    "lookup_issue",
+    "Look up an issue by numeric id",
+    json!({
+        "type": "object",
+        "properties": { "id": { "type": "integer" } },
+        "required": ["id"],
+        "additionalProperties": false
+    }),
+    |args, _context| async move {
+        let id = args["id"]
+            .as_u64()
+            .filter(|id| *id > 0)
+            .ok_or_else(|| ToolError::msg("id must be a positive integer"))?;
+        Ok(json!({ "id": id, "status": "open" }))
+    },
+);
+
+let agent = harness
+    .agent(model)
+    .tool(lookup)
+    .policy(ToolPolicy::new().allow(["lookup_issue"]))
+    .build()?;
+```
+
+| Preset | Capabilities |
+| --- | --- |
+| `None` | No workspace tools; this is the default. |
+| `ReadOnly` | Read files, grep, and glob. |
+| `ShellLess` | Read and mutate files, but no shell or process execution. |
+| `Coding` | The complete coding toolset, including local command execution. |
+
+<Note>
+**Policy is not isolation:** `ToolPolicy` decides whether a registered call may execute. It does not constrain the process, filesystem, or network. An empty allowlist does not mean “deny all”; name the exact allowed tools or use a rule that denies by default.
+</Note>
+
+## Observe a run
+
+Enable event and usage extensions on the agent, then attach request-specific handling. Provider support determines whether token counts are populated.
+
+```bash
+use orca_harness_sdk::{HarnessEvent, RunRequest};
+use std::time::Duration;
+
+let request = RunRequest::new("Inspect the failing tests")
+    .deadline(Duration::from_secs(90))
+    .on_event(|event| {
+        if let HarnessEvent::ToolCall { tool_name, .. } = event {
+            eprintln!("calling {tool_name}");
+        }
+    });
+
+let result = session.run(request).await?;
+eprintln!("steps: {}", result.metered_steps);
+eprintln!("tokens: {:?}", result.usage);
+println!("{}", result.text);
+```
+
+### Continue, cancel, and inspect outcomes
+
+`continue_run` asks for another assistant turn on the current transcript without appending a user message; it requires an existing turn to continue. Pass a caller-owned token to cancel a run from elsewhere:
+
+```bash
+use orca_harness_sdk::{CancellationToken, RunRequest};
+
+let cancel = CancellationToken::new();
+let request = RunRequest::new("Investigate further")
+    .cancellation(cancel.clone()); // cancel.cancel() can stop this run
+let outcome = session.run_outcome(request).await?;
+if let Err(error) = &outcome.execution {
+    eprintln!("run stopped: {error}; steps: {}", outcome.metered_steps);
+}
+eprintln!("partial usage: {:?}", outcome.usage);
+// After a turn, to generate another assistant turn without a new prompt:
+let next = session.continue_run(RunRequest::continuation()).await?;
+```
+
+`run()` returns an error on execution or persistence failure, discarding partial accounting. `run_outcome()` retains the transcript and usage even on failure or cancellation; check `execution` and `persistence` separately. It still returns an error if the run cannot start.
+
+## Persist and branch conversations
+
+Ephemeral sessions retain history only while the value is alive. Persistent sessions record transcripts beneath the harness state directory and can be listed, resumed, and forked.
+
+```bash
+let session = agent.new_session().persistent().open()?;
+let id = session.id().expect("persistent session id");
+session.run("Review the current design").await?;
+
+for saved in harness.sessions().list() {
+    println!("{} {}", saved.meta.id, saved.path.display());
+}
+
+let resumed = agent.resume_session(&id)?;
+let branch = resumed.fork().await?;
+```
+
+### Import existing context
+
+Seed a new session from messages you already have; a persistent session writes the imported history on open:
+
+```bash
+let messages = previous_session.messages().await;
+let imported = agent.new_session().persistent().context(messages).open()?;
+```
+
+The agent's system prompt replaces a leading imported system message, or is prepended if none exists. Without an agent system prompt, a leading imported system message remains. `open()` rejects malformed history, including unmatched tool-call exchanges.
+
+| Operation | Effect |
+| --- | --- |
+| `messages()` | Clone the in-memory conversation. |
+| `fork()` | Create a persistent child with inherited context and a new ID. |
+| `clear()` | Reset context and rotate a persistent session to a new ID. |
+| `reset_in_place()` | Reset while retaining the persistent session ID. |
+| `load_warnings()` | Return non-fatal warnings encountered during restore. |
+
+Persistence restores conversation and truncation-recovery data, not live processes, REPLs, detached workers, workflows, notifications, or pending completions.

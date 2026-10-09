@@ -1,0 +1,195 @@
+---
+title: "Measure useful work"
+sidebarTitle: "Performance & benchmarks"
+description: "The benchmark tree separates harness overhead, host startup, deterministic MCP retrieval, fake-subagent stress, and cross-product comparison. Kernel and startup are regression-gated; the other suites are evidence with explicit limits."
+---
+
+## Benchmark suite map
+
+| Suite | Question answered | Status |
+| --- | --- | --- |
+| `kernel` | How much time does the harness add between model-emitted calls and tool execution? | Regression-gated |
+| `startup` | What fixed cost does the Orcacode host pay before it can accept input? | Regression-gated |
+| `core-tools` | How fast and accurately do real-file `edit_file` mutations run, single and batched? | Regression-gated (p50) |
+| `mcp` | Does metadata search retrieve the labeled remote tool without flooding context? | Deterministic evaluation (CI tests) |
+| `workflow` | How do fake-model workflow graphs scale and dispatch, and do they report correctness defects? | Defects fail the run; latency and scale informational |
+| `subagent` | How do fake-model workers behave under large in-flight fan-out? | Informational stress test |
+| `memory` | What overhead do scoped FTS retrieval, context hydration, and forget add over direct SQLite? | Informational Criterion benchmark |
+| `compare` | What work do Orcacode and `fx` perform in measured command tiers? | Informational CLI comparison |
+| `harness-comparison` | How do live-model task outcomes, cost, and timing compare across headless harnesses? | Informational live comparison |
+
+```bash
+$ ./benchmarks/kernel/run.sh
+$ ./benchmarks/startup/run.sh
+$ ./benchmarks/core-tools/run.sh
+$ ./benchmarks/workflow/run.sh --quick
+$ python3 benchmarks/mcp/accuracy.py
+$ ./benchmarks/subagent/run.sh --quick
+$ cargo bench -p orca-harness-extensions --bench memory
+$ FX_BIN=/path/to/fx ./benchmarks/compare/run.sh
+$ python3 benchmarks/harness-comparison/run.py --dry-run
+```
+
+Suites have different prerequisites: startup and the `fx` comparison need Hyperfine; the latter also needs an executable `fx`. A live harness comparison needs external CLIs and OpenRouter credentials; review its dry run before running. See the repository’s `benchmarks/README.md` and `benchmarks/harness-comparison/README.md` for setup and methodology. Generated summaries under `benchmarks/results/` are not uniformly checked in; the figures below are historical local observations, not universal promises.
+
+## Kernel dispatch methodology
+
+`fanout_probe` runs deterministic no-op calls at batch sizes 1, 10, and 100. It records `T0` at dispatch entry, `T1` when the first tool body begins, and `T2` when the last tool body begins.
+
+| Metric | Definition | What it isolates |
+| --- | --- | --- |
+| Dispatch | `T1 − T0` | Time until useful work first starts. |
+| Fan-out | `T2 − T0` | Time until every call in the batch has started. |
+| Round-trip | Dispatch through all no-op results | Scheduling, joining, and ordered result assembly. |
+
+The standard profile uses 2,000 iterations. `--ci` uses 5,000 so p99 remains a percentile on a noisy shared runner. `--quick` reduces iteration count and skips real-tool probes. `--criterion` additionally runs workspace Criterion benches and folds their estimates into the summary.
+
+```bash
+$ ./benchmarks/kernel/run.sh --quick
+$ ./benchmarks/kernel/run.sh --ci
+$ ./benchmarks/kernel/run.sh --criterion
+```
+
+## Historical kernel observations
+
+| Batch and metric | p50 | p99 | Linux gate |
+| --- | --- | --- | --- |
+| 1 call · dispatch | 1.0 µs | 4.0 µs | 20 µs |
+| 1 call · round-trip | 1.9 µs | 7.1 µs | 25 µs |
+| 10 calls · dispatch | 5.1 µs | 13.0 µs | 50 µs |
+| 10 calls · fan-out | 19.3 µs | 39.8 µs | 150 µs |
+| 10 calls · round-trip | 25.8 µs | 51.2 µs | 200 µs |
+| 100 calls · dispatch | 19.5 µs | 35.7 µs | 200 µs |
+| 100 calls · fan-out | 187.4 µs | 295.1 µs | 1.00 ms |
+| 100 calls · round-trip | 203.6 µs | 317.0 µs | 1.50 ms |
+
+These previously reported local values are not backed by a checked-in kernel summary in this checkout; rerun the suite for current host-specific results. Real `write_file`, `read_file`, and `shell` probes run through the same dispatcher, but remain informational because filesystem and process-spawn performance belong substantially to the host.
+
+## Cold-start fixtures
+
+The startup runner uses Hyperfine against a generated private `HOME`, config directory, workspaces, sessions, and skills. It unsets provider keys and `XDG_CONFIG_HOME`, preventing a developer’s machine configuration from changing the path under test.
+
+| Command | Path exercised |
+| --- | --- |
+| Process baseline | `/usr/bin/true`; launch floor for the host. |
+| `orcacode --help` | Image load, linking, runtime construction, argument parsing, and usage output. |
+| Startup | Config, six skill roots, prompt, registries, and agent construction. |
+| New session | Startup plus creation and header write for a fresh session. |
+| Startup with skills | Startup against a workspace containing 64 skills. |
+| Resume | List 32 sessions and replay a 2,000-message transcript. |
+
+<Note>
+**The benchmark hook:** `ORCA_BENCH=1` exits after `run_mode` builds the agent and immediately before the TUI claims the terminal. It awaits MCP initialization, performs no model call, and requires no TTY. `ORCA_BENCH=ui` measures the shorter pre-terminal construction path without launching background MCP connections; it excludes rendering and is not a full-integration-readiness measurement.
+</Note>
+
+## Historical startup observations
+
+| Command | Mean | Median | Linux gate |
+| --- | --- | --- | --- |
+| Process baseline | 1.11 ms | 1.05 ms | Informational |
+| `orcacode --help` | 2.83 ms | 2.79 ms | 10 ms |
+| Startup | 3.27 ms | 3.26 ms | &lt;3.27 ms |
+| New session | 3.28 ms | 3.26 ms | &lt;3.27 ms |
+| Startup with 64 skills | 5.33 ms | 5.31 ms | 16 ms |
+| Resume 2,000 messages | 6.60 ms | 6.66 ms | 20 ms |
+
+These are historical observations, not a fresh validation of the checkout against current gates; the displayed startup and new-session means do not demonstrate a pass under the strict ceiling. The resume fixture ends on complete user/assistant/tool triplets and is never rewritten. The session-creation case receives a separate workspace whose session directory is reset before each run. Those details prevent fixture repair or accumulated files from contaminating the measurement.
+
+## Memory retrieval and mutation overhead
+
+The Criterion fixture creates 50,000 records: 5,000 global and 45,000 in one workspace. Exact and broad queries compare direct scoped FTS5 SQL with `MemoryStore::search` and complete `MemoryExtension::prepare_context` hydration. The mutation pair compares raw scoped delete with `memory_manage/forget_no_approval`.
+
+<Note>
+**Measurement boundary:** The benchmark calls the memory tool directly. It excludes terminal rendering, provider latency, and time spent waiting for a user to approve `memory_manage`. No memory latency result is checked in, so local Criterion output is evidence for that machine and build only.
+</Note>
+
+```bash
+$ cargo bench -p orca-harness-extensions --bench memory
+```
+
+## MCP metadata-search accuracy
+
+The deterministic MCP corpus contains sanitized metadata for 18 tools and 38 labeled query-target cases from enabled AWS Docs and read-only GitHub servers. It contains no credentials, server commands, or full input schemas. The benchmark mirrors production tokenization, field weights, exact-name bonuses, singular/plural fallback, tie-breaking, and stable catalog order.
+
+| Query quality | Cases | Recall | Top-1 | MRR | Average results |
+| --- | --- | --- | --- | --- | --- |
+| Deliberate | 18 | 100% | 100% | 1.000 | 1.06 |
+| Short | 16 | 100% | 93.8% | 0.969 | 2.31 |
+| Underspecified | 4 | 100% | 0% | 0.375 | 5.00 |
+| Overall | 38 | 100% | 86.8% | 0.921 | 2.00 |
+
+Required target ranks are 33 at rank 1, two at rank 2, and three at rank 3; none are unmatched. The measured Pareto knee is a limit of 3: it reaches 100% target coverage at 1.71 returned results per query. Larger limits add no coverage in this fixture.
+
+```bash
+$ python3 benchmarks/mcp/pareto.py
+$ python3 benchmarks/mcp/distribution.py
+$ python3 benchmarks/mcp/accuracy.py
+$ python3 -m unittest discover -s benchmarks/mcp -p '*_test.py' -v
+```
+
+This corpus is a regression fixture, not a universal MCP workload. Underspecified queries are intentionally ambiguous; their weak top-1 score should not be presented as retrieval failure when the labeled target remains in the returned set.
+
+## Fake-subagent concurrency stress
+
+This suite drives the real `SubagentTool::call` and inner `Agent` path with a fake model that returns one answer after a Tokio timer. It isolates allocation, scheduling, model-boundary, and completion behavior without provider latency, API cost, network failure, or rate limits.
+
+| Recorded observation | Historical observation |
+| --- | --- |
+| Completed fake calls | 1,444,844 |
+| Observed failures | 0 |
+| Two-sided 95% Wilson upper bound | 2.66 × 10<sup>−6</sup> |
+| Largest fully observed active fan-out | 131,072 workers |
+| Median throughput at 131,072 | 169,495.865 calls/sec across 3 runs |
+| Median batch p50 / p95 / p99 | 501.604 / 504.410 / 507.013 ms |
+
+The initial local reference run used macOS arm64 with 16 logical CPUs and 64 GiB RAM; its raw files are generated and git-ignored, not included in this checkout. Per-call latency starts at each spawned task’s first poll, excluding admission wait. `peak_active` counts futures simultaneously inside the delayed fake-model body, not CPUs executing simultaneously. A process killed by OOM cannot emit a CSV failure row.
+
+```bash
+$ ./benchmarks/subagent/run.sh --quick
+$ ./benchmarks/subagent/run.sh --standard   # through 65,536 submissions
+$ ./benchmarks/subagent/run.sh --boundary   # may exceed 5 GiB
+```
+
+<Note>
+**Not a capacity claim:** 131,072 is the largest level completed and directly observed in that machine-specific run—not a hard limit. The boundary suite is intentionally excluded from CI and performance budgets.
+</Note>
+
+## Comparing Orcacode with fx
+
+The comparison subtracts a same-session `/usr/bin/true` process floor, then groups commands by work performed. It does not falsely pair benchmark environment variables that stop at different boundaries.
+
+| Tier | Command | Work above 1.27 ms floor |
+| --- | --- | --- |
+| Argv parsed, no config read | `fx` arg parse | 0.85 ms |
+|   | `orcacode --help` | 1.37 ms |
+| Settings/filesystem then exit | `fx status --json` | 54.86 ms |
+|   | `fx doctor --json` | 56.87 ms |
+|   | Orcacode startup | 2.04 ms |
+
+<Note>
+**Do not turn this into a false race:** `FX_BENCH=1` parses argv and exits without reading settings. `ORCA_BENCH=1` performs Orcacode’s complete cold-start construction. Conversely, `fx status` and `doctor` probe auth and the system, work Orcacode’s startup does not perform. Quote platform, build modes, command boundaries, and the process floor with any comparison.
+</Note>
+
+This `fx` comparison measures CLI commands, not live model-driven task performance. The separate `benchmarks/harness-comparison/` suite compares Orcacode, Pi, Oh My Pi, and Claude Code using OpenRouter-routed model calls. Its results depend on model routing, installed CLIs, and credentials; see its README and the historical report under `benchmarks/results/` before quoting results.
+
+## Budgets, CI, and result integrity
+
+`benchmarks/shared/check_budgets.py` gates startup means, selected kernel p99 values, and core-tools p50 latencies. These numerical budgets are enforced on Linux, where CI runs; other platforms report informationally unless `ORCA_BENCH_ENFORCE=1` is set. CI also runs MCP metric reports with deterministic assertions in the suite’s tests. Workflow defect counts fail its analyzer when that suite is run; its latency and scale are informational.
+
+```bash
+$ python3 benchmarks/shared/check_budgets.py --suite kernel
+$ python3 benchmarks/shared/check_budgets.py --suite startup
+$ python3 benchmarks/shared/check_budgets.py --suite core-tools
+$ ORCA_BENCH_ENFORCE=1 ./benchmarks/kernel/run.sh
+```
+
+Basic and new-session startup means must be strictly below **3.27 ms**; equality fails. This is the `ORCA_BENCH=1` pre-terminal path in an isolated fixture with no external MCP servers, not time to first rendered screen. Hyperfine uses warmups, and no process-floor subtraction is applied. These tight ceilings can be sensitive to shared-runner load; other scenarios retain looser regression ceilings. Separately, `ci/check-binary-size.sh` requires the uncompressed release binary to be strictly below **6,700,000 bytes** (6.7 decimal MB).
+
+| Artifact | Purpose |
+| --- | --- |
+| `results/kernel/summary.json` | Dispatch, fan-out, and round-trip percentiles; optional real-tool and Criterion entries. |
+| `results/startup/*.json` | Raw Hyperfine distributions plus summarized commands. |
+| `benchmarks/mcp/*.py` | MCP reports are deterministic command output backed by one versioned corpus and unit tests. |
+| `crates/extensions/benches/memory.rs` | Criterion comparison of direct SQLite, scoped store retrieval, context hydration, and no-approval forget over 50,000 records. |
+| `results/subagent/*.csv` | Per-batch fan-out, wall time, throughput, percentiles, failures, and peak active count. |
+| `results/subagent/metadata.json` | Git revision, toolchain, OS, architecture, CPU count, memory, and percentile convention. |

@@ -1,0 +1,51 @@
+---
+title: "Investigate, delegate, synthesize"
+sidebarTitle: "Orchestrate mode"
+description: "Orchestration mode keeps the parent focused on coordination, permits basic native edits, and delegates substantial implementation and testing to workers."
+---
+
+## Activate orchestration mode
+
+The CLI calls this mode **orchestrate**. Start with `--orchestrate`, enter `/mode orchestrate` during an interactive session, or select it from the bare `/mode` picker. Use `/mode normal` to leave. The mode is session-local, not a persisted configuration setting; without an explicit mode flag, startup uses normal mode.
+
+```bash
+orcacode --orchestrate
+
+# Headless: permit gated delegation and edits explicitly
+orcacode --orchestrate --auto-approve -p "Delegate focused tests and summarize the results"
+```
+
+Configure worker model routing and budgets separately with `/subagents`; see [Subagents](/orcacode/subagents) for saved routes, preferred models, depth, and execution limits. The worker route named `auto` is not `/mode auto` and does not change session approvals. Orchestrate mode does not select a special worker model. A worker model on the same provider retains the parent's configured reasoning effort and output-token cap, except that OpenAI Codex does not accept the cap; cross-provider routes inherit neither setting.
+
+## What the parent can do
+
+The parent receives a request-local instruction to investigate, break substantial work into bounded tasks, delegate, and synthesize results. Small/basic native edits are permitted, including source files. Significant implementation and testing should go to workers.
+
+<Note>
+**Guidance vs enforcement:** “Basic” is behavioral guidance, not an enforced line-count or edit-size limit. The hard boundary is the tool allowlist below. Unlike plan mode, orchestrate does not restrict native edits to `docs/plan/`. Normal tool validation and approval still apply.
+</Note>
+
+| Parent capability | Mode gate |
+| --- | --- |
+| Investigation and session helpers | Allows `read_file`, `grep`, `glob`, `file_info`, `read_tool_result`, `memory_search`, `web_fetch`, `web_search`, `skill`, and `ask`. |
+| Native edits | Allows `write_file` and `edit_file`. |
+| Delegation | Allows `subagent` and `workflow`. |
+| Everything else | Denies `shell`, `process`, `pykernel`, `bun_repl`, MCP calls, `memory_manage`, and other non-allowlisted or unknown tools. |
+
+Allowed means the mode gate permits the call, not that the tool is installed or approval-free. The interactive host registers `workflow`; the headless host does not. For headless delegation, keep `subagent` enabled: `--bare` omits it, and a `--tools` filter must include it.
+
+## Delegate execution, not the whole conversation
+
+Give each worker a bounded, self-contained task with relevant paths, constraints, and the exact result expected. For example: “Run the focused authentication tests; report the commands, failures, and relevant file locations. Do not edit files.” The parent can inspect files and reconcile the returned findings. A denied parent `shell` call is not automatically rerouted: the denial tells the model to delegate through `subagent` rather than retry the call itself.
+
+Workers use their own registered tool set, not the parent's orchestrate allowlist. They can execute commands and make edits when their tools and existing policies permit. This does not copy every optional parent tool into a worker or guarantee that a worker has an MCP tool. Ordinary worker calls do not acquire interactive human-approval prompts just because orchestrate is active. Approve the parent delegation with that scope in mind.
+
+Completed worker results include reasoning/cache token usage and model/tool timing. Tool durations are cumulative, so parallel calls can total more than wall-clock time. See [Subagents](/orcacode/subagents) for worker context, routing, results, and interactive background delivery.
+
+## Approvals and other session modes
+
+- **Parent approvals remain.** The mode gate runs before approval, so a saved grant cannot unblock a denied tool. In headless runs, `--orchestrate` alone does not authorize gated `subagent` calls or edits; use `--auto-approve` to permit them. That flag does not remove the parent allowlist.
+- **Modes are alternatives, not stacked capabilities.** Multiple explicit startup flags resolve in this order: plan, orchestrate, normal, auto, yolo. Thus adding `--auto` or `--yolo` to `--orchestrate` does not bypass its restrictions or approvals; adding `--plan` selects plan.
+- **Interactive changes are live.** The gate reads mode on each tool call. Workers treat orchestrate as normal; other modes propagate through their shared mode handle. Switching to plan restricts the next calls of already-running workers too, rather than retroactively undoing work. The parent's orchestration instruction is present only on model requests made while orchestrate is active; workers do not receive that instruction.
+
+Related guides: [Approvals](/orcacode/approvals), [Plan mode](/orcacode/plan-mode), [Auto mode](/orcacode/auto-mode), and [Headless runs](/orcacode/headless).

@@ -1,0 +1,73 @@
+---
+title: "Remember deliberately"
+sidebarTitle: "Memory"
+description: "Orcacode keeps deliberate user-owned memory in one local SQLite database, recalls matching global and workspace records automatically, and asks before changing them."
+---
+
+## Deliberate storage, automatic recall
+
+Memory is durable context that you ask Orcacode to keep or that the model identifies as stable and useful beyond the current session. It is not the session transcript, a project instruction file, or an automatic summary of everything you say. Orcacode does not run a background extraction process.
+
+<Note>
+**The write rule:** The system prompt instructs the model to call `memory_manage` when you explicitly ask or when directly stated user information is stable and likely to help in future sessions. It must skip ordinary conversation, one-off task details, current progress, duplicates, secrets, and unverified inferences. Repository-specific information uses workspace scope; clearly universal information may use global scope. In interactive normal mode, you decide on a proposed mutation when an approval prompt is shown; earlier session or workspace grants can allow later calls without another prompt.
+</Note>
+
+Recall is automatic. Before each model request, Orcacode searches for records related to the latest user message. Matching records are added to a temporary request context as user-owned reference material, never as system policy or permission to act. The durable conversation itself is not modified.
+
+## How one turn retrieves memory
+
+<Frame>
+  <img src="/orcacode/images/memory-1.png" alt="MEMORY RECALL Scope filtering happens inside the SQL query before records reach the model. Recall changes only the current provider request, not the stored transcript." />
+</Frame>
+
+The search query is derived from at most 12 distinct terms in the latest user message. Common short words are ignored when better terms exist. SQLite FTS5 ranks matches, updated records break ties, and retrieval is capped at eight records and 4,096 characters of injected context.
+
+## Choose the scope on every save
+
+| `is_global` | Visibility | Use it for |
+| --- | --- | --- |
+| `false` | Only sessions opened from the same canonical workspace. | Repository commands, architecture decisions, local conventions, and workspace-specific preferences. |
+| `true` | Every workspace using this Orcacode configuration directory. | Stable personal preferences or workflows that genuinely apply everywhere. |
+
+Orcacode derives the workspace identity from the canonical workspace root and supplies it to the memory tools. A model cannot choose an arbitrary workspace ID. Workspace records are filtered by that identity; global records have no workspace ID but retain their originating workspace root as metadata.
+
+<Note>
+**Global means cross-workspace:** A global record can be recalled, updated, or forgotten from any workspace that uses the same local database. Prefer workspace scope unless the information is intentionally universal.
+</Note>
+
+## Inspect and manage records
+
+| Tool | Behavior | Safety |
+| --- | --- | --- |
+| `memory_search` | Search accessible records, or omit `query` to list recent records. Returns 1-20 items; the default is 8. | Read-only and allowed in plan mode. |
+| `memory_manage` | Save, update, or forget one record. Saves require `is_global`; updates and deletes require an opaque ID. | Gated in normal mode and denied in plan mode. |
+
+```bash
+> Remember for this workspace that release checks use cargo test --workspace.
+> Remember globally that I prefer concise status updates.
+> Show my recent memories.
+> Forget the release-check memory.
+```
+
+In interactive normal mode, `memory_manage` prompts before changing SQLite unless already allowed for the session or workspace. You can allow a call once or grant ongoing permission for the session or workspace. In headless normal mode, the call is denied unless `--auto-approve` is set. Plan mode denies it; Auto mode sends it through automatic review, while Yolo bypasses approval. After a mutation, the model is instructed to report what changed and whether it is workspace or global.
+
+The elapsed time shown for an interactive mutation can include the time spent waiting for approval. The memory Criterion suite measures raw SQLite forget and `memory_manage/forget_no_approval` separately so database and tool overhead are not confused with human response time.
+
+Each record has one of four kinds: `preference`, `fact`, `workflow`, or `decision`. Public identifiers use the form `mem_` followed by 32 lowercase hexadecimal characters. The random 128-bit ID is the only identifier accepted by update and forget; SQLite row numbers remain private.
+
+## One local database
+
+| Setting | Value |
+| --- | --- |
+| Unix default | `~/.config/orcacode/memory.sqlite3`, or `$XDG_CONFIG_HOME/orcacode/memory.sqlite3` when set. |
+| Windows default | `%APPDATA%\orcacode\memory.sqlite3` |
+| Override | `$ORCA_CONFIG_DIR/memory.sqlite3` on every platform. |
+| Engine | Embedded SQLite with FTS5 and WAL journaling. |
+| Permissions | On Unix, the database, WAL, and shared-memory files are mode `0600`; a newly created parent directory is mode `0700`. |
+| Runtime | Read and written directly by Orcacode; no service, subprocess, Markdown ledger, or network is involved. |
+
+Memory remains available across sessions and workspaces because those sessions open the same configuration-level database. Deleting or moving that database removes or relocates the memory ledger independently of session JSONL files.
+
+## Why it is not in `/extensions`
+
+Memory is built into Orcacode as a model wrapper plus the `memory_search` and `memory_manage` tools. The `/extensions` picker manages the host's toggleable lifecycle extensions, such as truncation and retry. Memory is composed into interactive agents and ordinary headless agents, but headless `--bare` skips automatic recall and memory tools; it is not toggleable through that picker.

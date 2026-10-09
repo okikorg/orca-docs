@@ -1,0 +1,44 @@
+---
+title: "Approve every action"
+sidebarTitle: "Approvals"
+description: "Approvals make the tool call visible before it runs. They are designed for the moment a model moves from explanation to local action."
+---
+
+## Answer an approval prompt
+
+| Key | Effect |
+| --- | --- |
+| `y` | Allow this call once. |
+| `a` | Always allow this tool for the current session. |
+| `A` | Always allow it in this workspace; save the grant. |
+| `n` | Deny the call. |
+
+Saved grants are scoped to the canonical workspace directory, not globally. Review or revoke them from `/settings`.
+
+## What is gated
+
+In interactive Normal mode, shell commands, file writes and edits, Python and Bun compute tools, subagent and workflow calls, `web_fetch`, and `memory_manage` require approval. The `process` tool for managing background processes is not on this approval list; shell commands are. Read-only file inspection and directory search do not require a prompt.
+
+Headless runs cannot show these prompts: gated calls are denied by default. Use `--auto-approve` to permit them in headless Normal mode, or see [headless approval options](/orcacode/headless#automation-and-approvals) for other modes.
+
+The prompt is about the operation, not the agent’s wording. A precise request is still worth inspecting when it will run a command or overwrite a file.
+
+## Auto mode
+
+`/mode auto` or `--auto` replaces human prompts with local admission for guarded native workspace mutations and exact-action review for remaining risk against the root user request. A `clear` decision executes the call; a `caution` decision holds it and gives the agent a reason. See the dedicated [Auto mode guide](/orcacode/auto-mode) for the workflow, model choice, fail-closed behavior, and tested scope boundary.
+
+## Yolo mode
+
+`/mode yolo` or `--yolo` runs gated tools without approval prompts. Its status remains visible as `yolo` for the entire session and it is never persisted.
+
+<Note>
+**Use with intent:** Yolo mode is appropriate for a disposable environment or a well-understood automation path. It is not a substitute for a workspace boundary, source control, or backups.
+</Note>
+
+## Orchestrate mode
+
+`/mode orchestrate` or `--orchestrate` is delegation-first: the parent investigates, delegates significant implementation and testing, and synthesizes results. Small/basic source edits are permitted through `write_file` and `edit_file`, without arbitrary size thresholds. Parent shell, process, compute, MCP, and other non-allowlisted tools remain blocked. The model is briefed at startup and live mode changes; leaving removes that parent instruction. The mode is never persisted.
+
+Workers keep their full tools and existing approval behavior: ordinary worker calls do not gain interactive approval prompts. Parent gated calls retain existing approvals. Orchestrate does not propagate to workers; switching to plan still restrains in-flight workers.
+
+See the [Orchestrate mode guide](/orcacode/orchestrate-mode) for launch examples, the exact parent allowlist, worker configuration, and headless approval requirements.
