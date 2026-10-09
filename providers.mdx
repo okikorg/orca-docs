@@ -114,6 +114,7 @@ A turn checks your key again when it starts. Nothing ever falls back from your k
 
 - Inspect `unsupported_agent_fields` before sending provider-specific settings.
 - Anthropic does not accept JSON-schema `text.format`, non-default `text.verbosity`, or non-`auto` `service_tier` in this integration.
+- On your own OpenAI key, some reasoning models refuse tools at their default reasoning effort: OpenAI refuses `gpt-5.6-luna` with any tool unless `reasoning.effort` is `none`, and the turn fails with "the provider rejected the request (HTTP 400)". Set `reasoning.effort: none` on such agents. Orca never sets it for you.
 - `web_search` accepts `allowed_domains`, `location`, `context_size` and `mode` `live` or `disabled`; `mode: cached` is not available. On an Anthropic model, `context_size` must stay `medium`, the default.
 - Vercel AI Gateway and CheaperInference keys have no web search. Saving an agent with `web_search` on their models is refused with HTTP 400 on `agent.tools`; use `mode: disabled`, or a model on Orca credit or on an OpenRouter, OpenAI or Anthropic key.
 - If a provider refuses a search for its model, the tool returns an error naming the model, and the turn goes on.
