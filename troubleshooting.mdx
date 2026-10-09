@@ -28,10 +28,16 @@ Check the host and port, and that the URL uses `https://` unless you are talking
 
 <AccordionGroup>
 <Accordion title="The turn fails with a model error">
-Read `turn.error`. Common causes: an OpenRouter id OpenRouter does not offer (check `client.models.list()`), or a credit running out: `usage_limit_exceeded` with `param` `orca_credit` (add Orca credit) or `provider_quota` (your own provider account is out of quota). A model on your own key never falls back to Orca credit. See [models and provider keys](/providers).
+Read `turn.error`. Common causes: a model the provider no longer offers, or a credit running out: `usage_limit_exceeded` with `param` `orca_credit` (your Orca credit) or `provider_quota` (your own provider account is out of quota). A model on your own key never falls back to Orca credit. Top up that side, or [switch the session](/providers#switch-who-pays-for-one-session) to a model on the other side with `POST /api/sessions/{session_id}/model`. See [models and provider keys](/providers).
 </Accordion>
 <Accordion title="400 on agent.model or model">
-A model name must say who pays: `orca/openrouter/<OpenRouter id>` for Orca credit, or `<provider>/<id>` with your own key. A bare name such as `gpt-5` is refused, and so is a model on your own key when no key for that provider is stored. See [models and provider keys](/providers).
+A model name must say who pays: `orca/openrouter/<OpenRouter id>` for Orca credit, or `<provider>/<id>` with your own key. A bare name such as `gpt-5` is refused, and so is a model on your own key when no key for that provider is stored, and a model its provider does not list. Without that provider's key, the message names the key to add and, when OpenRouter offers the model, its `orca/openrouter/` name for Orca credit. With the key saved, "This is OpenRouter's name for the model" means the provider doesn't list that id: use the `orca/openrouter/` or `openrouter/` form it suggests, or the provider's own id. `GET /api/models` lists every name you can use. See [models and provider keys](/providers).
+</Accordion>
+<Accordion title="An Orca-Warning header on a save">
+The provider's model list could not be read, so the model was saved without being checked. Check the name against `GET /api/models`; a wrong name fails when a turn runs.
+</Accordion>
+<Accordion title="409 when switching a session's model">
+A turn is running, or waiting for your function results. Switch once it ends.
 </Accordion>
 <Accordion title="400 on an agent setting">
 Some settings are not available with every provider. `GET /api/providers` lists each provider's `unsupported_agent_fields`. The `param` field of the error names the setting.

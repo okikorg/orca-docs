@@ -28,6 +28,25 @@ for model in client.models.list().data:
 
 `GET /v1/models` lists OpenRouter's catalog as Orca credit models. A listed model is not a promise that every agent setting or tool works with it.
 
+`GET /api/models` (an Orca extension, outside `/v1`) lists every model you can pick, grouped by who pays: an Orca credit group with OpenRouter's input and output price per million tokens, then one group per provider you have a key for, billed by that provider. It also returns the OpenRouter credit fee in effect:
+
+```json
+{
+  "object": "list",
+  "openrouter_fee_bps": 550,
+  "groups": [
+    {"payer": "orca_credit", "provider": "openrouter", "label": "Orca credit", "available": true,
+     "models": [{"id": "orca/openrouter/openai/gpt-5.6-luna", "name": "OpenAI: GPT-5.6 Luna",
+                 "context_length": 400000,
+                 "input_micro_usd_per_million": 200000, "output_micro_usd_per_million": 1200000}]},
+    {"payer": "own_key", "provider": "openai", "label": "OpenAI", "available": true,
+     "models": [{"id": "openai/gpt-5.6-luna"}]}
+  ]
+}
+```
+
+Prices are in micro-USD (millionths of a dollar) per million tokens, as OpenRouter publishes them, and `null` where OpenRouter has no fixed price. They are shown for choosing a model; the charge is always what OpenRouter reports for the call. Orca reads each list at most every 10 minutes and keeps the last good copy; a group whose list cannot be read has `available: false` and no models.
+
 ## What Orca credit costs
 
 Each call on Orca credit is charged what OpenRouter reports it cost, including its cache and reasoning tokens, plus OpenRouter's credit fee (5.5% today). Orca adds no markup and keeps no price list: the price is OpenRouter's at the time of the call. Your usage shows each call's cost, the provider's cost and the fee.
@@ -61,6 +80,9 @@ The response includes provider IDs, whether you have a key, whether a catalog is
 | PUT | `/api/providers/{provider}/key` | Set or replace a key with `{"api_key":"…"}` |
 | DELETE | `/api/providers/{provider}/key` | Remove your key |
 | GET | `/api/providers/{provider}/models` | Read that provider's catalog |
+| GET | `/api/models` | Every model you can pick, grouped by who pays, with Orca credit prices |
+| GET | `/api/sessions/{session_id}/model` | The model a session's next turn uses, and who pays |
+| POST | `/api/sessions/{session_id}/model` | Switch one session's model with `{"model":"…"}` |
 
 Supported IDs are `openai`, `anthropic`, `openrouter`, `vercel`, and `cheaperinference`. Catalogs marked `public_catalog` can be read without a provider key; other catalogs require one. Provider catalog requests still require Orca authentication.
 
@@ -77,7 +99,16 @@ agent = client.beta.agents.create(
 )
 ```
 
-A name with no provider part, or `orca/` with any provider but OpenRouter, is rejected with HTTP 400: on `model` when you save an agent, on `agent.model` when you create a session. A session whose model names your own key for a provider where you have none is rejected with HTTP 400 on `agent.model`. Nothing ever falls back from your key to Orca credit, or from Orca credit to your key.
+Every save checks the model: creating or updating an agent (HTTP 400 on `model`), creating a session with an inline agent (on `agent.model`), and publishing or copying a kit. A save is refused when:
+
+- the name has no provider part, or uses `orca/` with any provider but OpenRouter;
+- it names your own key for a provider where you have none: "Add your Anthropic key in Settings, Providers, or choose an Orca credit model". When OpenRouter offers the same name, the message gives its Orca credit name instead: "Add your Anthropic key in Settings, Providers, or use orca/openrouter/anthropic/claude-sonnet-4.5 for Orca credit";
+- the provider does not list the model: "Anthropic does not offer the model …";
+- with your key saved, it is OpenRouter's name for a model the provider lists under another id, such as `anthropic/claude-sonnet-4.5`: the message names `orca/openrouter/anthropic/claude-sonnet-4.5` for Orca credit, `openrouter/anthropic/claude-sonnet-4.5` with your OpenRouter key, or the provider's own id with its key.
+
+When a provider's list cannot be read, the agent is saved unchecked and the response carries an `Orca-Warning` header saying so. Nothing else changes in the response.
+
+A turn checks your key again when it starts. Nothing ever falls back from your key to Orca credit, or from Orca credit to your key.
 
 ## Check capability limits
 
@@ -94,3 +125,25 @@ Who pays is fixed when a turn starts: Orca reads your keys then, and every call 
 Removing a key makes the next turn of sessions using it fail with HTTP 400 on `agent.model`; it never moves them to Orca credit. Restore a valid key before continuing affected sessions.
 
 When credit runs out on either side, the turn ends with `usage_limit_exceeded` and a `param` that says whose: `orca_credit` for your Orca credit, `provider_quota` for your own key's provider account. See [errors](/reference/errors#turn-errors).
+
+## Switch who pays for one session
+
+Orca never switches on its own. When one side runs out, top it up, or switch that session to a model on the other side:
+
+```bash
+curl --fail-with-body -X POST "$ORCA_ORIGIN/api/sessions/$SESSION_ID/model" \
+  -H "Authorization: Bearer $ORCA_API_KEY" -H "Content-Type: application/json" \
+  -d '{"model": "openrouter/openai/gpt-5.6-luna"}'
+```
+
+```json
+{"object": "session.model", "session_id": "session_…", "model": "openrouter/openai/gpt-5.6-luna",
+ "agent_model": "orca/openrouter/openai/gpt-5.6-luna", "payer": "own_key"}
+```
+
+- The model is checked as a save is, and must run the agent's settings on its provider.
+- It applies from the session's next turn. While a turn runs, including one waiting for your function results, the switch is refused with HTTP 409.
+- It is for that session only. The agent, the session's `/v1` object and the agent's other sessions keep the agent's model. `GET /api/sessions/{session_id}/model` shows the model the next turn uses, the agent's own, and `payer` (`orca_credit` or `own_key`).
+- Switching back to the agent's own model removes the switch.
+
+Switching may re-send this conversation without the provider's cache, which uses more tokens. The model may behave differently through another route, and work in progress may not carry over correctly. The same model exists on both sides only under OpenRouter's id: `openrouter/<id>` and `orca/openrouter/<id>`.
