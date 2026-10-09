@@ -51,7 +51,7 @@ Prices are in micro-USD (millionths of a dollar) per million tokens, as OpenRout
 
 Each call on Orca credit is charged what OpenRouter reports it cost, including its cache and reasoning tokens, plus OpenRouter's credit fee (5.5% today). Orca adds no markup and keeps no price list: the price is OpenRouter's at the time of the call. Your usage shows each call's cost, the provider's cost and the fee.
 
-`web_search` always runs on Orca credit, on one search model Orca configures, whoever pays for the agent's model; the answer comes back to your agent's own model.
+`web_search` runs on your agent's own model, through the same route and key as its calls, and whoever pays for that model pays for the search. On an Orca credit model the search is charged like a call: what OpenRouter reports for it, plus the fee. On your own OpenRouter, OpenAI or Anthropic key it uses that provider's web search on your key, the provider bills it, and Orca charges nothing. A search never falls back to Orca credit or to another model. The answer and its cited links come back to your agent's model.
 
 ## Connect a provider
 
@@ -114,7 +114,9 @@ A turn checks your key again when it starts. Nothing ever falls back from your k
 
 - Inspect `unsupported_agent_fields` before sending provider-specific settings.
 - Anthropic does not accept JSON-schema `text.format`, non-default `text.verbosity`, or non-`auto` `service_tier` in this integration.
-- `web_search` accepts `allowed_domains`, `location`, `context_size` and `mode` `live` or `disabled`; `mode: cached` is not available.
+- `web_search` accepts `allowed_domains`, `location`, `context_size` and `mode` `live` or `disabled`; `mode: cached` is not available. On an Anthropic model, `context_size` must stay `medium`, the default.
+- Vercel AI Gateway and CheaperInference keys have no web search. Saving an agent with `web_search` on their models is refused with HTTP 400 on `agent.tools`; use `mode: disabled`, or a model on Orca credit or on an OpenRouter, OpenAI or Anthropic key.
+- If a provider refuses a search for its model, the tool returns an error naming the model, and the turn goes on.
 - `reasoning.summary` is not available on any route; reasoning summaries are not exposed. Saved agents that set it are rejected on create or update.
 - A catalog entry is not a promise of tool support or availability on your provider account.
 
