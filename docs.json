@@ -20,7 +20,7 @@
   "logo": {
     "light": "/assets/logo-light.svg",
     "dark": "/assets/logo-dark.svg",
-    "href": "/introduction"
+    "href": "https://orcapods.ai"
   },
   "favicon": "/assets/favicon.svg",
   "navbar": {
@@ -33,7 +33,7 @@
     "primary": {
       "type": "button",
       "label": "Get Started",
-      "href": "/quickstart"
+      "href": "https://orcapods.ai"
     }
   },
   "search": {
