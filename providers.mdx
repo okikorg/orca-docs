@@ -55,7 +55,7 @@ Each call on Orca credit is charged what OpenRouter reports it cost, including i
 
 ## Connect a provider
 
-Provider management is an **Orca extension** under `/api/providers`, outside the OpenAI `/v1` surface. Use ordinary authenticated HTTP requests, not `client.beta.agents` methods, at `https://api.orcapods.ai` without `/v1`. Setting and removing a key needs the [admin role](/organizations#roles); in the dashboard it is under **Settings**, **Providers**.
+Provider management is an **Orca extension** under `/api/providers`, outside the OpenAI `/v1` surface. Use ordinary authenticated HTTP requests, not `client.beta.agents` methods, at `https://api.orcapods.ai` without `/v1`. Setting and removing a key needs the [admin role](/organizations#roles); in the dashboard it is **BYOK** under **Settings**, a page titled Providers.
 
 ```bash
 export ORCA_ORIGIN="https://api.orcapods.ai"
