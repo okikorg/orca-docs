@@ -95,7 +95,13 @@ Put tokens in a vault, never in the agent. Orca rejects agents whose MCP `header
 
 - **At session start**, Orca connects to each MCP server and fetches its tool list. If a server is unreachable, or a credential it needs is missing, session creation fails with an error instead of starting a broken session.
 - **During a turn**, each call is recorded as an `mcp_call` item in the history, with its arguments and result. Use these to audit what the agent did.
-- **The calls come from the Orca server** by default, not from your application. To make them from inside the session's sandbox instead, for example to reach a server that only the sandbox's network can see, set `"connection_origin": "environment"` on the tool. That requires a session with a sandbox.
+- **The calls come from the Orca server** by default, not from your application. To make them from inside the session's sandbox instead, for example to reach a server that only the sandbox's network can see, set `"connection_origin": "environment"` on the tool. That requires a session with a sandbox. If you create the session with `environment.type: "none"`, Orca automatically provisions a default `openai_hosted` sandbox.
+
+### Tools that require a sandbox
+
+Stdio MCP tools (`transport.type: "stdio"`) also require a sandbox. At `POST /v1/agents/sessions`, either stdio MCP or `connection_origin: "environment"` causes a requested `environment.type: "none"` to become a default `openai_hosted` environment. The response's `orca-warning` header explains why, and the returned session's `environment` reflects the hosted sandbox. An explicit non-`none` environment is not replaced.
+
+Enabled `programmatic_tool_calling` has the same sandbox requirement. See [automatic sandbox provisioning](/guides/environments#automatic-sandbox-for-tools) for the full rules and how to configure the sandbox explicitly. Provisioning a sandbox does not bypass MCP connection, credential, or egress checks.
 
 ## Keep it safe
 
