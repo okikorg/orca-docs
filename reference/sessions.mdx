@@ -7,6 +7,8 @@ A session is one conversation with an agent; see [sessions and turns](/guides/se
 
 To create a session, send `environment` plus either `agent_id` (a saved agent) or `agent` (an inline configuration). `input` is optional; if present, it starts the first turn. Other optional fields are `vault_ids` and `metadata`. Use `{"type":"none"}` when no sandbox is needed.
 
+For `POST /v1/agents/sessions`, a requested `environment.type: "none"` automatically becomes a default `openai_hosted` environment if the agent has stdio MCP (`transport.type: "stdio"`), MCP with `connection_origin: "environment"`, or `programmatic_tool_calling` with `enabled: true`. The response includes an `orca-warning` header explaining the sandbox requirement. The returned session's `environment` reflects the actual hosted sandbox. Without these tool requirements, `none` stays `none`; explicit non-`none` environments are unchanged by this behavior. See [automatic sandbox provisioning](/guides/environments#automatic-sandbox-for-tools).
+
 ## Sessions
 
 | Method | Path | Purpose / response |

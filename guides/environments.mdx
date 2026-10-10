@@ -22,6 +22,18 @@ An **environment** is a computer the agent can use: it runs shell commands, read
 
 Self-hosted environments are coming soon to hosted Orca. Until then, creating one there returns `400` with "Self-hosted environments are coming soon to Orca"; use `openai_hosted`. They work today with an Orca server you run on the same machine as the executor.
 
+## Automatic sandbox for tools
+
+When you send `POST /v1/agents/sessions` with `environment.type: "none"`, Orca automatically provisions a default `openai_hosted` environment if the agent has any of these tools:
+
+- An MCP tool with `transport.type: "stdio"`.
+- An MCP tool with `connection_origin: "environment"`.
+- A `programmatic_tool_calling` tool with `enabled: true`.
+
+These tools need a sandbox. The response includes an `orca-warning` header explaining the requirement and that a default `openai_hosted` environment was provisioned. The returned session's `environment` describes the actual hosted sandbox, not the requested `none`. Use that returned environment when inspecting or managing the sandbox.
+
+Without these requirements, `none` remains `none`. An explicitly requested non-`none` environment is unchanged by this behavior and follows its usual validation and provisioning rules. To control network access, files, or setup, request `openai_hosted` explicitly rather than relying on the default. Automatically provisioned sandboxes have the same machine-time and credit requirements as other managed sandboxes.
+
 ## Managed sandbox
 
 A managed sandbox is a private Linux machine created for one session, with 1 vCPU, 2 GiB of memory, and 5 GiB of disk. The agent works in `/workspace`. Anything it writes to `/workspace/outputs` is saved as a downloadable [artifact](/guides/files-and-artifacts) when a turn completes.
@@ -76,7 +88,7 @@ The sandbox's internet access is set by `network.access`. If you do not set it, 
 | `restricted` | Only the domains in `allowed_domains`. Not available on hosted Orca: a session that asks for it is refused with HTTP 400 on `network`, "Configured cloud sandbox provider cannot enforce restricted-domain networking". |
 | `enabled` | The internet. |
 
-On hosted Orca, choose `disabled` or `enabled`. This setting only controls commands the agent runs **inside the sandbox**. Model calls and MCP tool calls are made by the Orca server and are not affected.
+On hosted Orca, choose `disabled` or `enabled`. This setting only controls commands the agent runs **inside the sandbox**. Model calls and service-origin MCP tool calls are made by the Orca server and are not affected. MCP tools with `connection_origin: "environment"` connect from inside the sandbox and use its network access.
 
 ### Configure the sandbox
 
@@ -192,7 +204,7 @@ Commands from the agent run with **the same permissions as the executor process*
 
 ## Common mistakes
 
-- **Choosing `none` and asking the agent to run code.** It has no machine. Create a new session with an environment.
+- **Choosing `none` and asking the agent to run code.** Unless a tool triggers [automatic sandbox provisioning](#automatic-sandbox-for-tools), it has no machine. Request a sandbox explicitly for code tasks.
 - **Expecting files outside `/workspace/outputs` to become artifacts.** Only that folder is captured.
 - **Leaving network access at its default.** The default is `enabled`. Set `disabled` unless the task needs the internet.
 - **A relative or symlinked `workspace_directory`.** It is rejected when the first turn runs, so the turn fails rather than the create call.
