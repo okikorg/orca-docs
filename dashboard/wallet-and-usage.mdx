@@ -40,7 +40,7 @@ On a paid plan, **Manage plan** on the Wallet opens the same billing portal. See
 
 Open **Usage** and pick a period: **24h**, **7d**, or **30d**. The header shows what the period cost. The top row totals model tokens, model calls, compute time, storage, tool calls, and web searches, each with its cost when it has one. **Web searches** counts the searches the provider ran, not tool calls: one tool call can run more than one search. **Tool calls** still counts tool calls. Usage recorded before this change counted one search per tool call. See [web search](/providers#what-is-counted). Three tabs break it down:
 
-- **Daily**: usage and cost per day.
+- **Over time**: one meter's usage as bars, by the hour on **24h** and by the day on **7d** and **30d**. The label beside the meter says which: **Hourly (UTC)** or **Daily (UTC)**. Bars are UTC hours and UTC days, as are billing periods and every other day Orca counts, so in India a daily bar runs from 05:30 to 05:30 local time. Hover a bar to read its bucket and quantity, for example `11 Oct, 14:00: 2.1K`. The first and last bars are cut by the period, so 24h shows 25 hourly bars unless it starts on the hour.
 - **Breakdown**: tokens and cost grouped by model, provider, credential, session, or agent. Each row's cost is everything charged under it, so the Cost column adds up to the header.
 - **Events**: the latest usage rows, each with its meter, quantity, cost, session, and model. It opens on **Charges**, the rows that cost something; pick **All meters** or one meter to see the rest.
 

@@ -66,10 +66,14 @@ The dashboard shows this as **Out of Orca credit** on the turn, with **Add credi
 | Route | Returns |
 | --- | --- |
 | `GET /api/billing/wallet` | Balance, total credited and charged, the minimum balance, `paid_work_paused`, your plan and period, included and used machine time, the packs on sale, the processing fee, and OpenRouter's fee (`openrouter_fee_bps`) |
-| `GET /api/usage` | Totals per meter for a period (30 days by default, or `start` and `end` in Unix seconds), a daily series, and totals grouped by `model`, `provider`, `credential`, `session`, or `agent` with `group_by`. With `group_by`, `group_costs` gives each key's cost across every meter; they add up to the period's `cost_micro_usd`. `session=<id>` narrows it to one session. |
+| `GET /api/usage` | Totals per meter for a period (30 days by default, or `start` and `end` in Unix seconds), a `series` over time (below), and totals grouped by `model`, `provider`, `credential`, `session`, or `agent` with `group_by`. With `group_by`, `group_costs` gives each key's cost across every meter; they add up to the period's `cost_micro_usd`. `session=<id>` narrows it to one session. |
 | `GET /api/usage/events` | The newest usage rows, each with its cost. Filter with `meter`, or `charged=true` for only the rows that cost something; page with `limit` and `after`. A row whose money is on another row has `charged_on`: `call` for a token row (its call's row carries the money) or `search` (its search's row does). |
 
 Money is in micro-USD (millionths of a dollar). Every member can read the wallet and usage.
+
+`series` is the period's usage over time: `{"interval": "hour" | "day", "points": [{"start", "meter", "quantity", "cost_micro_usd"}]}`. The server picks the interval from the period: `hour` for up to 2 days, `day` for up to 366 days, and `series` is `null` for a longer period. Each point's `start` is its bucket's start in Unix seconds, a UTC hour or a UTC day; a row is in the bucket that holds its `window_start`. Every bucket of the period is there for every meter, at zero when nothing was used, so each meter's points add up to its totals. The first and last buckets are cut by the period.
+
+`daily`, the older per-day series (only the days with usage), is deprecated and is removed on or after 2027-01-11. Read `series` instead. `orca usage` from CLI 1.0.x reads `daily` and fails once it is removed; `orca update` fixes it.
 
 The `web_searches` meter counts the searches the provider ran (unit `searches`), not tool calls: one tool call can run more than one search. Usage recorded before this change counted one per tool call. See [what is counted](/providers#what-is-counted).
 
