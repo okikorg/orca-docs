@@ -76,7 +76,7 @@ An **item** is one entry in the conversation history. The history is not only ch
 | `function_call` / `function_call_output` | A call to one of your function tools, and the result you returned. |
 | `mcp_call` | A call to a remote MCP tool, with its result. |
 | `command_execution` | A shell command run in the sandbox, with its output. |
-| `web_search_call` | A web search, when that tool is enabled. |
+| `web_search_call` | A web search, when that tool is enabled, with its query. A failed search has `status` `incomplete` and an `error` with a `code` and a `message`, an Orca addition to OpenAI's item; see [when a search fails](/providers#when-a-search-fails). |
 | `create_subagent_call` and other subagent calls | The agent handing work to a [subagent](/guides/subagents). |
 
 Read items with `sessions.items.list(session_id)`. The list is paginated and newest first.

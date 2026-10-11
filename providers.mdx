@@ -51,7 +51,7 @@ Prices are in micro-USD (millionths of a dollar) per million tokens, as OpenRout
 
 Each call on Orca credit is charged what OpenRouter reports it cost, including its cache and reasoning tokens, plus OpenRouter's credit fee (5.5% today). Orca adds no markup and keeps no price list: the price is OpenRouter's at the time of the call. Your usage shows each call's cost, the provider's cost and the fee.
 
-`web_search` runs on your agent's own model, through the same route and key as its calls, and whoever pays for that model pays for the search. On an Orca credit model the search is charged as OpenRouter reports it, plus the fee: the search's tokens on its model call, and the search fee on the web search. On your own OpenRouter, OpenAI or Anthropic key it uses that provider's web search on your key, the provider bills it, and Orca charges nothing. A search never falls back to Orca credit or to another model. The answer and its cited links come back to your agent's model.
+A web search on an Orca credit model is charged too; see [what a search costs](#what-a-search-costs).
 
 ## Connect a provider
 
@@ -115,11 +115,59 @@ A turn checks your key again when it starts. Nothing ever falls back from your k
 - Inspect `unsupported_agent_fields` before sending provider-specific settings.
 - Anthropic does not accept JSON-schema `text.format`, non-default `text.verbosity`, or non-`auto` `service_tier` in this integration.
 - On your own OpenAI key, some reasoning models refuse tools at their default reasoning effort: OpenAI refuses `gpt-5.6-luna` with any tool unless `reasoning.effort` is `none`, and the turn fails with "the provider rejected the request (HTTP 400)". Set `reasoning.effort: none` on such agents. Orca never sets it for you.
-- `web_search` accepts `allowed_domains`, `location`, `context_size` and `mode` `live` or `disabled`; `mode: cached` is not available. On an Anthropic model, `context_size` must stay `medium`, the default.
-- Vercel AI Gateway and CheaperInference keys have no web search. Saving an agent with `web_search` on their models is refused with HTTP 400 on `agent.tools`; use `mode: disabled`, or a model on Orca credit or on an OpenRouter, OpenAI or Anthropic key.
-- If a provider refuses a search for its model, the tool returns an error naming the model, and the turn goes on.
+- Not every model can search the web; see [web search](#web-search).
 - `reasoning.summary` is not available on any route; reasoning summaries are not exposed. Saved agents that set it are rejected on create or update.
 - A catalog entry is not a promise of tool support or availability on your provider account.
+
+## Web search
+
+`web_search` runs on your agent's own model, through the same route and key as its calls, and whoever pays for that model pays for the search. Subagents search on their lead's model. A search never falls back to Orca credit or to another model.
+
+| Model | How it searches | Who pays |
+| --- | --- | --- |
+| `orca/openrouter/<id>` | OpenRouter's web plugin | Your Orca credit |
+| `openrouter/<id>` | OpenRouter's web plugin | You, on your OpenRouter key |
+| `openai/<id>` | OpenAI's Responses web search | You, on your OpenAI key |
+| `anthropic/<id>` | Anthropic's web search tool | You, on your Anthropic key |
+| `vercel/<id>`, `cheaperinference/<id>` | No web search | Saving an agent with `web_search` is refused |
+
+On OpenRouter, models with built-in web search search reliably: OpenAI, Anthropic, Google, Perplexity and xAI models, per OpenRouter. Other models rely on OpenRouter's search engine and may answer without searching. The search then fails with `no_search`, so pick a model with built-in web search for an agent that must search.
+
+- `web_search` accepts `allowed_domains`, `location`, `context_size` and `mode` `live` or `disabled`; `mode: cached` is not available. On an Anthropic model, `context_size` must stay `medium`, the default.
+- Saving an agent with `web_search` on a Vercel AI Gateway or CheaperInference model is refused with HTTP 400 on `agent.tools`: "Web search is not available with your `<provider>` key. Use an Orca credit model or an OpenRouter, OpenAI or Anthropic key, or turn web search off." Use `mode: disabled`, or a model on Orca credit or on an OpenRouter, OpenAI or Anthropic key.
+
+### What comes back
+
+Your agent's model gets the answer and its cited links, with each cited page's excerpt when the provider sends one. An answer with no citations is still a result, for example when the search found nothing.
+
+Orca does not fetch the pages. An agent that must quote a page word for word needs another way to read it, such as a [function](/guides/function-tools) or [MCP](/guides/mcp) tool that fetches pages.
+
+### When a search fails
+
+The turn goes on. The search's `web_search_call` item has `status` `incomplete`, shows the query in `action.query`, and carries an `error` with a `code` and a `message`. The same message goes to your agent's model as the tool result. `error` is an Orca addition to OpenAI's `web_search_call` item, present only when the search failed. An `incomplete` item without `error` was stopped by the turn's cancellation.
+
+| `code` | `message` | What to do |
+| --- | --- | --- |
+| `out_of_credit` | Out of Orca credit: add credit, then continue the session | [Add credit](/wallet#buy-credit), then continue the session. |
+| `missing_key` | Add your `<provider>` key in Settings, Providers, or switch this session to Orca credit | Add the key, or [switch the session](#switch-who-pays-for-one-session) to Orca credit. |
+| `unavailable` | Web search is not available with your `<provider>` key. Use an Orca credit model or an OpenRouter, OpenAI or Anthropic key, or turn web search off. | Switch the session to a model that searches, or set `mode: disabled`. |
+| `no_search` | `<model>` answered without searching the web. Use a model with built-in web search: docs.orcapods.ai/providers#web-search | Use a model with built-in web search, as above. |
+| `provider_refused` | `<provider>` refused the web search on `<model>` (HTTP `<status>`) | Use a model with web search. On your own key, check that provider account. |
+| `timed_out` | The web search on `<model>` timed out | Try again. |
+| `invalid_response` | `<provider>` sent a web search reply Orca could not read | Try again. |
+| `failed` | The web search on `<model>` could not be completed | Try again. |
+
+### What a search costs
+
+On Orca credit, a search costs the provider's search fee ($0.01 a search) plus your model's tokens for reading the results, each plus OpenRouter's fee. So it depends on the model: for example about $0.011 on `orca/openrouter/openai/gpt-5.6-luna` and about $0.13 on `orca/openrouter/anthropic/claude-sonnet-4.6`.
+
+- The tokens are charged on the search's **Model calls** row, and the search fee on its **Web searches** row.
+- A search is charged what the provider reported, whatever the outcome, including a search whose answer Orca could not use. A search refused for credit (`out_of_credit`) never runs and costs nothing.
+- On your own key, the provider bills the search and Orca charges nothing.
+
+### What is counted
+
+**Web searches** in your usage counts the searches the provider ran, not tool calls: one `web_search` tool call can run more than one search, and a reply that shows no search ran counts none. **Tool calls** still counts tool calls. Usage before 2026-10-12 counted one search per tool call.
 
 ## Rotate and remove keys carefully
 
