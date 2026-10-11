@@ -71,7 +71,7 @@ The dashboard shows this as **Out of Orca credit** on the turn, with **Add credi
 
 Money is in micro-USD (millionths of a dollar). Every member can read the wallet and usage.
 
-The `web_searches` meter counts the searches the provider ran (unit `searches`), not tool calls: one tool call can run more than one search. Usage before 2026-10-12 counted one per tool call. See [what is counted](/providers#what-is-counted).
+The `web_searches` meter counts the searches the provider ran (unit `searches`), not tool calls: one tool call can run more than one search. Usage recorded before this change counted one per tool call. See [what is counted](/providers#what-is-counted).
 
 A call's money is on its `model_calls` row and its token rows are at cost 0, so read a model's, a session's or an agent's cost from `group_costs`, not from the `model_tokens` totals. The charged rows, the period's `cost_micro_usd`, and the wallet's `charged_micro_usd` over the same rows all agree.
 
