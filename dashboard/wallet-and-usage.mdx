@@ -38,7 +38,7 @@ On a paid plan, **Manage plan** on the Wallet opens the same billing portal. See
 
 ## See what you spent
 
-Open **Usage** and pick a period: **24h**, **7d**, or **30d**. The header shows what the period cost. The top row totals model tokens, model calls, compute time, storage, tool calls, and web searches, each with its cost when it has one. Three tabs break it down:
+Open **Usage** and pick a period: **24h**, **7d**, or **30d**. The header shows what the period cost. The top row totals model tokens, model calls, compute time, storage, tool calls, and web searches, each with its cost when it has one. **Web searches** counts the searches the provider ran, not tool calls: one tool call can run more than one search. **Tool calls** still counts tool calls. Usage recorded before this change counted one search per tool call. See [web search](/providers#what-is-counted). Three tabs break it down:
 
 - **Daily**: usage and cost per day.
 - **Breakdown**: tokens and cost grouped by model, provider, credential, session, or agent. Each row's cost is everything charged under it, so the Cost column adds up to the header.
