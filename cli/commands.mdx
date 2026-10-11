@@ -118,7 +118,7 @@ orca billing buy pro|max|pack:<cents> [--no-open]
 orca billing manage [--no-open]              # the billing portal
 ```
 
-`orca usage --group-by` shows each key's tokens and its cost across every meter. In `orca usage events`, a token row reads `on its call`: its money is on its call's row. Web searches are counted in `searches`, the searches the provider ran, not tool calls; see [what is counted](/providers#what-is-counted).
+`orca usage` charts one meter (`--meter`, `model_tokens` by default) from the server's series: by the hour for `--days 1` or `2`, by the day up to 366 days, captioned **Hourly (UTC)** or **Daily (UTC)** as on the dashboard. A longer window has no chart. `orca usage --group-by` shows each key's tokens and its cost across every meter. In `orca usage events`, a token row reads `on its call`: its money is on its call's row. Web searches are counted in `searches`, the searches the provider ran, not tool calls; see [what is counted](/providers#what-is-counted).
 
 `billing buy` and `billing manage` need the admin role. They print the Polar link and open it in a browser. See [wallet and credit](/wallet) and [plans](/plans).
 
