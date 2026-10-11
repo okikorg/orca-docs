@@ -111,12 +111,14 @@ orca keys revoke <id> [--yes]
 
 ```text
 orca usage [--days n] [--group-by model|provider|credential|session|agent] [--session id] [--meter m]
-orca usage events [--meter m]
+orca usage events [--meter m] [--charged]   # --charged: only the rows that cost something
 
 orca billing wallet                          # balance, plan, period, and packs on sale
 orca billing buy pro|max|pack:<cents> [--no-open]
 orca billing manage [--no-open]              # the billing portal
 ```
+
+`orca usage --group-by` shows each key's tokens and its cost across every meter. In `orca usage events`, a token row reads `on its call`: its money is on its call's row.
 
 `billing buy` and `billing manage` need the admin role. They print the Polar link and open it in a browser. See [wallet and credit](/wallet) and [plans](/plans).
 

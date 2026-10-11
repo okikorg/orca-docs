@@ -51,7 +51,7 @@ Prices are in micro-USD (millionths of a dollar) per million tokens, as OpenRout
 
 Each call on Orca credit is charged what OpenRouter reports it cost, including its cache and reasoning tokens, plus OpenRouter's credit fee (5.5% today). Orca adds no markup and keeps no price list: the price is OpenRouter's at the time of the call. Your usage shows each call's cost, the provider's cost and the fee.
 
-`web_search` runs on your agent's own model, through the same route and key as its calls, and whoever pays for that model pays for the search. On an Orca credit model the search is charged like a call: what OpenRouter reports for it, plus the fee. On your own OpenRouter, OpenAI or Anthropic key it uses that provider's web search on your key, the provider bills it, and Orca charges nothing. A search never falls back to Orca credit or to another model. The answer and its cited links come back to your agent's model.
+`web_search` runs on your agent's own model, through the same route and key as its calls, and whoever pays for that model pays for the search. On an Orca credit model the search is charged as OpenRouter reports it, plus the fee: the search's tokens on its model call, and the search fee on the web search. On your own OpenRouter, OpenAI or Anthropic key it uses that provider's web search on your key, the provider bills it, and Orca charges nothing. A search never falls back to Orca credit or to another model. The answer and its cited links come back to your agent's model.
 
 ## Connect a provider
 

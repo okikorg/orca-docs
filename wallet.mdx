@@ -10,7 +10,7 @@ Each organization has one **wallet** of Orca credit. Your balance is everything 
 | Charge | Price |
 | --- | --- |
 | Model tokens on an Orca credit model (`orca/openrouter/<id>`) | What OpenRouter charges for the call, plus OpenRouter's 5.5% credit fee. Orca adds no markup. See [models and provider keys](/providers#what-orca-credit-costs). |
-| Web searches on an Orca credit model | What OpenRouter charges for the search, plus the same fee. A search on your own provider key is billed by that provider. |
+| Web searches on an Orca credit model | A search is a call to your model with the provider's web search. Its tokens are charged like any call, on its **Model calls** row, and the search fee (for example $0.01 a search on Anthropic models) on its **Web searches** row, each plus the same fee. A search on your own provider key is billed by that provider. |
 | Machine time past your plan's included hours | Your plan's hourly rate. See [plans](/plans#machine-time). |
 
 Tokens on your own provider key (`<provider>/<id>`) are billed by that provider. Orca charges nothing for them.
@@ -66,16 +66,18 @@ The dashboard shows this as **Out of Orca credit** on the turn, with **Add credi
 | Route | Returns |
 | --- | --- |
 | `GET /api/billing/wallet` | Balance, total credited and charged, the minimum balance, `paid_work_paused`, your plan and period, included and used machine time, the packs on sale, the processing fee, and OpenRouter's fee (`openrouter_fee_bps`) |
-| `GET /api/usage` | Totals per meter for a period (30 days by default, or `start` and `end` in Unix seconds), a daily series, and totals grouped by `model`, `provider`, `credential`, `session`, or `agent` with `group_by`. `session=<id>` narrows it to one session. |
-| `GET /api/usage/events` | The newest usage rows, each with its cost. Filter with `meter`, page with `limit` and `after`. |
+| `GET /api/usage` | Totals per meter for a period (30 days by default, or `start` and `end` in Unix seconds), a daily series, and totals grouped by `model`, `provider`, `credential`, `session`, or `agent` with `group_by`. With `group_by`, `group_costs` gives each key's cost across every meter; they add up to the period's `cost_micro_usd`. `session=<id>` narrows it to one session. |
+| `GET /api/usage/events` | The newest usage rows, each with its cost. Filter with `meter`, or `charged=true` for only the rows that cost something; page with `limit` and `after`. A row whose money is on another row has `charged_on`: `call` for a token row (its call's row carries the money) or `search` (its search's row does). |
 
 Money is in micro-USD (millionths of a dollar). Every member can read the wallet and usage.
+
+A call's money is on its `model_calls` row and its token rows are at cost 0, so read a model's, a session's or an agent's cost from `group_costs`, not from the `model_tokens` totals. The charged rows, the period's `cost_micro_usd`, and the wallet's `charged_micro_usd` over the same rows all agree.
 
 ```bash
 curl --fail-with-body "$ORCA_ORIGIN/api/usage?group_by=model" -H "Authorization: Bearer $ORCA_API_KEY"
 ```
 
-In the dashboard, **Usage** shows the same figures by day, by model, and as a list of events. From the CLI, `orca usage` and `orca usage events`.
+In the dashboard, **Usage** shows the same figures by day, broken down by model, session or agent, and as a list of events. From the CLI, `orca usage --group-by <field>` and `orca usage events --charged`.
 
 ## Moving from Orca 1.x
 

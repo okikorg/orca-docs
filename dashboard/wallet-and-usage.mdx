@@ -38,10 +38,12 @@ On a paid plan, **Manage plan** on the Wallet opens the same billing portal. See
 
 ## See what you spent
 
-Open **Usage** and pick a period: **24h**, **7d**, or **30d**. The top row totals model tokens, model calls, compute time, storage, tool calls, and web searches. Three tabs break it down:
+Open **Usage** and pick a period: **24h**, **7d**, or **30d**. The header shows what the period cost. The top row totals model tokens, model calls, compute time, storage, tool calls, and web searches, each with its cost when it has one. Three tabs break it down:
 
 - **Daily**: usage and cost per day.
-- **Model tokens**: tokens and cost grouped by model, provider, credential, session, or agent.
-- **Events**: the latest usage rows, each with its meter, quantity, cost, session, and model.
+- **Breakdown**: tokens and cost grouped by model, provider, credential, session, or agent. Each row's cost is everything charged under it, so the Cost column adds up to the header.
+- **Events**: the latest usage rows, each with its meter, quantity, cost, session, and model. It opens on **Charges**, the rows that cost something; pick **All meters** or one meter to see the rest.
 
-A session's own cost, tokens, web searches, and machine time are in its details on the session page. The same figures come from `GET /api/usage` and `orca usage`; see [wallet and credit](/wallet#read-the-wallet-and-your-usage).
+A call on Orca credit is charged on its **Model calls** row, not on its token rows, and a web search's fee on its **Web searches** row. So in the Events list a token row reads **On its call** instead of a cost: its money is on its call's row.
+
+A session's own cost, tokens, model calls, web searches, and machine time, each with what it cost, are in its details on the session page, with each model's cost when the session used more than one. An agent's page shows its cost across all its sessions. The same figures come from `GET /api/usage` and `orca usage`; see [wallet and credit](/wallet#read-the-wallet-and-your-usage).
