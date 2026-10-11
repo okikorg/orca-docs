@@ -21,7 +21,7 @@ When a request fails, Orca returns an HTTP error status and a JSON body in the s
 | `429 Too Many Requests` | Too many requests a minute, or your plan's [sessions at once](/plans#sessions-at-once) are all running; out of Orca credit | `rate_limit_exceeded`, `insufficient_quota` |
 | `500 Internal Server Error` | Operation could not be completed | `server_error` |
 | `502 Bad Gateway` | Downstream failure | `server_error` |
-| `503 Service Unavailable` | Sandbox capacity is full, or your balance could not be read. Retry after `Retry-After`. | `sandbox_capacity`, `balance_unavailable` |
+| `503 Service Unavailable` | Sandbox capacity is full, or your balance could not be read ("Orca could not read your credit balance. Try again in a moment."). Retry after `Retry-After`. | `sandbox_capacity`, `balance_unavailable` |
 
 The envelope uses `type: "server_error"` for 5xx and `type: "invalid_request_error"` for client errors. `param` can identify an invalid request field; do not parse English messages as stable machine codes. Framework-level errors are normalized to the same envelope but may use generic codes. Other HTTP failures can occur; inspect the actual status and body. Do not automatically retry a validation error. For uncertain mutation outcomes, use an `Idempotency-Key` (one nonempty value, at most 512 bytes) and retry with the same request; the server supports idempotency on mutations, including session event submission. A mismatched replay can conflict.
 
@@ -37,6 +37,7 @@ A turn that fails carries `error.code` and `error.message`, and, when credit ran
 | `usage_limit_exceeded` | `provider_quota` | Your own provider account is out of credits or over its billing limit. |
 | `usage_limit_exceeded` | none | "This plan's included machine hours for this period are used up" (Free plan). See [plans](/plans#machine-time). |
 | `server_error` | none | "Orca credit is temporarily unavailable": Orca's own OpenRouter account refused the call. Retry later. |
+| `internal_error` | none | "Orca could not read your credit balance. Try again in a moment." Orca could not check your balance before a call on Orca credit. Send the message again in a moment; your credit is not the problem. |
 | `request_timeout` | none | "Model request failed: no response from the provider for 10 minutes". Send the message again. |
 
 Nothing switches who pays on its own. A message refused at admission for lack of credit is HTTP 429 `insufficient_quota`: "Out of Orca credit: add credit, then continue the session". See [when credit runs low](/wallet#when-credit-runs-low).

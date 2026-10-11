@@ -31,6 +31,9 @@ Check that the URL is `https://api.orcapods.ai/v1`, spelled exactly, with `https
 <Accordion title="429 insufficient_quota">
 "Out of Orca credit: add credit, then continue the session". Your balance is under the $0.50 minimum, so Orca credit models and managed sandboxes are paused. [Add credit](/wallet#buy-credit), or use a model on your own key in a session without a sandbox.
 </Accordion>
+<Accordion title="503 balance_unavailable">
+"Orca could not read your credit balance. Try again in a moment." Orca could not read your balance for a moment, so it did not start paid work. Your credit is not the problem: retry after the `Retry-After` seconds. A turn already running ends with `internal_error` and the same message, and a web search fails with `balance_unavailable`; send the message again.
+</Accordion>
 </AccordionGroup>
 
 ## Models
