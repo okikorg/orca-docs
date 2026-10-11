@@ -67,7 +67,7 @@ The dashboard shows this as **Out of Orca credit** on the turn, with **Add credi
 | --- | --- |
 | `GET /api/billing/wallet` | Balance, total credited and charged, the minimum balance, `paid_work_paused`, your plan and period, included and used machine time, the packs on sale, the processing fee, and OpenRouter's fee (`openrouter_fee_bps`) |
 | `GET /api/usage` | Totals per meter for a period (30 days by default, or `start` and `end` in Unix seconds), a `series` over time (below), and totals grouped by `model`, `provider`, `credential`, `session`, or `agent` with `group_by`. With `group_by`, `group_costs` gives each key's cost across every meter; they add up to the period's `cost_micro_usd`. `session=<id>` narrows it to one session. |
-| `GET /api/usage/events` | The newest usage rows, each with its cost. Filter with `meter`, or `charged=true` for only the rows that cost something; page with `limit` and `after`. A row whose money is on another row has `charged_on`: `call` for a token row (its call's row carries the money) or `search` (its search's row does). |
+| `GET /api/usage/events` | The newest usage rows, each with its cost. Filter with `meter`, or `charged=true` for only the rows that cost something; page with `limit` and `after`. A row at cost 0 whose money is on another row of the same operation has `charged_on`: `call` when its call's row carries the money (a token row), `search` when the search's row does (the search's tool call, or its call when the whole cost is on the search). Any other row has none, and its own cost is what it was charged. |
 
 Money is in micro-USD (millionths of a dollar). Every member can read the wallet and usage.
 
