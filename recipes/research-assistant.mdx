@@ -11,7 +11,7 @@ This agent answers a question in five bullets or fewer and cites a source for ea
 
 `web_search` runs on the agent's own model. Pick a model with built-in web search: on OpenRouter that is an OpenAI, Anthropic, Google, Perplexity, or xAI model. Other models may answer without searching, and the search then fails with `no_search`. Vercel AI Gateway and CheaperInference models cannot search at all, and saving the agent is refused.
 
-On Orca credit, each search costs about $0.01 plus the tokens for reading the results. See [what a search costs](/providers#what-a-search-costs).
+On Orca credit, each search costs the provider's search fee plus your model's tokens for reading the results. See [what a search costs](/providers#what-a-search-costs).
 
 ## The program
 

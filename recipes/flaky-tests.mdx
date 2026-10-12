@@ -8,7 +8,7 @@ This agent takes a snapshot of your repository, runs the test suite several time
 **You will use:** a [managed sandbox](/guides/environments#managed-sandbox), [uploaded files](/guides/files-and-artifacts#upload-a-file), and [artifacts](/guides/files-and-artifacts).
 
 <Note>
-A managed sandbox uses [machine time](/plans#machine-time) while it runs and needs at least $0.50 of Orca credit in your wallet. Running a suite many times is the expensive part; start with a small `RUNS` value.
+A managed sandbox uses [machine time](/plans#machine-time) while it runs and needs your plan's [minimum balance](/plans#paid-work-needs-a-minimum-balance) of Orca credit in your wallet. Running a suite many times is the expensive part; start with a small `RUNS` value.
 </Note>
 
 ## How it works
@@ -158,7 +158,7 @@ try {
 </Tab>
 </Tabs>
 
-Everything staged into one sandbox is limited to 64 MiB, so for a large repository archive only the part you need, for example `git archive HEAD src tests`. The sandbox has 1 vCPU, 2 GiB of memory, and 5 GiB of disk; a heavy suite run five times may need a narrower selection of tests.
+Everything staged into one sandbox is limited to 64 MiB, so for a large repository archive only the part you need, for example `git archive HEAD src tests`. Every sandbox is the same size, shown on the [pricing page](https://orcapods.ai/pricing); a heavy suite run five times may need a narrower selection of tests.
 
 Read `flaky-output/flaky_report.md`, then try a patch locally with `git apply --check flaky-output/patches/<test-name>.diff` before applying it.
 
