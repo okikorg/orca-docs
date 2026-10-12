@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check the docs' navigation, links, Python syntax, version pins, and route coverage.
+"""Check the docs' navigation, links, Python syntax, version pins, route coverage, and token price wording.
 
 The docs describe the Orca server's API, so the version pins and the route
 inventory come from the server's contract: a checkout of okikorg/orca-agent-server
@@ -57,6 +57,11 @@ def main():
                 ast.parse(code)
             except SyntaxError as error:
                 errors.append(f"{name}: Python block {index}: {error}")
+        # The token price reads "OpenRouter's price plus their fee", linked to
+        # the pricing page, which states the percentage (orca-design plan-facts,
+        # P2-d and P2-e).
+        for wrong in re.findall(r"\bplus its\b(?:[^.|\n]|\.\d)*?\bfee|\blist price\b|\b5\.5%", text, re.I):
+            errors.append(f"{name}: token price worded \"{wrong}\"; say OpenRouter's price plus their fee")
     all_text = "\n".join(texts.values())
     for pin in (f"openai=={versions['python']}", f"openai@{versions['typescript']}"):
         if pin not in texts.get("quickstart", ""):
@@ -76,7 +81,7 @@ def main():
     if errors:
         raise SystemExit("\n".join(errors))
     print(f"Public docs checks passed: {len(pages)} pages, {count} inventoried routes, "
-          "navigation, local links, Python syntax, and client pins.")
+          "navigation, local links, Python syntax, client pins, and token price wording.")
 
 
 if __name__ == "__main__":
