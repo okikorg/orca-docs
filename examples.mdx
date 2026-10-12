@@ -1,29 +1,29 @@
 ---
 title: "Runnable examples"
-description: "Use verified Python and TypeScript recipes from this repository."
+description: "Find the example code for each Orca topic, and run it against your endpoint."
 ---
 
-These recipes use the official OpenAI packages and mirror the topics in our guides. Start with the [Orca quickstart](/quickstart); consult the [OpenAI Agent API quickstart](https://developers.openai.com/api/docs/guides/agents-api/quickstart/) for the upstream programming model.
+The guides in these docs carry example code for each topic, written with the official OpenAI packages. Start with the [Orca quickstart](/quickstart); consult the [OpenAI Agent API quickstart](https://developers.openai.com/api/docs/guides/agents-api/quickstart/) for the upstream programming model.
 
 <Tip>
 Looking for complete agents to copy, such as a research assistant, a support agent, or a code reviewer? See [build useful agents](/recipes/overview).
 </Tip>
 
-## Choose a recipe
+## Choose a topic
 
-| Recipe | What it demonstrates | Python | TypeScript |
-| --- | --- | --- | --- |
-| Quickstart | Agent, session, turn status, usage, history | [Source](https://github.com/okikorg/orca-agent-server/blob/main/examples/python/basics/quickstart.py) | [Source](https://github.com/okikorg/orca-agent-server/blob/main/examples/typescript/basics/quickstart.ts) |
-| Streaming | Text deltas, detached subscribers, cancellation | [Source](https://github.com/okikorg/orca-agent-server/blob/main/examples/python/basics/streaming.py) | [Source](https://github.com/okikorg/orca-agent-server/blob/main/examples/typescript/basics/streaming.ts) |
-| Function tools | Application-side tool calls and results | [Source](https://github.com/okikorg/orca-agent-server/blob/main/examples/python/tools/function_tools.py) | [Source](https://github.com/okikorg/orca-agent-server/blob/main/examples/typescript/tools/function_tools.ts) |
-| MCP tools | Remote tools, credential binding, filtering | [Source](https://github.com/okikorg/orca-agent-server/blob/main/examples/python/tools/mcp_tools.py) | [Source](https://github.com/okikorg/orca-agent-server/blob/main/examples/typescript/tools/mcp_tools.ts) |
-| Managed sandbox | Staged files and downloadable artifacts | [Source](https://github.com/okikorg/orca-agent-server/blob/main/examples/python/environments/managed_sandbox.py) | [Source](https://github.com/okikorg/orca-agent-server/blob/main/examples/typescript/environments/managed_sandbox.ts) |
-| Self-hosted executor | Execution on compute you control | [Source](https://github.com/okikorg/orca-agent-server/blob/main/examples/python/environments/self_hosted_executor.py) | [Source](https://github.com/okikorg/orca-agent-server/blob/main/examples/typescript/environments/self_hosted_executor.ts) |
-| Resource lifecycle | Files, skills, templates, and vaults | [Source](https://github.com/okikorg/orca-agent-server/blob/main/examples/python/resources/files_skills_vaults.py) | [Source](https://github.com/okikorg/orca-agent-server/blob/main/examples/typescript/resources/files_skills_vaults.ts) |
+| Topic | What it covers | Where the code is |
+| --- | --- | --- |
+| Quickstart | Agent, session, turn status, usage, history | [Quickstart](/quickstart) |
+| Streaming | Text deltas, watching from another process, cancellation | [Streaming](/guides/streaming) |
+| Function tools | Application-side tool calls and results | [Function tools](/guides/function-tools) |
+| MCP tools | Remote tools, credential binding, filtering | [MCP tools](/guides/mcp) |
+| Managed sandbox | Staged files and downloadable artifacts | [Execution environments](/guides/environments#managed-sandbox) and [files and artifacts](/guides/files-and-artifacts) |
+| Self-hosted executor | Execution on compute you control | [Self-hosted environment](/guides/environments#self-hosted-environment) |
+| Resource lifecycle | Files, skills, templates, and vaults | [Files and artifacts](/guides/files-and-artifacts), [skills and templates](/guides/skills), and [credentials and vaults](/guides/credentials) |
 
 ## Run against your endpoint
 
-From a checkout of this repository, configure the same variables as the quickstart:
+Configure the same variables as the quickstart:
 
 ```bash
 export ORCA_BASE_URL="https://api.orcapods.ai/v1"
@@ -31,38 +31,29 @@ export ORCA_API_KEY="YOUR_ORCA_KEY"
 export ORCA_MODEL="orca/openrouter/YOUR_OPENROUTER_MODEL_ID"
 ```
 
+Save the example as a file, install the client version the quickstart pins, and run it:
+
 <CodeGroup>
 ```bash Python
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install openai==3.13.0
-python examples/python/basics/quickstart.py
+python example.py
 ```
 ```bash TypeScript
-cd examples/typescript
-npm ci
-node --experimental-strip-types basics/quickstart.ts
+npm pkg set type=module
+npm install openai@7.15.0
+node --experimental-strip-types example.ts
 ```
 </CodeGroup>
 
 <Warning>
-The examples create real resources and may call paid models when pointed at a live endpoint. Read each recipe before running it. Demo cleanup can delete sessions and their outputs. Download results you need first.
+The examples create real resources and may call paid models when pointed at a live endpoint. Read each example before running it. Demo cleanup can delete sessions and their outputs. Download results you need first.
 </Warning>
 
 ## Additional requirements
 
-- **MCP:** remote MCP servers are currently blocked on hosted Orca, so this recipe is refused there; write to support@okik.io if you need one. Do not use the repository's fixture credentials with a real service.
-- **Managed sandbox:** uses machine time from your plan. A sandbox image and Docker are requirements for the local example runner, not dependencies of your application client.
-- **Self-hosted executor:** runs against an Orca server on your own machine; on hosted Orca self-hosted is coming soon. The recipe requires `ORCA_EXECUTOR_BASE_URL` (a loopback origin) and `ORCA_CODEX_BIN` plus a compatible native Codex binary. Read the [environment guide](/guides/environments) before connecting it; do not assume any public hostname is supported by stock executor authentication.
-- **Resource lifecycle:** creating the vault needs the admin role.
-
-## Local contributor runner
-
-For contributors who already have the server built and its development dependencies installed, `python3 examples/run.py` runs the paired examples against temporary local test services. Those test services are not production model or MCP integrations. Missing optional prerequisites are reported as skips, so a successful runner exit does not mean every environment example ran.
-
-```bash
-python3 examples/run.py --interface python
-python3 examples/run.py --only streaming
-```
-
-For normal application development, use the endpoint instructions above rather than the contributor runner.
+- **MCP:** remote MCP servers are currently blocked on hosted Orca, so MCP examples are refused there; write to support@okik.io if you need one.
+- **Managed sandbox:** uses [machine time](/plans#machine-time) from your plan.
+- **Self-hosted executor:** runs against an Orca server on your own machine; on hosted Orca self-hosted is coming soon. Read the [environment guide](/guides/environments) before connecting one; do not assume any public hostname is supported by stock executor authentication.
+- **Resource lifecycle:** creating a vault needs the admin role.

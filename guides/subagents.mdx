@@ -36,6 +36,8 @@ Examples on this page assume `client` is an `OpenAI` client configured as in the
 
 Set `multi_agent` on the agent. `max_concurrent_subagents` limits how many helpers run at once; it is 6 if you leave it out.
 
+The limit is not a queue. When the agent tries to start a helper while that many are already running, the new helper is refused with "Session subagent concurrency limit reached", and the agent sees that as a failed call. If a task can need more helpers than the limit, tell the agent to start them in batches and wait for each batch to return, as the [review team](/recipes/review-team) recipe does.
+
 ```python
 import os
 

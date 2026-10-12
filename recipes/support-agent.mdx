@@ -99,19 +99,29 @@ def ask(session_id, text):
     return ""
 
 
-agent = agents.create(
-    model=os.environ["ORCA_MODEL"], name="support", instructions=INSTRUCTIONS, tools=TOOLS,
-)
-session = agents.sessions.create(agent_id=agent.id, environment={"type": "none"})
-
+agent = session = None
 try:
+    agent = agents.create(
+        model=os.environ["ORCA_MODEL"], name="support", instructions=INSTRUCTIONS, tools=TOOLS,
+    )
+    session = agents.sessions.create(agent_id=agent.id, environment={"type": "none"})
+
     print(ask(session.id, "Where is my order?"))
     print(ask(session.id, "It's order-42."))
     print(ask(session.id, "It arrived broken. I want my money back."))
     print("tickets:", TICKETS)
 finally:
-    agents.sessions.delete(session.id)
-    agents.delete(agent.id)
+    # Delete each resource on its own, so one failed delete does not skip the rest.
+    if session:
+        try:
+            agents.sessions.delete(session.id)
+        except openai.APIError:
+            pass
+    if agent:
+        try:
+            agents.delete(agent.id)
+        except openai.APIError:
+            pass
     client.close()
 ```
 </Tab>
@@ -145,11 +155,13 @@ Do not promise a refund. Do not use emojis.`;
 
 // The model chooses these arguments. Validate them like any untrusted request.
 const handlers = {
-  lookup_order: (args: Record<string, unknown>) =>
-    ORDERS[String(args.order_id ?? '')] ?? { error: 'No order with that ID.' },
+  lookup_order: (args: Record<string, unknown>) => {
+    const orderId = String(args.order_id ?? '');
+    return Object.hasOwn(ORDERS, orderId) ? ORDERS[orderId] : { error: 'No order with that ID.' };
+  },
   request_refund: (args: Record<string, unknown>) => {
     const orderId = String(args.order_id ?? '');
-    if (!(orderId in ORDERS)) return { error: 'No order with that ID.' };
+    if (!Object.hasOwn(ORDERS, orderId)) return { error: 'No order with that ID.' };
     TICKETS.push({ order_id: orderId, reason: String(args.reason ?? '').slice(0, 500) });
     return { ticket: `T-${TICKETS.length}`, status: 'queued for review' };
   },
@@ -168,37 +180,40 @@ async function ask(sessionId: string, text: string) {
   return '';
 }
 
-const agent = await agents.create({
-  model: process.env.ORCA_MODEL!,
-  name: 'support',
-  instructions: INSTRUCTIONS,
-  tools: [
-    {
-      type: 'function',
-      name: 'lookup_order',
-      description: 'Read one order by ID. Use when the customer asks about an order.',
-      parameters: objectSchema('order_id'),
-      defer_loading: false,
-    },
-    {
-      type: 'function',
-      name: 'request_refund',
-      description: 'Record a refund request for a person to review. Does not issue a refund.',
-      parameters: objectSchema('order_id', 'reason'),
-      defer_loading: false,
-    },
-  ],
-});
-const session = await agents.sessions.create({ agent_id: agent.id, environment: { type: 'none' } });
-
+let agent: { id: string } | undefined;
+let session: { id: string } | undefined;
 try {
+  agent = await agents.create({
+    model: process.env.ORCA_MODEL!,
+    name: 'support',
+    instructions: INSTRUCTIONS,
+    tools: [
+      {
+        type: 'function',
+        name: 'lookup_order',
+        description: 'Read one order by ID. Use when the customer asks about an order.',
+        parameters: objectSchema('order_id'),
+        defer_loading: false,
+      },
+      {
+        type: 'function',
+        name: 'request_refund',
+        description: 'Record a refund request for a person to review. Does not issue a refund.',
+        parameters: objectSchema('order_id', 'reason'),
+        defer_loading: false,
+      },
+    ],
+  });
+  session = await agents.sessions.create({ agent_id: agent.id, environment: { type: 'none' } });
+
   console.log(await ask(session.id, 'Where is my order?'));
   console.log(await ask(session.id, "It's order-42."));
   console.log(await ask(session.id, 'It arrived broken. I want my money back.'));
   console.log('tickets:', TICKETS);
 } finally {
-  await agents.sessions.delete(session.id).catch(() => {});
-  await agents.delete(agent.id).catch(() => {});
+  // Delete each resource on its own, so one failed delete does not skip the rest.
+  if (session) await agents.sessions.delete(session.id).catch(() => {});
+  if (agent) await agents.delete(agent.id).catch(() => {});
 }
 ```
 </Tab>

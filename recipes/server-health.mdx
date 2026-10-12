@@ -73,34 +73,53 @@ RUN_CHECK = {
 
 
 def run_check(args):
-    command = CHECKS.get(args.get("check"))
+    command = CHECKS.get(str(args.get("check")))
     if command is None:
         return {"error": f"Unknown check. Use one of: {', '.join(sorted(CHECKS))}"}
-    result = subprocess.run(
-        ["ssh", "-o", "BatchMode=yes", HOST, command],
-        capture_output=True, text=True, timeout=30,
-    )
+    try:
+        result = subprocess.run(
+            ["ssh", "-o", "BatchMode=yes", HOST, command],
+            capture_output=True, text=True, errors="replace", timeout=30,
+        )
+    except subprocess.TimeoutExpired:
+        return {"error": "The check timed out after 30 seconds."}
+    except OSError as error:
+        return {"error": f"Could not run ssh: {error}"}
     # Cap the output: the model pays for every token it reads.
     return {"exit_code": result.returncode, "output": (result.stdout + result.stderr)[-8000:]}
 
 
-agent = agents.create(
-    model=os.environ["ORCA_MODEL"], name="server-health", instructions=INSTRUCTIONS, tools=[RUN_CHECK],
-)
-session = sessions.create(agent_id=agent.id, environment={"type": "none"})
-
+agent = session = None
 try:
+    agent = agents.create(
+        model=os.environ["ORCA_MODEL"], name="server-health", instructions=INSTRUCTIONS, tools=[RUN_CHECK],
+    )
+    session = sessions.create(agent_id=agent.id, environment={"type": "none"})
+
+    status = None
     with sessions.stream(session.id, input=f"Host {HOST}: {QUESTION}",
                          tool_handlers={"run_check": run_check}) as stream:
-        for event in stream:
-            pass  # read to the end, or the helper stops answering calls
+        for event in stream:  # read to the end, or the helper stops answering calls
+            if event.type == "agent.session.turn.completed":
+                status = event.turn.status
+    if status != "completed":
+        raise SystemExit(f"Diagnosis did not complete: {status}")
     for item in sessions.items.list(session.id, limit=50).data:
         if item.type == "message" and item.role == "assistant":
             print(" ".join(p.text for p in item.content or [] if getattr(p, "text", None)))
             break
 finally:
-    sessions.delete(session.id)
-    agents.delete(agent.id)
+    # Delete each resource on its own, so one failed delete does not skip the rest.
+    if session:
+        try:
+            sessions.delete(session.id)
+        except openai.APIError:
+            pass
+    if agent:
+        try:
+            agents.delete(agent.id)
+        except openai.APIError:
+            pass
     client.close()
 ```
 </Tab>
@@ -138,46 +157,57 @@ Suggest fixes as commands for a person to run, and say which ones are risky,
 such as restarting a service or killing a process. Do not use emojis.`;
 
 function runCheck(args: Record<string, unknown>) {
-  const command = CHECKS[String(args.check)];
-  if (!command) return { error: `Unknown check. Use one of: ${Object.keys(CHECKS).sort().join(', ')}` };
-  const result = spawnSync('ssh', ['-o', 'BatchMode=yes', HOST, command], { encoding: 'utf8', timeout: 30_000 });
+  const name = String(args.check);
+  if (!Object.hasOwn(CHECKS, name)) return { error: `Unknown check. Use one of: ${Object.keys(CHECKS).sort().join(', ')}` };
+  const result = spawnSync('ssh', ['-o', 'BatchMode=yes', HOST, CHECKS[name]], { encoding: 'utf8', timeout: 30_000 });
+  if ((result.error as NodeJS.ErrnoException | undefined)?.code === 'ETIMEDOUT') return { error: 'The check timed out after 30 seconds.' };
+  if (result.error) return { error: `Could not run ssh: ${result.error.message}` };
   // Cap the output: the model pays for every token it reads.
   return { exit_code: result.status, output: (result.stdout + result.stderr).slice(-8000) };
 }
 
-const agent = await agents.create({
-  model: process.env.ORCA_MODEL!,
-  name: 'server-health',
-  instructions: INSTRUCTIONS,
-  tools: [{
-    type: 'function',
-    name: 'run_check',
-    description: 'Run one named read-only check on the server and return its output.',
-    parameters: {
-      type: 'object',
-      properties: { check: { type: 'string', enum: Object.keys(CHECKS).sort() } },
-      required: ['check'],
-      additionalProperties: false,
-    },
-    defer_loading: false,
-  }],
-});
-const session = await sessions.create({ agent_id: agent.id, environment: { type: 'none' } });
-
+let agent: { id: string } | undefined;
+let session: { id: string } | undefined;
 try {
+  agent = await agents.create({
+    model: process.env.ORCA_MODEL!,
+    name: 'server-health',
+    instructions: INSTRUCTIONS,
+    tools: [{
+      type: 'function',
+      name: 'run_check',
+      description: 'Run one named read-only check on the server and return its output.',
+      parameters: {
+        type: 'object',
+        properties: { check: { type: 'string', enum: Object.keys(CHECKS).sort() } },
+        required: ['check'],
+        additionalProperties: false,
+      },
+      defer_loading: false,
+    }],
+  });
+  session = await sessions.create({ agent_id: agent.id, environment: { type: 'none' } });
+
+  let status: string | undefined;
   const input = `Host ${HOST}: ${QUESTION}`;
-  for await (const _ of sessions.stream(session.id, { input, toolHandlers: { run_check: runCheck } })) {
+  for await (const event of sessions.stream(session.id, { input, toolHandlers: { run_check: runCheck } })) {
     // read to the end, or the helper stops answering calls
+    if (event.type === 'agent.session.turn.completed') status = event.turn.status;
   }
+  if (status !== 'completed') throw new Error(`Diagnosis did not complete: ${status}`);
   for (const item of (await sessions.items.list(session.id, { limit: 50 })).data as any[]) {
     if (item.type === 'message' && item.role === 'assistant') {
       console.log((item.content ?? []).map((p: any) => p.text).filter(Boolean).join(' '));
       break;
     }
   }
+} catch (error) {
+  console.error(error instanceof Error ? error.message : error);
+  process.exitCode = 1;
 } finally {
-  await sessions.delete(session.id).catch(() => {});
-  await agents.delete(agent.id).catch(() => {});
+  // Delete each resource on its own, so one failed delete does not skip the rest.
+  if (session) await sessions.delete(session.id).catch(() => {});
+  if (agent) await agents.delete(agent.id).catch(() => {});
 }
 ```
 </Tab>

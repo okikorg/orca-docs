@@ -38,15 +38,16 @@ instead of guessing. Do not use emojis."""
 
 question = sys.argv[1] if len(sys.argv) > 1 else "What changed in the latest stable Postgres release?"
 
-agent = agents.create(
-    model=os.environ["ORCA_MODEL"],
-    name="researcher",
-    instructions=INSTRUCTIONS,
-    tools=[{"type": "web_search"}],
-)
-session = agents.sessions.create(agent_id=agent.id, environment={"type": "none"})
-
+agent = session = None
 try:
+    agent = agents.create(
+        model=os.environ["ORCA_MODEL"],
+        name="researcher",
+        instructions=INSTRUCTIONS,
+        tools=[{"type": "web_search"}],
+    )
+    session = agents.sessions.create(agent_id=agent.id, environment={"type": "none"})
+
     with agents.sessions.stream(session.id, input=question) as stream:
         for event in stream:
             if event.type == "agent.session.turn.completed":
@@ -64,8 +65,17 @@ try:
                 if getattr(part, "text", None):
                     print(part.text)
 finally:
-    agents.sessions.delete(session.id)
-    agents.delete(agent.id)
+    # Delete each resource on its own, so one failed delete does not skip the rest.
+    if session:
+        try:
+            agents.sessions.delete(session.id)
+        except openai.APIError:
+            pass
+    if agent:
+        try:
+            agents.delete(agent.id)
+        except openai.APIError:
+            pass
     client.close()
 ```
 </Tab>
@@ -84,15 +94,17 @@ instead of guessing. Do not use emojis.`;
 
 const question = process.argv[2] ?? 'What changed in the latest stable Postgres release?';
 
-const agent = await agents.create({
-  model: process.env.ORCA_MODEL!,
-  name: 'researcher',
-  instructions: INSTRUCTIONS,
-  tools: [{ type: 'web_search' }],
-});
-const session = await agents.sessions.create({ agent_id: agent.id, environment: { type: 'none' } });
-
+let agent: { id: string } | undefined;
+let session: { id: string } | undefined;
 try {
+  agent = await agents.create({
+    model: process.env.ORCA_MODEL!,
+    name: 'researcher',
+    instructions: INSTRUCTIONS,
+    tools: [{ type: 'web_search' }],
+  });
+  session = await agents.sessions.create({ agent_id: agent.id, environment: { type: 'none' } });
+
   for await (const event of agents.sessions.stream(session.id, { input: question })) {
     if (event.type === 'agent.session.turn.completed') console.log('turn:', event.turn.status);
   }
@@ -108,8 +120,9 @@ try {
     }
   }
 } finally {
-  await agents.sessions.delete(session.id).catch(() => {});
-  await agents.delete(agent.id).catch(() => {});
+  // Delete each resource on its own, so one failed delete does not skip the rest.
+  if (session) await agents.sessions.delete(session.id).catch(() => {});
+  if (agent) await agents.delete(agent.id).catch(() => {});
 }
 ```
 </Tab>

@@ -13,7 +13,12 @@ A fixed output format makes the review easy to read, and easy for a script to ch
 
 ## The program
 
-Examples on this page assume the settings from the [shared setup](/recipes/overview#shared-setup). It reviews your branch against `main` and exits with status 1 when there is a high-severity finding, so you can use it as a pre-push hook or a CI step.
+Examples on this page assume the settings from the [shared setup](/recipes/overview#shared-setup). It reviews your branch against a base branch and sets its exit status, so you can use it as a pre-push hook or a CI step:
+
+- **0**: no high-severity finding, or nothing to review. A push with no changes goes through.
+- **1**: a high-severity finding, or the review could not run.
+
+The base is the first argument if you give one. Otherwise it is `main`, or `origin/main` when there is no local `main`, as in most CI checkouts. In CI, fetch enough history for Git to find where your branch left the base, for example `git fetch origin main` in a full clone (with `actions/checkout`, set `fetch-depth: 0`).
 
 <Tabs>
 <Tab title="Python">
@@ -30,7 +35,6 @@ client = openai.OpenAI(api_key=os.environ["ORCA_API_KEY"], base_url=os.environ["
 agents = client.beta.agents
 sessions = agents.sessions
 
-BASE = sys.argv[1] if len(sys.argv) > 1 else "main"
 INSTRUCTIONS = """\
 You review a code diff before it becomes a pull request.
 Look for bugs, missing error handling, security problems, and changes that
@@ -42,6 +46,21 @@ say so in the finding. If there is nothing worth fixing, reply "No findings."
 Do not use emojis."""
 
 
+def git(*args):
+    """Run git and return the result without raising."""
+    return subprocess.run(["git", *args], capture_output=True, text=True, errors="replace")
+
+
+def base_branch():
+    """The first argument, else main, else origin/main (CI often has only origin/main)."""
+    if len(sys.argv) > 1:
+        return sys.argv[1]
+    for name in ("main", "origin/main"):
+        if git("rev-parse", "--verify", "--quiet", f"{name}^{{commit}}").returncode == 0:
+            return name
+    raise SystemExit("Neither main nor origin/main exists. Pass the base branch as the first argument.")
+
+
 def review_agent_id():
     """Reuse the saved agent if REVIEW_AGENT_ID is set; otherwise create one."""
     if os.environ.get("REVIEW_AGENT_ID"):
@@ -51,16 +70,20 @@ def review_agent_id():
     return agent.id
 
 
-diff = subprocess.run(
-    ["git", "diff", f"{BASE}...HEAD"], check=True, capture_output=True, text=True,
-).stdout
+BASE = base_branch()
+result = git("diff", f"{BASE}...HEAD")
+if result.returncode != 0:
+    raise SystemExit(f"git diff {BASE}...HEAD failed: {result.stderr.strip()}")
+diff = result.stdout
 if not diff.strip():
-    raise SystemExit("Nothing to review.")
+    print(f"Nothing to review: no changes against {BASE}.")
+    sys.exit(0)
 if len(diff) > 200_000:
     raise SystemExit("Diff too large for one review. Review it in parts.")
 
-session = sessions.create(agent_id=review_agent_id(), environment={"type": "none"})
+session = None
 try:
+    session = sessions.create(agent_id=review_agent_id(), environment={"type": "none"})
     status = None
     with sessions.stream(session.id, input=f"Review this diff against {BASE}:\n\n{diff}") as stream:
         for event in stream:
@@ -77,21 +100,25 @@ try:
     print(review)
     sys.exit(1 if "[high]" in review else 0)
 finally:
-    sessions.delete(session.id)
+    # The agent is kept for reuse; only this review's session is deleted.
+    if session:
+        try:
+            sessions.delete(session.id)
+        except openai.APIError:
+            pass
     client.close()
 ```
 </Tab>
 <Tab title="TypeScript">
 ```typescript
 /** Review the current branch's diff and fail on high-severity findings. */
-import { execFileSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import OpenAI from 'openai';
 
 const client = new OpenAI({ apiKey: process.env.ORCA_API_KEY!, baseURL: process.env.ORCA_BASE_URL! });
 const agents = client.beta.agents;
 const sessions = agents.sessions;
 
-const BASE = process.argv[2] ?? 'main';
 const INSTRUCTIONS = `You review a code diff before it becomes a pull request.
 Look for bugs, missing error handling, security problems, and changes that
 break callers. Ignore style and formatting; a linter handles those.
@@ -101,6 +128,26 @@ Only report what the diff shows. If a finding depends on code you cannot see,
 say so in the finding. If there is nothing worth fixing, reply "No findings."
 Do not use emojis.`;
 
+/** Run git and return the result without throwing. */
+function git(...args: string[]) {
+  return spawnSync('git', args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+}
+
+/** Print a message and exit with status 1. */
+function fail(message: string): never {
+  console.error(message);
+  process.exit(1);
+}
+
+/** The first argument, else main, else origin/main (CI often has only origin/main). */
+function baseBranch() {
+  if (process.argv[2]) return process.argv[2];
+  for (const name of ['main', 'origin/main']) {
+    if (git('rev-parse', '--verify', '--quiet', `${name}^{commit}`).status === 0) return name;
+  }
+  return fail('Neither main nor origin/main exists. Pass the base branch as the first argument.');
+}
+
 /** Reuse the saved agent if REVIEW_AGENT_ID is set; otherwise create one. */
 async function reviewAgentId() {
   if (process.env.REVIEW_AGENT_ID) return process.env.REVIEW_AGENT_ID;
@@ -109,12 +156,19 @@ async function reviewAgentId() {
   return agent.id;
 }
 
-const diff = execFileSync('git', ['diff', `${BASE}...HEAD`], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
-if (!diff.trim()) throw new Error('Nothing to review.');
-if (diff.length > 200_000) throw new Error('Diff too large for one review. Review it in parts.');
+const BASE = baseBranch();
+const result = git('diff', `${BASE}...HEAD`);
+if (result.status !== 0) fail(`git diff ${BASE}...HEAD failed: ${(result.stderr || String(result.error ?? '')).trim()}`);
+const diff = result.stdout;
+if (!diff.trim()) {
+  console.log(`Nothing to review: no changes against ${BASE}.`);
+  process.exit(0);
+}
+if (diff.length > 200_000) fail('Diff too large for one review. Review it in parts.');
 
-const session = await sessions.create({ agent_id: await reviewAgentId(), environment: { type: 'none' } });
+let session: { id: string } | undefined;
 try {
+  session = await sessions.create({ agent_id: await reviewAgentId(), environment: { type: 'none' } });
   let status: string | undefined;
   for await (const event of sessions.stream(session.id, { input: `Review this diff against ${BASE}:\n\n${diff}` })) {
     if (event.type === 'agent.session.turn.completed') status = event.turn.status;
@@ -130,14 +184,18 @@ try {
   }
   console.log(review);
   process.exitCode = review.includes('[high]') ? 1 : 0;
+} catch (error) {
+  console.error(error instanceof Error ? error.message : error);
+  process.exitCode = 1;
 } finally {
-  await sessions.delete(session.id).catch(() => {});
+  // The agent is kept for reuse; only this review's session is deleted.
+  if (session) await sessions.delete(session.id).catch(() => {});
 }
 ```
 </Tab>
 </Tabs>
 
-The first run creates the agent and prints its ID. Set `REVIEW_AGENT_ID` to reuse it, so you create the agent once and not on every push. Every review gets a fresh session, so reviews never see each other.
+The first run creates the agent and prints its ID. Set `REVIEW_AGENT_ID` to reuse it, so you create the agent once and not on every push. Every review gets a fresh session, so reviews never see each other. The program deletes each review's session but keeps the agent; delete the agent when you stop using it.
 
 ## Make it yours
 

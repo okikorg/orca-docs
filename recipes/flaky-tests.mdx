@@ -8,7 +8,7 @@ This agent takes a snapshot of your repository, runs the test suite several time
 **You will use:** a [managed sandbox](/guides/environments#managed-sandbox), [uploaded files](/guides/files-and-artifacts#upload-a-file), and [artifacts](/guides/files-and-artifacts).
 
 <Note>
-A managed sandbox uses [machine time](/plans#machine-time) while it runs and needs your plan's [minimum balance](/plans#paid-work-needs-a-minimum-balance) of Orca credit in your wallet. Running a suite many times is the expensive part; start with a small `RUNS` value.
+This recipe uses [machine time](/plans#machine-time): it reruns your whole test suite in a managed sandbox, and the sandbox runs for as long as all those runs take. A managed sandbox also needs your plan's [minimum balance](/plans#paid-work-needs-a-minimum-balance) of Orca credit in your wallet. Run it with `RUNS=1` first, to check that the suite installs and runs, before you ask for more runs.
 </Note>
 
 ## How it works
@@ -34,10 +34,14 @@ client = openai.OpenAI(api_key=os.environ["ORCA_API_KEY"], base_url=os.environ["
 agents = client.beta.agents
 sessions = agents.sessions
 
-RUNS = 5
+# How many times to run the suite. Start with RUNS=1 to check that it installs and runs.
+RUNS = int(os.environ.get("RUNS", "5"))
+# Orca refuses to stage any one file over 16 MiB, however it was uploaded.
+STAGED_FILE_LIMIT = 16 * 1024 * 1024
 INSTRUCTIONS = """\
 You find flaky tests. You work in a Linux sandbox with a shell.
 The repository is in /workspace/repo.tar.gz. Extract it to /workspace/repo first.
+Create /workspace/outputs if it does not exist.
 Install its test dependencies, then run the test suite the number of times the user asks,
 recording which tests fail on each run. Save the raw results to /workspace/outputs/runs/.
 A flaky test fails on some runs and passes on others. A test that fails on every run is
@@ -54,23 +58,24 @@ Do not use emojis."""
 snapshot = subprocess.run(
     ["git", "archive", "--format=tar.gz", "HEAD"], check=True, capture_output=True,
 ).stdout
-if len(snapshot) > 64 * 1024 * 1024:
-    raise SystemExit("Snapshot is over the 64 MiB staging limit. Archive a subfolder instead.")
-uploaded = client.files.create(file=("repo.tar.gz", snapshot), purpose="user_data")
+if len(snapshot) > STAGED_FILE_LIMIT:
+    raise SystemExit("Snapshot is over the 16 MiB limit for one staged file. Archive a subfolder instead.")
 
-agent = agents.create(model=os.environ["ORCA_MODEL"], name="flaky-hunter", instructions=INSTRUCTIONS)
-session = sessions.create(
-    agent_id=agent.id,
-    environment={
-        "type": "openai_hosted",
-        # Enabled so the agent can install dependencies. Use "disabled" if your
-        # tests need nothing from the internet and the image already has them.
-        "network": {"access": "enabled"},
-        "files": [{"type": "file_id", "file_id": uploaded.id, "path": "/workspace/repo.tar.gz"}],
-    },
-)
-
+uploaded = agent = session = None
 try:
+    uploaded = client.files.create(file=("repo.tar.gz", snapshot), purpose="user_data")
+    agent = agents.create(model=os.environ["ORCA_MODEL"], name="flaky-hunter", instructions=INSTRUCTIONS)
+    session = sessions.create(
+        agent_id=agent.id,
+        environment={
+            "type": "openai_hosted",
+            # Enabled so the agent can install dependencies. Use "disabled" if your
+            # tests need nothing from the internet and the image already has them.
+            "network": {"access": "enabled"},
+            "files": [{"type": "file_id", "file_id": uploaded.id, "path": "/workspace/repo.tar.gz"}],
+        },
+    )
+
     prompt = f"Run the full test suite {RUNS} times and find the flaky tests."
     with sessions.stream(session.id, input=prompt) as stream:
         for event in stream:
@@ -85,9 +90,22 @@ try:
         target.write_bytes(content.content)
         print("saved:", target)
 finally:
-    sessions.delete(session.id)
-    agents.delete(agent.id)
-    client.files.delete(uploaded.id)
+    # Delete each resource on its own, so one failed delete does not skip the rest.
+    if session:
+        try:
+            sessions.delete(session.id)
+        except openai.APIError:
+            pass
+    if agent:
+        try:
+            agents.delete(agent.id)
+        except openai.APIError:
+            pass
+    if uploaded:
+        try:
+            client.files.delete(uploaded.id)
+        except openai.APIError:
+            pass
     client.close()
 ```
 </Tab>
@@ -103,9 +121,13 @@ const client = new OpenAI({ apiKey: process.env.ORCA_API_KEY!, baseURL: process.
 const agents = client.beta.agents;
 const sessions = agents.sessions;
 
-const RUNS = 5;
+// How many times to run the suite. Start with RUNS=1 to check that it installs and runs.
+const RUNS = Number(process.env.RUNS ?? '5');
+// Orca refuses to stage any one file over 16 MiB, however it was uploaded.
+const STAGED_FILE_LIMIT = 16 * 1024 * 1024;
 const INSTRUCTIONS = `You find flaky tests. You work in a Linux sandbox with a shell.
 The repository is in /workspace/repo.tar.gz. Extract it to /workspace/repo first.
+Create /workspace/outputs if it does not exist.
 Install its test dependencies, then run the test suite the number of times the user asks,
 recording which tests fail on each run. Save the raw results to /workspace/outputs/runs/.
 A flaky test fails on some runs and passes on others. A test that fails on every run is
@@ -120,23 +142,28 @@ Do not use emojis.`;
 
 // Committed files only: no .env files, build output, or local secrets.
 const snapshot = execFileSync('git', ['archive', '--format=tar.gz', 'HEAD'], { maxBuffer: 512 * 1024 * 1024 });
-if (snapshot.length > 64 * 1024 * 1024) {
-  throw new Error('Snapshot is over the 64 MiB staging limit. Archive a subfolder instead.');
+if (snapshot.length > STAGED_FILE_LIMIT) {
+  console.error('Snapshot is over the 16 MiB limit for one staged file. Archive a subfolder instead.');
+  process.exit(1);
 }
-const uploaded = await client.files.create({ file: new File([snapshot], 'repo.tar.gz'), purpose: 'user_data' });
 
-const agent = await agents.create({ model: process.env.ORCA_MODEL!, name: 'flaky-hunter', instructions: INSTRUCTIONS });
-const session = await sessions.create({
-  agent_id: agent.id,
-  environment: {
-    type: 'openai_hosted',
-    // Enabled so the agent can install dependencies.
-    network: { access: 'enabled' },
-    files: [{ type: 'file_id', file_id: uploaded.id, path: '/workspace/repo.tar.gz' }],
-  },
-});
-
+let uploaded: { id: string } | undefined;
+let agent: { id: string } | undefined;
+let session: { id: string } | undefined;
 try {
+  uploaded = await client.files.create({ file: new File([snapshot], 'repo.tar.gz'), purpose: 'user_data' });
+  agent = await agents.create({ model: process.env.ORCA_MODEL!, name: 'flaky-hunter', instructions: INSTRUCTIONS });
+  session = await sessions.create({
+    agent_id: agent.id,
+    environment: {
+      type: 'openai_hosted',
+      // Enabled so the agent can install dependencies. Use "disabled" if your
+      // tests need nothing from the internet and the image already has them.
+      network: { access: 'enabled' },
+      files: [{ type: 'file_id', file_id: uploaded.id, path: '/workspace/repo.tar.gz' }],
+    },
+  });
+
   const input = `Run the full test suite ${RUNS} times and find the flaky tests.`;
   for await (const event of sessions.stream(session.id, { input })) {
     if (event.type === 'agent.session.turn.completed') console.log('turn:', event.turn.status);
@@ -150,15 +177,27 @@ try {
     console.log('saved:', target);
   }
 } finally {
-  await sessions.delete(session.id).catch(() => {});
-  await agents.delete(agent.id).catch(() => {});
-  await client.files.delete(uploaded.id).catch(() => {});
+  // Delete each resource on its own, so one failed delete does not skip the rest.
+  if (session) await sessions.delete(session.id).catch(() => {});
+  if (agent) await agents.delete(agent.id).catch(() => {});
+  if (uploaded) await client.files.delete(uploaded.id).catch(() => {});
 }
 ```
 </Tab>
 </Tabs>
 
-Everything staged into one sandbox is limited to 64 MiB, so for a large repository archive only the part you need, for example `git archive HEAD src tests`. Every sandbox is the same size, shown on the [pricing page](https://orcapods.ai/pricing); a heavy suite run five times may need a narrower selection of tests.
+Orca stages at most 16 MiB from one file, so the program stops if the compressed snapshot is bigger. For a large repository, archive only the part you need, for example `git archive --format=tar.gz HEAD src tests`. Every sandbox is the same size, shown on the [pricing page](https://orcapods.ai/pricing); a heavy suite run five times may need a narrower selection of tests.
+
+Set `RUNS` to choose how many times the suite runs:
+
+<CodeGroup>
+```bash Python
+RUNS=1 python flaky_tests.py
+```
+```bash TypeScript
+RUNS=1 node --experimental-strip-types flaky_tests.ts
+```
+</CodeGroup>
 
 Read `flaky-output/flaky_report.md`, then try a patch locally with `git apply --check flaky-output/patches/<test-name>.diff` before applying it.
 

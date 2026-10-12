@@ -58,7 +58,7 @@ The agent's instructions stay short. They point at the skill, and the skill carr
 
 ## The program
 
-Examples on this page assume the settings from the [shared setup](/recipes/overview#shared-setup). The TypeScript version also needs `npm install jszip` to build the zip. It uploads the skill, saves a template that installs a pinned version of it, and runs one session from the template.
+Examples on this page assume the settings from the [shared setup](/recipes/overview#shared-setup). The TypeScript version also needs `npm install jszip` to build the zip. It uploads the skill, saves a template that installs a pinned version of it, runs one session from the template, and then deletes everything it created, so a run leaves nothing behind.
 
 <Tabs>
 <Tab title="Python">
@@ -122,43 +122,46 @@ def bundle(files):
     return out.getvalue()
 
 
-# 1. Upload the skill. Version 1 becomes its default.
-skill = client.skills.create(files=[("release-notes.zip", bundle({
-    "release-notes/SKILL.md": SKILL_MD,
-    "release-notes/template.md": TEMPLATE_MD,
-}))])
-
-# 2. Save a template that installs exactly this version, with no internet.
-template = agents.environments.templates.create(
-    name="release-workspace",
-    network={"access": "disabled"},
-    skills=[{"type": "skill_reference", "skill_id": skill.id, "version": skill.default_version}],
-)
-
-agent = agents.create(
-    model=os.environ["ORCA_MODEL"],
-    name="release-writer",
-    instructions=(
-        "You write release notes. Use the release-notes skill for every request.\n"
-        "The changelog is at /workspace/inputs/CHANGELOG.md. Do not use emojis."
-    ),
-)
-
-# 3. Each session builds its sandbox from the template, plus this run's changelog.
-session = agents.sessions.create(
-    agent_id=agent.id,
-    environment={
-        "type": "openai_hosted",
-        "environment_template_id": template.id,
-        "files": [{
-            "type": "inline",
-            "path": "/workspace/inputs/CHANGELOG.md",
-            "data": base64.b64encode(CHANGELOG).decode(),
-        }],
-    },
-)
-
+skill = template = agent = session = None
 try:
+    # 1. Upload the skill. Version 1 becomes its default.
+    skill = client.skills.create(files=[("release-notes.zip", bundle({
+        "release-notes/SKILL.md": SKILL_MD,
+        "release-notes/template.md": TEMPLATE_MD,
+    }))])
+
+    # 2. Save a template that installs exactly this version, with no internet.
+    template = agents.environments.templates.create(
+        name="release-workspace",
+        network={"access": "disabled"},
+        skills=[{"type": "skill_reference", "skill_id": skill.id, "version": skill.default_version}],
+    )
+
+    agent = agents.create(
+        model=os.environ["ORCA_MODEL"],
+        name="release-writer",
+        instructions=(
+            "You write release notes. Before you write anything, load the release-notes skill\n"
+            "with the skill tool, read its template.md, and follow both exactly.\n"
+            "Create /workspace/outputs if it does not exist.\n"
+            "The changelog is at /workspace/inputs/CHANGELOG.md. Do not use emojis."
+        ),
+    )
+
+    # 3. Each session builds its sandbox from the template, plus this run's changelog.
+    session = agents.sessions.create(
+        agent_id=agent.id,
+        environment={
+            "type": "openai_hosted",
+            "environment_template_id": template.id,
+            "files": [{
+                "type": "inline",
+                "path": "/workspace/inputs/CHANGELOG.md",
+                "data": base64.b64encode(CHANGELOG).decode(),
+            }],
+        },
+    )
+
     with agents.sessions.stream(session.id, input="Write the release notes for 2.4.0.") as stream:
         for event in stream:
             if event.type == "agent.session.turn.completed":
@@ -169,9 +172,28 @@ try:
         Path(Path(artifact.path).name).write_bytes(content.content)
         print("saved:", Path(artifact.path).name)
 finally:
-    agents.sessions.delete(session.id)
-    agents.delete(agent.id)
-    # Delete the template and skill only once no new sessions need them.
+    # Delete everything this run created, each on its own, so one failed
+    # delete does not skip the rest. To reuse the skill and template, keep them.
+    if session:
+        try:
+            agents.sessions.delete(session.id)
+        except openai.APIError:
+            pass
+    if agent:
+        try:
+            agents.delete(agent.id)
+        except openai.APIError:
+            pass
+    if template:
+        try:
+            agents.environments.templates.delete(template.id)
+        except openai.APIError:
+            pass
+    if skill:
+        try:
+            client.skills.delete(skill.id)
+        except openai.APIError:
+            pass
     client.close()
 ```
 </Tab>
@@ -229,41 +251,47 @@ async function bundle(files: Record<string, string>) {
   return new File([await zip.generateAsync({ type: 'nodebuffer' })], 'release-notes.zip');
 }
 
-// 1. Upload the skill. Version 1 becomes its default.
-const skill = await client.skills.create({
-  files: [await bundle({ 'release-notes/SKILL.md': SKILL_MD, 'release-notes/template.md': TEMPLATE_MD })],
-});
-
-// 2. Save a template that installs exactly this version, with no internet.
-const template = await agents.environments.templates.create({
-  name: 'release-workspace',
-  network: { access: 'disabled' },
-  skills: [{ type: 'skill_reference', skill_id: skill.id, version: skill.default_version }],
-});
-
-const agent = await agents.create({
-  model: process.env.ORCA_MODEL!,
-  name: 'release-writer',
-  instructions:
-    'You write release notes. Use the release-notes skill for every request.\n' +
-    'The changelog is at /workspace/inputs/CHANGELOG.md. Do not use emojis.',
-});
-
-// 3. Each session builds its sandbox from the template, plus this run's changelog.
-const session = await agents.sessions.create({
-  agent_id: agent.id,
-  environment: {
-    type: 'openai_hosted',
-    environment_template_id: template.id,
-    files: [{
-      type: 'inline',
-      path: '/workspace/inputs/CHANGELOG.md',
-      data: Buffer.from(CHANGELOG).toString('base64'),
-    }],
-  },
-});
-
+let skill: { id: string; default_version: string } | undefined;
+let template: { id: string } | undefined;
+let agent: { id: string } | undefined;
+let session: { id: string } | undefined;
 try {
+  // 1. Upload the skill. Version 1 becomes its default.
+  skill = await client.skills.create({
+    files: [await bundle({ 'release-notes/SKILL.md': SKILL_MD, 'release-notes/template.md': TEMPLATE_MD })],
+  });
+
+  // 2. Save a template that installs exactly this version, with no internet.
+  template = await agents.environments.templates.create({
+    name: 'release-workspace',
+    network: { access: 'disabled' },
+    skills: [{ type: 'skill_reference', skill_id: skill.id, version: skill.default_version }],
+  });
+
+  agent = await agents.create({
+    model: process.env.ORCA_MODEL!,
+    name: 'release-writer',
+    instructions:
+      'You write release notes. Before you write anything, load the release-notes skill\n' +
+      'with the skill tool, read its template.md, and follow both exactly.\n' +
+      'Create /workspace/outputs if it does not exist.\n' +
+      'The changelog is at /workspace/inputs/CHANGELOG.md. Do not use emojis.',
+  });
+
+  // 3. Each session builds its sandbox from the template, plus this run's changelog.
+  session = await agents.sessions.create({
+    agent_id: agent.id,
+    environment: {
+      type: 'openai_hosted',
+      environment_template_id: template.id,
+      files: [{
+        type: 'inline',
+        path: '/workspace/inputs/CHANGELOG.md',
+        data: Buffer.from(CHANGELOG).toString('base64'),
+      }],
+    },
+  });
+
   for await (const event of agents.sessions.stream(session.id, { input: 'Write the release notes for 2.4.0.' })) {
     if (event.type === 'agent.session.turn.completed') console.log('turn:', event.turn.status);
   }
@@ -274,9 +302,12 @@ try {
     console.log('saved:', basename(artifact.path));
   }
 } finally {
-  await agents.sessions.delete(session.id).catch(() => {});
-  await agents.delete(agent.id).catch(() => {});
-  // Delete the template and skill only once no new sessions need them.
+  // Delete everything this run created, each on its own, so one failed
+  // delete does not skip the rest. To reuse the skill and template, keep them.
+  if (session) await agents.sessions.delete(session.id).catch(() => {});
+  if (agent) await agents.delete(agent.id).catch(() => {});
+  if (template) await agents.environments.templates.delete(template.id).catch(() => {});
+  if (skill) await client.skills.delete(skill.id).catch(() => {});
 }
 ```
 </Tab>
@@ -286,7 +317,7 @@ With this changelog, expect the refactor entry to be dropped, the rounding fix t
 
 ## Improve the skill safely
 
-When the notes need a change, upload a new version without making it the default, try it, then promote it:
+To improve the skill over time, keep it and its template instead of deleting them: create them once, save their IDs, and remove those two deletes from the program. Then, when the notes need a change, upload a new version without making it the default, try it, then promote it:
 
 <CodeGroup>
 ```python Python

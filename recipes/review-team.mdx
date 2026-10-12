@@ -3,7 +3,7 @@ title: "Review team"
 description: "A lead agent that splits a review across subagents, one file each, and merges their findings into one report."
 ---
 
-This agent reviews several documents at once. The lead hands each file to a helper (a [subagent](/guides/subagents)), each helper reviews only its own file with a clean context, and the lead merges the findings into one report. The same pattern works for contracts, pull request files, support transcripts, or competitor pages.
+This agent reviews several documents at once. The lead hands each file to a helper (a [subagent](/guides/subagents)), each helper reviews only its own file with a clean context, and the lead merges the findings into one report. Helpers run three at a time, so any number of documents works. The same pattern works for contracts, pull request files, support transcripts, or competitor pages.
 
 **You will use:** [subagents](/guides/subagents), a [managed sandbox](/guides/environments#managed-sandbox), and [artifacts](/guides/files-and-artifacts).
 
@@ -14,6 +14,10 @@ A managed sandbox uses [machine time](/plans#machine-time) while it runs and nee
 ## How it works
 
 `multi_agent` lets the lead delegate. It does not force it to, so the instructions say exactly when to delegate and what each helper must return.
+
+`max_concurrent_subagents` is a hard limit. Orca does not queue helpers: when the lead tries to start one more than the limit, that helper is refused with "Session subagent concurrency limit reached". So the instructions tell the lead to start at most three helpers, wait for all of them, and then start the next batch. The program builds the limit and the instructions from the same `MAX_HELPERS` constant, so they stay in step.
+
+While it waits for a batch, the lead may end its turn with a short status instead of starting the next one. The turn still ends only after its helpers are done, and their results reach the lead in its next turn. So the program sends "Continue" until the report exists, up to five turns.
 
 ## The program
 
@@ -35,14 +39,21 @@ client = openai.OpenAI(api_key=os.environ["ORCA_API_KEY"], base_url=os.environ["
 agents = client.beta.agents
 sessions = agents.sessions
 
-INSTRUCTIONS = """\
+# Orca refuses a helper beyond this limit instead of queueing it,
+# so the instructions tell the lead to work in batches of this size.
+MAX_HELPERS = 3
+REPORT = "/workspace/outputs/review.md"
+INSTRUCTIONS = f"""\
 You lead a document review. The documents are in /workspace/docs.
-Start one subagent per document. Give each one the file path and this task:
+Give each document to its own subagent, with the file path and this task:
 "Review this one file for unclear wording, missing steps, and claims without evidence.
 Return at most five findings, each with the line it is about, the problem,
 and a suggested fix. Return 'No findings' if there are none."
-Do not review the files yourself. When every subagent is done, merge the findings
-into /workspace/outputs/review.md, grouped by file, most serious first.
+Run at most {MAX_HELPERS} subagents at a time. Any more are refused, not queued.
+Start up to {MAX_HELPERS}, wait until every one of them has returned, then start the next ones.
+Do not review the files yourself. When every document has been reviewed, merge the findings
+into {REPORT}, grouped by file, most serious first.
+Create /workspace/outputs if it does not exist.
 Where subagents disagree or a finding looks wrong, say so. Do not use emojis."""
 
 folder = Path(sys.argv[1] if len(sys.argv) > 1 else "docs")
@@ -55,23 +66,47 @@ staged = [
     for path in sorted(folder.glob("*.md"))
 ]
 
-agent = agents.create(
-    model=os.environ["ORCA_MODEL"],
-    name="review-lead",
-    instructions=INSTRUCTIONS,
-    multi_agent={"enabled": True, "max_concurrent_subagents": 3},
-)
-session = sessions.create(
-    agent_id=agent.id,
-    environment={"type": "openai_hosted", "network": {"access": "disabled"}, "files": staged},
-)
 
-try:
-    # The lead's turn ends only after all its helpers are done.
-    with sessions.stream(session.id, input=f"Review the {len(staged)} documents.") as stream:
+
+def lead_turn(session_id, text):
+    """Send the lead one message, wait for its turn, and return the turn's status."""
+    status = None
+    with sessions.stream(session_id, input=text) as stream:
         for event in stream:
-            if event.type == "agent.session.turn.completed":
-                print("turn:", event.turn.status)
+            # Helper turns stream too; they carry a subagent_id.
+            if event.type == "agent.session.turn.completed" and not event.turn.subagent_id:
+                status = event.turn.status
+    print("turn:", status)
+    return status
+
+
+def has_report(session_id):
+    return any(Path(a.path).name == "review.md" for a in sessions.artifacts.list(session_id))
+
+
+agent = session = None
+try:
+    agent = agents.create(
+        model=os.environ["ORCA_MODEL"],
+        name="review-lead",
+        instructions=INSTRUCTIONS,
+        multi_agent={"enabled": True, "max_concurrent_subagents": MAX_HELPERS},
+    )
+    session = sessions.create(
+        agent_id=agent.id,
+        environment={"type": "openai_hosted", "network": {"access": "disabled"}, "files": staged},
+    )
+
+    # A turn ends only after its helpers are done, but the lead may end a turn
+    # before it has started every batch. It sees the helpers' results in its
+    # next turn, so ask it to carry on until the report exists.
+    message = f"Review the {len(staged)} documents."
+    for _ in range(5):
+        if lead_turn(session.id, message) != "completed" or has_report(session.id):
+            break
+        message = f"Continue. Review the documents that have no findings yet, then write {REPORT}."
+    if not has_report(session.id):
+        raise SystemExit("The lead did not write a report.")
 
     # A closed helper is not always a successful one: check its turns.
     for child in sessions.subagents.list(session.id):
@@ -83,8 +118,17 @@ try:
         Path(Path(artifact.path).name).write_bytes(content.content)
         print("saved:", Path(artifact.path).name)
 finally:
-    sessions.delete(session.id)
-    agents.delete(agent.id)
+    # Delete each resource on its own, so one failed delete does not skip the rest.
+    if session:
+        try:
+            sessions.delete(session.id)
+        except openai.APIError:
+            pass
+    if agent:
+        try:
+            agents.delete(agent.id)
+        except openai.APIError:
+            pass
     client.close()
 ```
 </Tab>
@@ -99,13 +143,20 @@ const client = new OpenAI({ apiKey: process.env.ORCA_API_KEY!, baseURL: process.
 const agents = client.beta.agents;
 const sessions = agents.sessions;
 
+// Orca refuses a helper beyond this limit instead of queueing it,
+// so the instructions tell the lead to work in batches of this size.
+const MAX_HELPERS = 3;
+const REPORT = '/workspace/outputs/review.md';
 const INSTRUCTIONS = `You lead a document review. The documents are in /workspace/docs.
-Start one subagent per document. Give each one the file path and this task:
+Give each document to its own subagent, with the file path and this task:
 "Review this one file for unclear wording, missing steps, and claims without evidence.
 Return at most five findings, each with the line it is about, the problem,
 and a suggested fix. Return 'No findings' if there are none."
-Do not review the files yourself. When every subagent is done, merge the findings
-into /workspace/outputs/review.md, grouped by file, most serious first.
+Run at most ${MAX_HELPERS} subagents at a time. Any more are refused, not queued.
+Start up to ${MAX_HELPERS}, wait until every one of them has returned, then start the next ones.
+Do not review the files yourself. When every document has been reviewed, merge the findings
+into ${REPORT}, grouped by file, most serious first.
+Create /workspace/outputs if it does not exist.
 Where subagents disagree or a finding looks wrong, say so. Do not use emojis.`;
 
 const folder = process.argv[2] ?? 'docs';
@@ -116,22 +167,47 @@ const staged = await Promise.all(names.map(async name => ({
   data: (await readFile(join(folder, name))).toString('base64'),
 })));
 
-const agent = await agents.create({
-  model: process.env.ORCA_MODEL!,
-  name: 'review-lead',
-  instructions: INSTRUCTIONS,
-  multi_agent: { enabled: true, max_concurrent_subagents: 3 },
-});
-const session = await sessions.create({
-  agent_id: agent.id,
-  environment: { type: 'openai_hosted', network: { access: 'disabled' }, files: staged },
-});
-
-try {
-  // The lead's turn ends only after all its helpers are done.
-  for await (const event of sessions.stream(session.id, { input: `Review the ${staged.length} documents.` })) {
-    if (event.type === 'agent.session.turn.completed') console.log('turn:', event.turn.status);
+/** Send the lead one message, wait for its turn, and return the turn's status. */
+async function leadTurn(sessionId: string, input: string) {
+  let status: string | undefined;
+  for await (const event of sessions.stream(sessionId, { input })) {
+    // Helper turns stream too; they carry a subagent_id.
+    if (event.type === 'agent.session.turn.completed' && !event.turn.subagent_id) status = event.turn.status;
   }
+  console.log('turn:', status);
+  return status;
+}
+
+async function hasReport(sessionId: string) {
+  for await (const artifact of sessions.artifacts.list(sessionId)) {
+    if (basename(artifact.path) === 'review.md') return true;
+  }
+  return false;
+}
+
+let agent: { id: string } | undefined;
+let session: { id: string } | undefined;
+try {
+  agent = await agents.create({
+    model: process.env.ORCA_MODEL!,
+    name: 'review-lead',
+    instructions: INSTRUCTIONS,
+    multi_agent: { enabled: true, max_concurrent_subagents: MAX_HELPERS },
+  });
+  session = await sessions.create({
+    agent_id: agent.id,
+    environment: { type: 'openai_hosted', network: { access: 'disabled' }, files: staged },
+  });
+
+  // A turn ends only after its helpers are done, but the lead may end a turn
+  // before it has started every batch. It sees the helpers' results in its
+  // next turn, so ask it to carry on until the report exists.
+  let message = `Review the ${staged.length} documents.`;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    if ((await leadTurn(session.id, message)) !== 'completed' || (await hasReport(session.id))) break;
+    message = `Continue. Review the documents that have no findings yet, then write ${REPORT}.`;
+  }
+  if (!(await hasReport(session.id))) throw new Error('The lead did not write a report.');
 
   // A closed helper is not always a successful one: check its turns.
   for await (const child of sessions.subagents.list(session.id)) {
@@ -148,18 +224,19 @@ try {
     console.log('saved:', basename(artifact.path));
   }
 } finally {
-  await sessions.delete(session.id).catch(() => {});
-  await agents.delete(agent.id).catch(() => {});
+  // Delete each resource on its own, so one failed delete does not skip the rest.
+  if (session) await sessions.delete(session.id).catch(() => {});
+  if (agent) await agents.delete(agent.id).catch(() => {});
 }
 ```
 </Tab>
 </Tabs>
 
-Keep each staged file small: inline files are limited to 16 MiB each and 64 MiB per sandbox. For larger inputs, [upload them](/guides/files-and-artifacts#upload-a-file) and stage them by `file_id`.
+Keep the documents small. Inline files travel in the request that creates the session, and that request is limited to 2 MiB, so all the documents together must stay well under that. For more, [upload them](/guides/files-and-artifacts#upload-a-file) and stage them by `file_id`. That avoids the request limit but not the staging limits: each staged file is at most 16 MiB however you send it, and everything staged into one sandbox at most 64 MiB. See [size limits](/guides/files-and-artifacts#size-limits).
 
 ## Make it yours
 
 - **Give each helper a bounded task.** "Review this file and return at most five findings" works better than "review this". The lead only sees what helpers return, so ask for the evidence you want in the final report.
-- **Set the concurrency for your budget.** `max_concurrent_subagents` caps how many helpers run at once; it is 6 if you leave it out. Helpers cannot start helpers of their own.
+- **Set the concurrency for your budget.** `max_concurrent_subagents` caps how many helpers run at once; it is 6 if you leave it out. Change `MAX_HELPERS` to change both the cap and the batch size in the instructions. Helpers cannot start helpers of their own.
 - **Skip helper turns when you poll.** If you wait by polling the turn list instead of streaming, helper turns appear there too. Skip turns with a `subagent_id`, as the [quickstart](/quickstart) does.
 - **Delegation is not a security boundary.** Helpers share the lead's tools and sandbox. Give the lead only what every helper may use.
