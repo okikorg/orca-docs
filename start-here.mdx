@@ -1,0 +1,311 @@
+---
+title: "Start here"
+description: "Install the Orca CLI, sign in, create an agent and talk to it, then use Orca from your coding agent and your own code."
+---
+
+This page takes you from nothing to a working agent on Orca 2.0, from the terminal. Follow it yourself, or have your coding agent follow it for you. Everything here runs on `orca/openrouter/openai/gpt-5.6-luna`, a low-cost model paid from the Orca credit your new account starts with.
+
+## Have your coding agent do it
+
+Paste this into Claude Code, Codex, or Cursor:
+
+```text
+Set me up on Orca (orcapods.ai), the cloud platform that runs AI agents through the OpenAI Agents API. Work through https://docs.orcapods.ai/start-here, which is written for you to follow, and run its commands yourself.
+
+1. Install the Orca CLI with `curl -fsSL https://orcapods.ai/install.sh | sh` and check it with `orca --version`.
+2. Run `orca login`. It prints a one-time code and a URL: relay both to me so I can approve the sign-in, and wait for it to finish. Then run `orca billing wallet` and tell me my balance.
+3. Connect Orca's MCP server to yourself, as the page's "Your coding agent as your Orca console" section shows. If it only loads after a restart, tell me, and use the CLI until then.
+4. Ask me what job I want an agent to do before you build anything. Then create that agent with `orca agents create` on `orca/openrouter/openai/gpt-5.6-luna` unless I choose another model, run it on a real example with `orca chat`, and show me its answer.
+
+Never print or paste my API keys.
+```
+
+The rest of this page is what it works through.
+
+## Install the CLI and sign in
+
+The commands on this page run in bash, zsh, and fish, on macOS and Linux. Where the shells differ, a block has a tab for each.
+
+```bash
+curl -fsSL https://orcapods.ai/install.sh | sh
+orca --version
+```
+
+The script installs a single `orca` binary to `~/.local/bin`. If your shell then says `orca: command not found`, add that folder to your `PATH` as the script suggests, and open a new terminal. On Windows, download the binary from the [releases page](https://github.com/okikorg/orca-cli/releases). An older CLI updates itself with `orca update`.
+
+Sign in:
+
+```bash
+orca login
+```
+
+It prints a one-time code and a link to the Orca dashboard. Open the link, sign in or create your account, check that the code matches, and choose **Approve**. The CLI then prints "Logged in to Orca as" your role and organization. It works the same over SSH and inside a coding agent, which relays the code and the link to you.
+
+See your credit:
+
+```bash
+orca billing wallet
+```
+
+`balance` is your Orca credit. A new account starts with a [signup credit](/wallet#where-credit-comes-from); the amount is on the [pricing page](https://orcapods.ai/pricing).
+
+## Create your first agent and talk to it
+
+An agent is a saved model and instructions. Describe one called `hello` in a YAML file, and create it:
+
+```bash
+printf '%s\n' \
+  'name: hello' \
+  'model: orca/openrouter/openai/gpt-5.6-luna' \
+  'instructions: You are a concise, friendly assistant.' > hello.yaml
+orca agents create -f hello.yaml
+```
+
+The model name says who pays: `orca/openrouter/<id>` runs on your Orca credit, and `<provider>/<id>`, such as `anthropic/claude-sonnet-4-5`, runs on your own key for that provider. See [models and provider keys](/providers).
+
+Send it a message:
+
+```bash
+orca chat hello "Write a haiku about the ocean."
+```
+
+The reply streams to your terminal, and the line `session session_...` names the session (the conversation) it started. Run `orca chat hello` with no message to have a back-and-forth conversation in your terminal; Ctrl-C leaves it.
+
+Agent names do not have to be unique, but `orca chat hello` needs exactly one agent called `hello`. If you run this page twice, delete the extra one with `orca agents delete`.
+
+## Use the platform from the CLI
+
+Run each block in one terminal: later commands use the variables that earlier ones set. Every command is in the [CLI reference](/cli/commands).
+
+### Continue a conversation
+
+Each `orca chat` without `--session` starts a new session. To keep talking in one, create it first and pass its ID:
+
+<CodeGroup>
+```bash bash / zsh
+SESSION=$(orca sessions create --agent hello)
+orca chat hello --session "$SESSION" "My name is Sam. Please remember it."
+orca chat hello --session "$SESSION" "What is my name?"
+orca sessions items "$SESSION"
+```
+```fish fish
+set SESSION (orca sessions create --agent hello)
+orca chat hello --session "$SESSION" "My name is Sam. Please remember it."
+orca chat hello --session "$SESSION" "What is my name?"
+orca sessions items "$SESSION"
+```
+</CodeGroup>
+
+The agent remembers the first message, and `orca sessions items` prints the conversation so far.
+
+### Search the web
+
+Give the agent the `web_search` tool, then ask something it has to look up:
+
+```bash
+printf '%s\n' 'tools:' '  - type: web_search' > web-search.yaml
+orca agents update hello -f web-search.yaml
+orca chat hello "Search the web for the current Node.js LTS version, and cite your source."
+```
+
+On an Orca credit model, searches are paid from your credit. See [web search](/providers#web-search).
+
+### Get a file from a sandbox
+
+A sandbox is a private machine for one session, where the agent can run commands and write files. Files it saves under `/workspace/outputs` are kept as artifacts when its turn completes:
+
+<CodeGroup>
+```bash bash / zsh
+BOX=$(orca sessions create --agent hello --sandbox)
+orca chat hello --session "$BOX" "Create the folder /workspace/outputs, use Python to write the first 20 prime numbers to /workspace/outputs/primes.txt, one per line, then show me the file's contents."
+orca sessions delete "$BOX" --yes
+```
+```fish fish
+set BOX (orca sessions create --agent hello --sandbox)
+orca chat hello --session "$BOX" "Create the folder /workspace/outputs, use Python to write the first 20 prime numbers to /workspace/outputs/primes.txt, one per line, then show me the file's contents."
+orca sessions delete "$BOX" --yes
+```
+</CodeGroup>
+
+The reply shows the file. Downloading artifacts from the CLI is coming; until then, your code can [download them with the API](/guides/files-and-artifacts#get-results-back-as-artifacts). Deleting the session stops its sandbox and deletes its artifacts.
+
+### Check what it cost
+
+```bash
+orca sessions get "$SESSION"   # one session's cost, tokens, and machine time
+orca usage --days 1            # today's usage, by the hour
+orca billing wallet            # your balance and plan
+```
+
+See [usage and wallet](/wallet#read-the-wallet-and-your-usage).
+
+## Your coding agent as your Orca console
+
+`orca mcp serve` lets your coding agent use Orca for you, with one tool per CLI action: create agents, chat with them, manage skills and files, and read your usage and wallet. It uses the CLI's login, so sign in first.
+
+<Tabs>
+<Tab title="Claude Code">
+Install the Orca plugin. It registers the MCP server and adds a skill that knows the CLI:
+
+```bash
+claude plugin marketplace add okikorg/orca-cli
+claude plugin install orca@orca
+```
+
+Or add only the MCP server:
+
+```bash
+claude mcp add orca -- orca mcp serve
+```
+</Tab>
+<Tab title="Cursor">
+Add this to `~/.cursor/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "orca": {
+      "command": "orca",
+      "args": ["mcp", "serve"]
+    }
+  }
+}
+```
+</Tab>
+<Tab title="Codex">
+```bash
+codex mcp add orca -- orca mcp serve
+```
+</Tab>
+</Tabs>
+
+Start a new session of your coding agent so it loads the server. Then ask it things like:
+
+- "List my Orca agents."
+- "Create an Orca agent called reviewer on `orca/openrouter/openai/gpt-5.6-luna` that reviews pull request descriptions, and run it on this branch's last commit message."
+- "Continue my last session with hello and ask it for a shorter answer."
+- "How much Orca credit do I have left, and what did I spend today?"
+
+What your coding agent does with these tools, it does as you: it can create, delete, and spend. See [use Orca from coding agents](/cli/mcp) for every tool.
+
+## From your own code
+
+Orca speaks the OpenAI Agents API, so your code uses the official `openai` package and an Orca API key. Make one with the CLI and keep it in your shell as `ORCA_API_KEY`:
+
+<CodeGroup>
+```bash bash / zsh
+export ORCA_API_KEY=$(orca keys create start-here </dev/null)
+```
+```fish fish
+set -x ORCA_API_KEY (orca keys create start-here </dev/null)
+```
+</CodeGroup>
+
+The key is shown only once, so this stores it without printing it. You can also create one in the dashboard under **Settings**, **API keys**.
+
+Install the client. You need Python 3.10 or later, or Node 22.18+ or 24+, which runs `.ts` files directly:
+
+<CodeGroup>
+```bash Python
+python3 -m venv .venv
+.venv/bin/pip install openai==3.13.0
+```
+```bash TypeScript
+npm init -y && npm pkg set type=module
+npm install openai@7.15.0
+```
+</CodeGroup>
+
+This program creates an agent, streams one reply, and deletes what it made:
+
+<CodeGroup>
+```python hello.py
+import os
+
+from openai import OpenAI
+
+client = OpenAI(api_key=os.environ["ORCA_API_KEY"], base_url="https://api.orcapods.ai/v1")
+agents = client.beta.agents
+
+agent = agents.create(
+    name="hello-code",
+    model="orca/openrouter/openai/gpt-5.6-luna",
+    instructions="You are a concise, friendly assistant.",
+)
+session = agents.sessions.create(agent_id=agent.id, environment={"type": "none"})
+try:
+    with agents.sessions.stream(session.id, input="Write a haiku about the ocean.") as stream:
+        for event in stream:
+            if event.type == "agent.session.turn.output_text.delta":
+                print(event.delta, end="", flush=True)
+            elif event.type in ("agent.session.turn.failed", "agent.session.turn.cancelled"):
+                print("\nThe turn ended:", event.type)
+    print()
+finally:
+    agents.sessions.delete(session.id)
+    agents.delete(agent.id)
+```
+```typescript hello.ts
+import OpenAI from 'openai';
+
+const client = new OpenAI({ apiKey: process.env.ORCA_API_KEY, baseURL: 'https://api.orcapods.ai/v1' });
+const agents = client.beta.agents;
+
+const agent = await agents.create({
+  name: 'hello-code',
+  model: 'orca/openrouter/openai/gpt-5.6-luna',
+  instructions: 'You are a concise, friendly assistant.',
+});
+const session = await agents.sessions.create({ agent_id: agent.id, environment: { type: 'none' } });
+try {
+  for await (const event of agents.sessions.stream(session.id, { input: 'Write a haiku about the ocean.' })) {
+    if (event.type === 'agent.session.turn.output_text.delta') process.stdout.write(event.delta);
+    else if (event.type === 'agent.session.turn.failed' || event.type === 'agent.session.turn.cancelled') {
+      console.log('\nThe turn ended:', event.type);
+    }
+  }
+  console.log();
+} finally {
+  await agents.sessions.delete(session.id);
+  await agents.delete(agent.id);
+}
+```
+</CodeGroup>
+
+<CodeGroup>
+```bash Python
+.venv/bin/python hello.py
+```
+```bash TypeScript
+node --experimental-strip-types hello.ts
+```
+</CodeGroup>
+
+Next, the [quickstart](/quickstart) explains each call and how to wait for a turn, and the [agent recipes](/recipes/overview) are complete agents to copy.
+
+## What it costs
+
+- **Model tokens and web searches** on an Orca credit model are paid from your credit. On your own provider key, that provider bills you.
+- **Sessions without a sandbox use no machine time.** Everything above ran without one except the sandbox step.
+- **Sandboxes use [machine time](/plans#machine-time)** from your plan, and need your plan's [minimum balance](/plans#paid-work-needs-a-minimum-balance) of Orca credit in your wallet, even for included time. Delete a sandbox session when you are done with it.
+
+The numbers for each plan, the signup credit, and the minimum balance are on the [pricing page](https://orcapods.ai/pricing).
+
+## Clean up
+
+To remove what this page made, delete the agent's sessions, then the agent, then the key. Deleting an agent does not delete its sessions.
+
+<CodeGroup>
+```bash bash / zsh
+for id in $(orca sessions list --agent hello --all | cut -f1); do orca sessions delete "$id" --yes; done
+orca agents delete hello --yes
+orca keys list
+```
+```fish fish
+for id in (orca sessions list --agent hello --all | cut -f1); orca sessions delete "$id" --yes; end
+orca agents delete hello --yes
+orca keys list
+```
+</CodeGroup>
+
+Then revoke the key named `start-here` with `orca keys revoke <its id> --yes`, and close the terminal: its `ORCA_API_KEY` still holds the revoked key.

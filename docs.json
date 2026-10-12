@@ -60,6 +60,7 @@
               {
                 "group": "Start here",
                 "pages": [
+                  "start-here",
                   "introduction",
                   "quickstart",
                   "concepts",
@@ -258,11 +259,6 @@
   },
   "redirects": [
     {
-      "source": "/start-here",
-      "destination": "/quickstart",
-      "permanent": true
-    },
-    {
       "source": "/dashboard-and-api",
       "destination": "/quickstart",
       "permanent": true
@@ -274,7 +270,7 @@
     },
     {
       "source": "/build-with-your-coding-agent",
-      "destination": "/cli/mcp",
+      "destination": "/start-here#have-your-coding-agent-do-it",
       "permanent": true
     },
     {
