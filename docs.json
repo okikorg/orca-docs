@@ -270,7 +270,7 @@
     },
     {
       "source": "/build-with-your-coding-agent",
-      "destination": "/start-here#your-coding-agent-as-your-orca-console",
+      "destination": "/start-here#have-your-coding-agent-do-it",
       "permanent": true
     },
     {

@@ -24,7 +24,7 @@ The rest of this page is what it works through.
 
 ## Install the CLI and sign in
 
-The commands on this page are for bash and zsh, on macOS and Linux. In fish, run `bash` first.
+The commands on this page run in bash, zsh, and fish, on macOS and Linux. Where the shells differ, a block has a tab for each.
 
 ```bash
 curl -fsSL https://orcapods.ai/install.sh | sh
@@ -54,11 +54,10 @@ orca billing wallet
 An agent is a saved model and instructions. Describe one called `hello` in a YAML file, and create it:
 
 ```bash
-cat > hello.yaml <<'EOF'
-name: hello
-model: orca/openrouter/openai/gpt-5.6-luna
-instructions: You are a concise, friendly assistant.
-EOF
+printf '%s\n' \
+  'name: hello' \
+  'model: orca/openrouter/openai/gpt-5.6-luna' \
+  'instructions: You are a concise, friendly assistant.' > hello.yaml
 orca agents create -f hello.yaml
 ```
 
@@ -82,12 +81,20 @@ Run each block in one terminal: later commands use the variables that earlier on
 
 Each `orca chat` without `--session` starts a new session. To keep talking in one, create it first and pass its ID:
 
-```bash
+<CodeGroup>
+```bash bash / zsh
 SESSION=$(orca sessions create --agent hello)
 orca chat hello --session "$SESSION" "My name is Sam. Please remember it."
 orca chat hello --session "$SESSION" "What is my name?"
 orca sessions items "$SESSION"
 ```
+```fish fish
+set SESSION (orca sessions create --agent hello)
+orca chat hello --session "$SESSION" "My name is Sam. Please remember it."
+orca chat hello --session "$SESSION" "What is my name?"
+orca sessions items "$SESSION"
+```
+</CodeGroup>
 
 The agent remembers the first message, and `orca sessions items` prints the conversation so far.
 
@@ -96,10 +103,7 @@ The agent remembers the first message, and `orca sessions items` prints the conv
 Give the agent the `web_search` tool, then ask something it has to look up:
 
 ```bash
-cat > web-search.yaml <<'EOF'
-tools:
-  - type: web_search
-EOF
+printf '%s\n' 'tools:' '  - type: web_search' > web-search.yaml
 orca agents update hello -f web-search.yaml
 orca chat hello "Search the web for the current Node.js LTS version, and cite your source."
 ```
@@ -110,23 +114,20 @@ On an Orca credit model, searches are paid from your credit. See [web search](/p
 
 A sandbox is a private machine for one session, where the agent can run commands and write files. Files it saves under `/workspace/outputs` are kept as artifacts when its turn completes:
 
-```bash
+<CodeGroup>
+```bash bash / zsh
 BOX=$(orca sessions create --agent hello --sandbox)
-orca chat hello --session "$BOX" "Create the folder /workspace/outputs, then use Python to write the first 20 prime numbers to /workspace/outputs/primes.txt, one per line."
-```
-
-CLI 1.1.0 does not download artifacts yet, so download it with the API. That takes an API key, which the CLI makes for you; you will use it again in [your own code](#from-your-own-code):
-
-```bash
-export ORCA_API_KEY=$(orca keys create start-here </dev/null)
-ARTIFACTS="https://api.orcapods.ai/v1/agents/sessions/$BOX/artifacts"
-ARTIFACT=$(curl -s "$ARTIFACTS" -H "Authorization: Bearer $ORCA_API_KEY" | grep -oE 'artifact_[0-9a-f]+' | head -1)
-curl -s "$ARTIFACTS/$ARTIFACT/content" -H "Authorization: Bearer $ORCA_API_KEY" -o primes.txt
-cat primes.txt
+orca chat hello --session "$BOX" "Create the folder /workspace/outputs, use Python to write the first 20 prime numbers to /workspace/outputs/primes.txt, one per line, then show me the file's contents."
 orca sessions delete "$BOX" --yes
 ```
+```fish fish
+set BOX (orca sessions create --agent hello --sandbox)
+orca chat hello --session "$BOX" "Create the folder /workspace/outputs, use Python to write the first 20 prime numbers to /workspace/outputs/primes.txt, one per line, then show me the file's contents."
+orca sessions delete "$BOX" --yes
+```
+</CodeGroup>
 
-`orca keys create` prints the key only once, so this stores it in your shell without showing it. Deleting the session deletes its sandbox and its artifacts. See [files and artifacts](/guides/files-and-artifacts).
+The reply shows the file. Downloading artifacts from the CLI is coming; until then, your code can [download them with the API](/guides/files-and-artifacts#get-results-back-as-artifacts). Deleting the session stops its sandbox and deletes its artifacts.
 
 ### Check what it cost
 
@@ -189,12 +190,25 @@ What your coding agent does with these tools, it does as you: it can create, del
 
 ## From your own code
 
-Orca speaks the OpenAI Agents API, so your code uses the official `openai` package. Use the key from [the sandbox step](#get-a-file-from-a-sandbox), or make one with `orca keys create` or in the dashboard under **Settings**, **API keys**, and set it as `ORCA_API_KEY`. You need Python 3.10 or later, or Node 22.18+ or 24+, which runs `.ts` files directly.
+Orca speaks the OpenAI Agents API, so your code uses the official `openai` package and an Orca API key. Make one with the CLI and keep it in your shell as `ORCA_API_KEY`:
+
+<CodeGroup>
+```bash bash / zsh
+export ORCA_API_KEY=$(orca keys create start-here </dev/null)
+```
+```fish fish
+set -x ORCA_API_KEY (orca keys create start-here </dev/null)
+```
+</CodeGroup>
+
+The key is shown only once, so this stores it without printing it. You can also create one in the dashboard under **Settings**, **API keys**.
+
+Install the client. You need Python 3.10 or later, or Node 22.18+ or 24+, which runs `.ts` files directly:
 
 <CodeGroup>
 ```bash Python
-python3 -m venv .venv && source .venv/bin/activate
-python -m pip install openai==3.13.0
+python3 -m venv .venv
+.venv/bin/pip install openai==3.13.0
 ```
 ```bash TypeScript
 npm init -y && npm pkg set type=module
@@ -260,7 +274,7 @@ try {
 
 <CodeGroup>
 ```bash Python
-python hello.py
+.venv/bin/python hello.py
 ```
 ```bash TypeScript
 node --experimental-strip-types hello.ts
@@ -281,11 +295,17 @@ The numbers for each plan, the signup credit, and the minimum balance are on the
 
 To remove what this page made, delete the agent's sessions, then the agent, then the key. Deleting an agent does not delete its sessions.
 
-```bash
-unset ORCA_API_KEY                 # back to the key orca login stored
+<CodeGroup>
+```bash bash / zsh
 for id in $(orca sessions list --agent hello --all | cut -f1); do orca sessions delete "$id" --yes; done
 orca agents delete hello --yes
-orca keys list                     # find the key named start-here
+orca keys list
 ```
+```fish fish
+for id in (orca sessions list --agent hello --all | cut -f1); orca sessions delete "$id" --yes; end
+orca agents delete hello --yes
+orca keys list
+```
+</CodeGroup>
 
-Then revoke it with `orca keys revoke <its id> --yes`.
+Then revoke the key named `start-here` with `orca keys revoke <its id> --yes`, and close the terminal: its `ORCA_API_KEY` still holds the revoked key.
