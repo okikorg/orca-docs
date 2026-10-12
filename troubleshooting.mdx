@@ -26,10 +26,10 @@ Check that the URL is `https://api.orcapods.ai/v1`, spelled exactly, with `https
 "This action requires the admin role". Setting provider keys, writing vaults and credentials, buying credit, and changing the plan need an admin. Ask an admin of your organization, or have them change your role. See [organizations and roles](/organizations).
 </Accordion>
 <Accordion title="429 rate_limit_exceeded">
-"Your plan runs 1 session at once" (or 5, or 20): your organization already has as many sessions with a running turn as your plan allows. Send the message again when one ends, or [upgrade](/plans#sessions-at-once). "Rate limit reached. Retry after N seconds." means too many requests in a minute; wait that long, as the `Retry-After` header says.
+"Your plan runs N sessions at once": your organization already has as many sessions with a running turn as your plan allows. Send the message again when one ends, or [upgrade](/plans#sessions-at-once). "Rate limit reached. Retry after N seconds." means too many requests in a minute; wait that long, as the `Retry-After` header says.
 </Accordion>
 <Accordion title="429 insufficient_quota">
-"Out of Orca credit: add credit, then continue the session". Your balance is under the $0.50 minimum, so Orca credit models and managed sandboxes are paused. [Add credit](/wallet#buy-credit), or use a model on your own key in a session without a sandbox.
+"Out of Orca credit: add credit, then continue the session". Your balance is under your plan's minimum balance, so Orca credit models and managed sandboxes are paused. [Add credit](/wallet#buy-credit), or use a model on your own key in a session without a sandbox.
 </Accordion>
 <Accordion title="503 balance_unavailable">
 "Orca could not read your credit balance. Try again in a moment." Orca could not read your balance for a moment, so it did not start paid work. Your credit is not the problem: retry after the `Retry-After` seconds. A turn already running ends with `internal_error` and the same message, and a web search fails with `balance_unavailable`; send the message again.
@@ -98,7 +98,7 @@ On hosted Orca, `self_hosted` environments are coming soon, and `network.access:
 Only with an Orca server you run yourself. `workspace_directory` must be an absolute path with no symbolic links in it. On macOS `/tmp` is a symlink; use the real path.
 </Accordion>
 <Accordion title="A turn fails with usage_limit_exceeded and no param">
-"This plan's included machine hours for this period are used up": a Free plan has used its 3 hours of machine time. Upgrade to Pro or Max, or wait for the next month. See [plans](/plans#machine-time).
+"This plan's included machine hours for this period are used up": a Free plan has used its included machine time (on the [pricing page](https://orcapods.ai/pricing)). Upgrade to Pro or Max, or wait for the next month. See [plans](/plans#machine-time).
 </Accordion>
 </AccordionGroup>
 

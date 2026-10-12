@@ -24,9 +24,9 @@ Self-hosted environments are coming soon to hosted Orca. Until then, creating on
 
 ## Managed sandbox
 
-A managed sandbox is a private Linux machine created for one session, with 1 vCPU, 2 GiB of memory, and 5 GiB of disk. The agent works in `/workspace`. Anything it writes to `/workspace/outputs` is saved as a downloadable [artifact](/guides/files-and-artifacts) when a turn completes.
+A managed sandbox is a private Linux machine created for one session, the size the [pricing page](https://orcapods.ai/pricing) shows. The agent works in `/workspace`. Anything it writes to `/workspace/outputs` is saved as a downloadable [artifact](/guides/files-and-artifacts) when a turn completes.
 
-A managed sandbox uses [machine time](/plans#machine-time) from your plan while it runs, and it needs at least $0.50 of [Orca credit](/wallet#when-credit-runs-low) in your wallet, even within your included hours.
+A managed sandbox uses [machine time](/plans#machine-time) from your plan while it runs, and it needs your plan's minimum balance of [Orca credit](/wallet#when-credit-runs-low) in your wallet, even within your included hours.
 
 ### Create one
 
@@ -121,7 +121,7 @@ If many sessions need the same setup, save it once as an **environment template*
 
 ### Idle sandboxes are paused
 
-A sandbox that has not been used for 5 minutes is paused to free resources. Until then it counts as machine time; while paused, it does not. Its status becomes `disconnected`. The next time the session needs it, Orca restores it automatically, with all files in `/workspace` intact. Programs that were running inside it, such as a server the agent started, do not survive the pause. Declared packages, environment variables, and network policy come back, and `setup_commands` run again during the restore, so keep setup commands safe to repeat.
+A sandbox that has not been used for the idle time the [pricing page](https://orcapods.ai/pricing) shows is paused to free resources. Until then it counts as machine time; while paused, it does not. Its status becomes `disconnected`. The next time the session needs it, Orca restores it automatically, with all files in `/workspace` intact. Programs that were running inside it, such as a server the agent started, do not survive the pause. Declared packages, environment variables, and network policy come back, and `setup_commands` run again during the restore, so keep setup commands safe to repeat.
 
 ## Self-hosted environment
 

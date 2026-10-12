@@ -17,8 +17,8 @@ Tokens on your own provider key (`<provider>/<id>`) are billed by that provider.
 
 ## Where credit comes from
 
-- **Signup credit.** A new account starts with $20 of credit. It is given once per person: a second organization you create starts with none.
-- **Credit packs.** An admin buys a pack. Each pack's processing fee is taken from the pack: today 6.5% of the price plus $0.50, so a $20 pack adds $18.20. The packs on sale, with the credit each adds and its fee, are listed on the dashboard's **Wallet** page and by `orca billing wallet`.
+- **Signup credit.** A new account starts with the signup credit on the [pricing page](https://orcapods.ai/pricing). It is given once per person: a second organization you create starts with none.
+- **Credit packs.** An admin buys a pack. Each pack's processing fee is taken from the pack; the [pricing page](https://orcapods.ai/pricing) gives the fee and what a pack adds after it. The packs on sale, with the credit each adds and its fee, are listed on the dashboard's **Wallet** page and by `orca billing wallet`.
 
 Plans do not add credit. A plan's included machine time is not a second balance.
 
@@ -33,7 +33,7 @@ Open **Wallet**. Under **Credit packs**, choose **Buy** on a pack. Pay in the Po
 <Tab title="CLI">
 ```bash
 orca billing wallet          # balance, plan, and the packs on sale
-orca billing buy pack:2000   # opens the checkout for the $20 pack
+orca billing buy pack:2000   # opens the checkout for the pack priced 2000 cents
 ```
 </Tab>
 <Tab title="API">
@@ -51,7 +51,7 @@ curl --fail-with-body -X POST "$ORCA_ORIGIN/api/billing/checkout" \
 
 ## When credit runs low
 
-Orca pauses **paid work** when your balance is below **$0.50**, the minimum balance on every plan. Paid work is model calls and web searches on Orca credit, and managed sandboxes, including their included machine time.
+Orca pauses **paid work** when your balance is below your plan's **minimum balance**, on the [pricing page](https://orcapods.ai/pricing) and in the wallet as `min_balance_micro_usd`. Paid work is model calls and web searches on Orca credit, and managed sandboxes, including their included machine time.
 
 - **A new message** that needs paid work is refused with HTTP 429 `insufficient_quota`: "Out of Orca credit: add credit, then continue the session".
 - **A running turn** that reaches the minimum ends `failed` with `usage_limit_exceeded` and `param: "orca_credit"`. The conversation is saved. A managed sandbox is paused with its files kept.
@@ -65,7 +65,8 @@ The dashboard shows this as **Out of Orca credit** on the turn, with **Add credi
 
 | Route | Returns |
 | --- | --- |
-| `GET /api/billing/wallet` | Balance, total credited and charged, the minimum balance, `paid_work_paused`, your plan and period, included and used machine time, the packs on sale, the processing fee, and OpenRouter's fee (`openrouter_fee_bps`) |
+| `GET /api/billing/wallet` | Balance, total credited and charged, the minimum balance, `paid_work_paused`, your plan and period, included and used machine time, and every field of `GET /api/public/plans` |
+| `GET /api/public/plans` | Every plan fact, with no key needed: each plan's price, included machine time, extra machine time rate, sessions at once and minimum balance; the signup credit; OpenRouter's fee (`openrouter_fee_bps`); the processing fee and the packs on sale; the machine; and `idle_seconds`, how long a sandbox idles before it is paused. The pricing page is built from it. |
 | `GET /api/usage` | Totals per meter for a period (30 days by default, or `start` and `end` in Unix seconds), a `series` over time (below), and totals grouped by `model`, `provider`, `credential`, `session`, or `agent` with `group_by`. With `group_by`, `group_costs` gives each key's cost across every meter; they add up to the period's `cost_micro_usd`. `session=<id>` narrows it to one session. |
 | `GET /api/usage/events` | The newest usage rows, each with its cost. Filter with `meter`, or `charged=true` for only the rows that cost something; page with `limit` and `after`. A row at cost 0 whose money is on another row of the same operation has `charged_on`: `call` when its call's row carries the money (a token row), `search` when the search's row does (the search's tool call, or its call when the whole cost is on the search). Any other row has none, and its own cost is what it was charged. |
 

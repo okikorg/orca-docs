@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Check the docs' navigation, links, Python syntax, version pins, route coverage, and token price wording.
+"""Check the docs' navigation, links, Python syntax, version pins, route coverage, token price
+wording, and plan facts.
 
 The docs describe the Orca server's API, so the version pins and the route
 inventory come from the server's contract: a checkout of okikorg/orca-agent-server
@@ -14,6 +15,17 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SITE = ROOT
 SERVER = Path(os.environ.get("ORCA_SERVER_DIR", ROOT.parent / "orca-agent-server")).resolve()
+
+
+# A price, rate, minimum, credit, fee, machine size, idle time, included
+# hours or session count typed as a number.
+PLAN_NUMBER = (
+    r"\d+ vCPU|\d+ GiB of (?:memory|disk)"
+    r"|\$\d[\d,.]* (?:a|an|per) (?:month|hour)|\| \$\d"
+    r"|\$\d[\d,.]* (?:of (?:Orca )?credit|minimum|pack)|(?:below|under|at least) \**\$\d"
+    r"|\d+(?:\.\d+)?% of the price|(?:paused after|used for) \d+ minutes"
+    r"|\d[\d,]* hours of machine time|runs \d+ sessions? at once"
+)
 
 
 def main():
@@ -62,6 +74,11 @@ def main():
         # P2-d and P2-e).
         for wrong in re.findall(r"\bplus its\b(?:[^.|\n]|\.\d)*?\bfee|\blist price\b|\b5\.5%", text, re.I):
             errors.append(f"{name}: token price worded \"{wrong}\"; say OpenRouter's price plus their fee")
+        # Plan numbers are the pricing page's, built from the server
+        # (orca-design plan-facts, D3e): the docs state rules and link there.
+        if not name.startswith(("orcacode/", "reference/")):
+            for number in re.findall(PLAN_NUMBER, text, re.I):
+                errors.append(f"{name}: plan number \"{number}\"; link the pricing page instead")
     all_text = "\n".join(texts.values())
     for pin in (f"openai=={versions['python']}", f"openai@{versions['typescript']}"):
         if pin not in texts.get("quickstart", ""):
@@ -81,7 +98,7 @@ def main():
     if errors:
         raise SystemExit("\n".join(errors))
     print(f"Public docs checks passed: {len(pages)} pages, {count} inventoried routes, "
-          "navigation, local links, Python syntax, client pins, and token price wording.")
+          "navigation, local links, Python syntax, client pins, token price wording, and plan facts.")
 
 
 if __name__ == "__main__":
