@@ -38,6 +38,7 @@ You are a data analyst working in a Linux sandbox with a shell and Python 3.
 The data is in /workspace/data. Use only Python's standard library.
 Compute every number you report with code. Never estimate or invent figures.
 First check the data: row count, columns, empty or malformed values. Report problems.
+Create /workspace/outputs if it does not exist.
 Write the report to /workspace/outputs/report.md with these sections:
 Summary (three bullets), Data checks, Findings (with the numbers), Open questions.
 Save the script you used to /workspace/outputs/analysis.py.
@@ -46,22 +47,23 @@ Reply with the summary only. Do not use emojis."""
 csv_path = Path(sys.argv[1] if len(sys.argv) > 1 else "sales.csv")
 question = "Which products and months drove revenue, and what changed over time?"
 
-# Upload once; the file can be staged into many sessions.
-uploaded = client.files.create(file=(csv_path.name, csv_path.read_bytes()), purpose="user_data")
-
-agent = agents.create(model=os.environ["ORCA_MODEL"], name="analyst", instructions=INSTRUCTIONS)
-session = agents.sessions.create(
-    agent_id=agent.id,
-    environment={
-        "type": "openai_hosted",
-        "network": {"access": "disabled"},
-        "files": [
-            {"type": "file_id", "file_id": uploaded.id, "path": f"/workspace/data/{csv_path.name}"},
-        ],
-    },
-)
-
+uploaded = agent = session = None
 try:
+    # Upload once; the file can be staged into many sessions.
+    uploaded = client.files.create(file=(csv_path.name, csv_path.read_bytes()), purpose="user_data")
+
+    agent = agents.create(model=os.environ["ORCA_MODEL"], name="analyst", instructions=INSTRUCTIONS)
+    session = agents.sessions.create(
+        agent_id=agent.id,
+        environment={
+            "type": "openai_hosted",
+            "network": {"access": "disabled"},
+            "files": [
+                {"type": "file_id", "file_id": uploaded.id, "path": f"/workspace/data/{csv_path.name}"},
+            ],
+        },
+    )
+
     with agents.sessions.stream(session.id, input=question) as stream:
         for event in stream:
             if event.type == "agent.session.turn.completed":
@@ -76,9 +78,22 @@ try:
         print("saved:", out / Path(artifact.path).name)
 finally:
     # Deleting the session deletes its artifacts, so download first.
-    agents.sessions.delete(session.id)
-    agents.delete(agent.id)
-    client.files.delete(uploaded.id)
+    # Delete each resource on its own, so one failed delete does not skip the rest.
+    if session:
+        try:
+            agents.sessions.delete(session.id)
+        except openai.APIError:
+            pass
+    if agent:
+        try:
+            agents.delete(agent.id)
+        except openai.APIError:
+            pass
+    if uploaded:
+        try:
+            client.files.delete(uploaded.id)
+        except openai.APIError:
+            pass
     client.close()
 ```
 </Tab>
@@ -96,6 +111,7 @@ const INSTRUCTIONS = `You are a data analyst working in a Linux sandbox with a s
 The data is in /workspace/data. Use only Python's standard library.
 Compute every number you report with code. Never estimate or invent figures.
 First check the data: row count, columns, empty or malformed values. Report problems.
+Create /workspace/outputs if it does not exist.
 Write the report to /workspace/outputs/report.md with these sections:
 Summary (three bullets), Data checks, Findings (with the numbers), Open questions.
 Save the script you used to /workspace/outputs/analysis.py.
@@ -104,23 +120,26 @@ Reply with the summary only. Do not use emojis.`;
 const csvPath = process.argv[2] ?? 'sales.csv';
 const question = 'Which products and months drove revenue, and what changed over time?';
 
-// Upload once; the file can be staged into many sessions.
-const uploaded = await client.files.create({
-  file: new File([await readFile(csvPath)], basename(csvPath)),
-  purpose: 'user_data',
-});
-
-const agent = await agents.create({ model: process.env.ORCA_MODEL!, name: 'analyst', instructions: INSTRUCTIONS });
-const session = await agents.sessions.create({
-  agent_id: agent.id,
-  environment: {
-    type: 'openai_hosted',
-    network: { access: 'disabled' },
-    files: [{ type: 'file_id', file_id: uploaded.id, path: `/workspace/data/${basename(csvPath)}` }],
-  },
-});
-
+let uploaded: { id: string } | undefined;
+let agent: { id: string } | undefined;
+let session: { id: string } | undefined;
 try {
+  // Upload once; the file can be staged into many sessions.
+  uploaded = await client.files.create({
+    file: new File([await readFile(csvPath)], basename(csvPath)),
+    purpose: 'user_data',
+  });
+
+  agent = await agents.create({ model: process.env.ORCA_MODEL!, name: 'analyst', instructions: INSTRUCTIONS });
+  session = await agents.sessions.create({
+    agent_id: agent.id,
+    environment: {
+      type: 'openai_hosted',
+      network: { access: 'disabled' },
+      files: [{ type: 'file_id', file_id: uploaded.id, path: `/workspace/data/${basename(csvPath)}` }],
+    },
+  });
+
   for await (const event of agents.sessions.stream(session.id, { input: question })) {
     if (event.type === 'agent.session.turn.completed') console.log('turn:', event.turn.status);
   }
@@ -135,9 +154,10 @@ try {
   }
 } finally {
   // Deleting the session deletes its artifacts, so download first.
-  await agents.sessions.delete(session.id).catch(() => {});
-  await agents.delete(agent.id).catch(() => {});
-  await client.files.delete(uploaded.id).catch(() => {});
+  // Delete each resource on its own, so one failed delete does not skip the rest.
+  if (session) await agents.sessions.delete(session.id).catch(() => {});
+  if (agent) await agents.delete(agent.id).catch(() => {});
+  if (uploaded) await client.files.delete(uploaded.id).catch(() => {});
 }
 ```
 </Tab>

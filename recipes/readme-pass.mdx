@@ -19,14 +19,13 @@ The rule that matters most is "with the file and line that proves it". It makes 
 
 ## The program
 
-Examples on this page assume the settings from the [shared setup](/recipes/overview#shared-setup). Run it from the root of a Git repository. It packs the committed files with `git archive`, so uncommitted changes and ignored files stay on your machine. Everything staged into one sandbox is limited to 64 MiB.
+Examples on this page assume the settings from the [shared setup](/recipes/overview#shared-setup). Run it from the root of a Git repository. It packs the committed files with `git archive`, so uncommitted changes and ignored files stay on your machine. Orca stages at most 16 MiB from one file, so the program stops if the compressed snapshot is bigger. For a large repository, archive only what the agent needs, for example `git archive --format=tar.gz HEAD README.md src`.
 
 <Tabs>
 <Tab title="Python">
 ```python
 """Propose README fixes and apply them only after you approve."""
 
-import difflib
 import os
 import subprocess
 from pathlib import Path
@@ -37,6 +36,8 @@ client = openai.OpenAI(api_key=os.environ["ORCA_API_KEY"], base_url=os.environ["
 agents = client.beta.agents
 sessions = agents.sessions
 
+# Orca refuses to stage any one file over 16 MiB, however it was uploaded.
+STAGED_FILE_LIMIT = 16 * 1024 * 1024
 INSTRUCTIONS = """\
 You keep a README accurate. You work in a Linux sandbox with a shell.
 The repository is in /workspace/repo.tar.gz. Extract it to /workspace/repo if it is
@@ -45,76 +46,102 @@ Check every concrete claim in README.md against the code: commands, flags, confi
 file paths, function names, version numbers, and code examples.
 Fix only what is wrong or missing. Keep the author's structure and voice.
 Do not add marketing, badges, or sections nobody asked for.
+Create /workspace/outputs if it does not exist.
 Save the corrected file to /workspace/outputs/README.md, and save a list of each change,
 with the file and line in the code that proves it, to /workspace/outputs/changes.md.
 Reply with a one-paragraph summary. If the user rejects your edit, apply their
 feedback and save both files again. Do not use emojis."""
 README = Path("README.md")
+PROPOSED = Path("README.proposed.md")
 
+if not README.is_file():
+    raise SystemExit("No README.md here. Run this from the root of a Git repository.")
 snapshot = subprocess.run(
     ["git", "archive", "--format=tar.gz", "HEAD"], check=True, capture_output=True,
 ).stdout
-if len(snapshot) > 64 * 1024 * 1024:
-    raise SystemExit("Snapshot is over the 64 MiB staging limit. Archive a subfolder instead.")
-uploaded = client.files.create(file=("repo.tar.gz", snapshot), purpose="user_data")
-
-agent = agents.create(model=os.environ["ORCA_MODEL"], name="readme-pass", instructions=INSTRUCTIONS)
-session = sessions.create(
-    agent_id=agent.id,
-    environment={
-        "type": "openai_hosted",
-        "network": {"access": "disabled"},
-        "files": [{"type": "file_id", "file_id": uploaded.id, "path": "/workspace/repo.tar.gz"}],
-    },
-)
+if len(snapshot) > STAGED_FILE_LIMIT:
+    raise SystemExit("Snapshot is over the 16 MiB limit for one staged file. Archive a subfolder instead.")
 
 
-def run_turn(text):
+def run_turn(session_id, text):
     """Send one message, wait for the turn, and return its status and the reply."""
     status = None
-    with sessions.stream(session.id, input=text) as stream:
+    with sessions.stream(session_id, input=text) as stream:
         for event in stream:
             if event.type == "agent.session.turn.completed":
                 status = event.turn.status
-    for item in sessions.items.list(session.id, limit=20).data:
+    for item in sessions.items.list(session_id, limit=20).data:
         if item.type == "message" and item.role == "assistant":
             return status, " ".join(p.text for p in item.content or [] if getattr(p, "text", None))
     return status, ""
 
 
-def newest(name):
+def newest(session_id, name):
     """The newest artifact with this file name, as text."""
-    matches = [a for a in sessions.artifacts.list(session.id) if Path(a.path).name == name]
+    matches = [a for a in sessions.artifacts.list(session_id) if Path(a.path).name == name]
     if not matches:
         return None
     latest = max(matches, key=lambda a: a.created_at)
-    return sessions.artifacts.content(latest.id, session_id=session.id).content.decode()
+    return sessions.artifacts.content(latest.id, session_id=session_id).content.decode()
 
 
+def show_diff(proposed):
+    """Print the proposed change as a diff."""
+    PROPOSED.write_text(proposed)
+    # git diff exits 1 when the files differ; the diff is already printed.
+    subprocess.run(["git", "--no-pager", "diff", "--no-index", "--", str(README), str(PROPOSED)])
+    PROPOSED.unlink()
+
+
+uploaded = agent = session = None
 try:
+    uploaded = client.files.create(file=("repo.tar.gz", snapshot), purpose="user_data")
+    agent = agents.create(model=os.environ["ORCA_MODEL"], name="readme-pass", instructions=INSTRUCTIONS)
+    session = sessions.create(
+        agent_id=agent.id,
+        environment={
+            "type": "openai_hosted",
+            "network": {"access": "disabled"},
+            "files": [{"type": "file_id", "file_id": uploaded.id, "path": "/workspace/repo.tar.gz"}],
+        },
+    )
+
     message = "Check README.md against the code and propose fixes."
     while True:
-        status, reply = run_turn(message)
-        proposed = newest("README.md")
+        status, reply = run_turn(session.id, message)
+        proposed = newest(session.id, "README.md")
         if status != "completed" or proposed is None:
             raise SystemExit(f"No proposal (turn {status}): {reply}")
 
-        print(reply, "\n")
-        print("".join(difflib.unified_diff(
-            README.read_text().splitlines(keepends=True), proposed.splitlines(keepends=True),
-            "README.md", "README.md (proposed)",
-        )))
+        print(reply, "\n", flush=True)
+        if proposed == README.read_text():
+            print("README.md is already accurate.")
+            break
+        show_diff(proposed)
         answer = input("Allow this edit? 1 Yes  2 No: ").strip()
         if answer == "1":
             README.write_text(proposed)
-            Path("readme-changes.md").write_text(newest("changes.md") or "")
+            Path("readme-changes.md").write_text(newest(session.id, "changes.md") or "")
             print("README.md updated. Evidence in readme-changes.md.")
             break
         message = "I rejected that edit. " + input("What should change? ")
 finally:
-    sessions.delete(session.id)
-    agents.delete(agent.id)
-    client.files.delete(uploaded.id)
+    # Delete each resource on its own, so one failed delete does not skip the rest.
+    if session:
+        try:
+            sessions.delete(session.id)
+        except openai.APIError:
+            pass
+    if agent:
+        try:
+            agents.delete(agent.id)
+        except openai.APIError:
+            pass
+    if uploaded:
+        try:
+            client.files.delete(uploaded.id)
+        except openai.APIError:
+            pass
     client.close()
 ```
 </Tab>
@@ -122,7 +149,8 @@ finally:
 ```typescript
 /** Propose README fixes and apply them only after you approve. */
 import { execFileSync } from 'node:child_process';
-import { readFile, writeFile } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
+import { readFile, unlink, writeFile } from 'node:fs/promises';
 import { basename } from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import OpenAI from 'openai';
@@ -130,8 +158,9 @@ import OpenAI from 'openai';
 const client = new OpenAI({ apiKey: process.env.ORCA_API_KEY!, baseURL: process.env.ORCA_BASE_URL! });
 const agents = client.beta.agents;
 const sessions = agents.sessions;
-const prompt = createInterface({ input: process.stdin, output: process.stdout });
 
+// Orca refuses to stage any one file over 16 MiB, however it was uploaded.
+const STAGED_FILE_LIMIT = 16 * 1024 * 1024;
 const INSTRUCTIONS = `You keep a README accurate. You work in a Linux sandbox with a shell.
 The repository is in /workspace/repo.tar.gz. Extract it to /workspace/repo if it is
 not there yet.
@@ -139,34 +168,29 @@ Check every concrete claim in README.md against the code: commands, flags, confi
 file paths, function names, version numbers, and code examples.
 Fix only what is wrong or missing. Keep the author's structure and voice.
 Do not add marketing, badges, or sections nobody asked for.
+Create /workspace/outputs if it does not exist.
 Save the corrected file to /workspace/outputs/README.md, and save a list of each change,
 with the file and line in the code that proves it, to /workspace/outputs/changes.md.
 Reply with a one-paragraph summary. If the user rejects your edit, apply their
 feedback and save both files again. Do not use emojis.`;
 
-const snapshot = execFileSync('git', ['archive', '--format=tar.gz', 'HEAD'], { maxBuffer: 512 * 1024 * 1024 });
-if (snapshot.length > 64 * 1024 * 1024) {
-  throw new Error('Snapshot is over the 64 MiB staging limit. Archive a subfolder instead.');
+if (!existsSync('README.md')) {
+  console.error('No README.md here. Run this from the root of a Git repository.');
+  process.exit(1);
 }
-const uploaded = await client.files.create({ file: new File([snapshot], 'repo.tar.gz'), purpose: 'user_data' });
-
-const agent = await agents.create({ model: process.env.ORCA_MODEL!, name: 'readme-pass', instructions: INSTRUCTIONS });
-const session = await sessions.create({
-  agent_id: agent.id,
-  environment: {
-    type: 'openai_hosted',
-    network: { access: 'disabled' },
-    files: [{ type: 'file_id', file_id: uploaded.id, path: '/workspace/repo.tar.gz' }],
-  },
-});
+const snapshot = execFileSync('git', ['archive', '--format=tar.gz', 'HEAD'], { maxBuffer: 512 * 1024 * 1024 });
+if (snapshot.length > STAGED_FILE_LIMIT) {
+  console.error('Snapshot is over the 16 MiB limit for one staged file. Archive a subfolder instead.');
+  process.exit(1);
+}
 
 /** Send one message, wait for the turn, and return its status and the reply. */
-async function runTurn(text: string) {
+async function runTurn(sessionId: string, text: string) {
   let status: string | undefined;
-  for await (const event of sessions.stream(session.id, { input: text })) {
+  for await (const event of sessions.stream(sessionId, { input: text })) {
     if (event.type === 'agent.session.turn.completed') status = event.turn.status;
   }
-  for (const item of (await sessions.items.list(session.id, { limit: 20 })).data as any[]) {
+  for (const item of (await sessions.items.list(sessionId, { limit: 20 })).data as any[]) {
     if (item.type === 'message' && item.role === 'assistant') {
       return { status, reply: (item.content ?? []).map((p: any) => p.text).filter(Boolean).join(' ') };
     }
@@ -175,43 +199,72 @@ async function runTurn(text: string) {
 }
 
 /** The newest artifact with this file name, as text. */
-async function newest(name: string) {
+async function newest(sessionId: string, name: string) {
   let latest: { id: string; created_at: number } | undefined;
-  for await (const artifact of sessions.artifacts.list(session.id)) {
+  for await (const artifact of sessions.artifacts.list(sessionId)) {
     if (basename(artifact.path) === name && (!latest || artifact.created_at > latest.created_at)) latest = artifact;
   }
   if (!latest) return undefined;
-  return (await sessions.artifacts.content(latest.id, { session_id: session.id })).text();
+  return (await sessions.artifacts.content(latest.id, { session_id: sessionId })).text();
 }
 
+/** Print the proposed change as a diff. */
+async function showDiff(proposed: string) {
+  await writeFile('README.proposed.md', proposed);
+  try {
+    execFileSync('git', ['--no-pager', 'diff', '--no-index', '--', 'README.md', 'README.proposed.md'], { stdio: 'inherit' });
+  } catch {
+    // git diff exits 1 when the files differ; the diff is already printed.
+  }
+  await unlink('README.proposed.md');
+}
+
+let uploaded: { id: string } | undefined;
+let agent: { id: string } | undefined;
+let session: { id: string } | undefined;
+const prompt = createInterface({ input: process.stdin, output: process.stdout });
 try {
+  uploaded = await client.files.create({ file: new File([snapshot], 'repo.tar.gz'), purpose: 'user_data' });
+  agent = await agents.create({ model: process.env.ORCA_MODEL!, name: 'readme-pass', instructions: INSTRUCTIONS });
+  session = await sessions.create({
+    agent_id: agent.id,
+    environment: {
+      type: 'openai_hosted',
+      network: { access: 'disabled' },
+      files: [{ type: 'file_id', file_id: uploaded.id, path: '/workspace/repo.tar.gz' }],
+    },
+  });
+
   let message = 'Check README.md against the code and propose fixes.';
   while (true) {
-    const { status, reply } = await runTurn(message);
-    const proposed = await newest('README.md');
+    const { status, reply } = await runTurn(session.id, message);
+    const proposed = await newest(session.id, 'README.md');
     if (status !== 'completed' || proposed === undefined) throw new Error(`No proposal (turn ${status}): ${reply}`);
 
     console.log(reply, '\n');
-    await writeFile('README.proposed.md', proposed);
-    try {
-      execFileSync('git', ['diff', '--no-index', '--', 'README.md', 'README.proposed.md'], { stdio: 'inherit' });
-    } catch {
-      // git diff exits 1 when the files differ; the diff is already printed.
+    if (proposed === (await readFile('README.md', 'utf8'))) {
+      console.log('README.md is already accurate.');
+      break;
     }
+    await showDiff(proposed);
     const answer = (await prompt.question('Allow this edit? 1 Yes  2 No: ')).trim();
     if (answer === '1') {
       await writeFile('README.md', proposed);
-      await writeFile('readme-changes.md', (await newest('changes.md')) ?? '');
+      await writeFile('readme-changes.md', (await newest(session.id, 'changes.md')) ?? '');
       console.log('README.md updated. Evidence in readme-changes.md.');
       break;
     }
     message = 'I rejected that edit. ' + (await prompt.question('What should change? '));
   }
+} catch (error) {
+  console.error(error instanceof Error ? error.message : error);
+  process.exitCode = 1;
 } finally {
   prompt.close();
-  await sessions.delete(session.id).catch(() => {});
-  await agents.delete(agent.id).catch(() => {});
-  await client.files.delete(uploaded.id).catch(() => {});
+  // Delete each resource on its own, so one failed delete does not skip the rest.
+  if (session) await sessions.delete(session.id).catch(() => {});
+  if (agent) await agents.delete(agent.id).catch(() => {});
+  if (uploaded) await client.files.delete(uploaded.id).catch(() => {});
 }
 ```
 </Tab>
