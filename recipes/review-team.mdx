@@ -53,7 +53,6 @@ Run at most {MAX_HELPERS} subagents at a time. Any more are refused, not queued.
 Start up to {MAX_HELPERS}, wait until every one of them has returned, then start the next ones.
 Do not review the files yourself. When every document has been reviewed, merge the findings
 into {REPORT}, grouped by file, most serious first.
-Create /workspace/outputs if it does not exist.
 Where subagents disagree or a finding looks wrong, say so. Do not use emojis."""
 
 folder = Path(sys.argv[1] if len(sys.argv) > 1 else "docs")
@@ -156,7 +155,6 @@ Run at most ${MAX_HELPERS} subagents at a time. Any more are refused, not queued
 Start up to ${MAX_HELPERS}, wait until every one of them has returned, then start the next ones.
 Do not review the files yourself. When every document has been reviewed, merge the findings
 into ${REPORT}, grouped by file, most serious first.
-Create /workspace/outputs if it does not exist.
 Where subagents disagree or a finding looks wrong, say so. Do not use emojis.`;
 
 const folder = process.argv[2] ?? 'docs';
