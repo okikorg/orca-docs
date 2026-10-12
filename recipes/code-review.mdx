@@ -1,0 +1,147 @@
+---
+title: "Code reviewer"
+description: "An agent that reviews a branch's diff before you open a pull request and returns findings in a fixed format."
+---
+
+This agent reviews the changes on your branch. You send it the diff; it returns a short list of findings, each with a file, a line, a severity, and a suggested fix. It needs no sandbox, so it is quick and cheap enough to run before every pull request.
+
+**You will use:** a plain session and [turns and statuses](/turn-lifecycle). No tools, no sandbox.
+
+## How it works
+
+A fixed output format makes the review easy to read, and easy for a script to check.
+
+## The program
+
+Examples on this page assume the settings from the [shared setup](/recipes/overview#shared-setup). It reviews your branch against `main` and exits with status 1 when there is a high-severity finding, so you can use it as a pre-push hook or a CI step.
+
+<Tabs>
+<Tab title="Python">
+```python
+"""Review the current branch's diff and fail on high-severity findings."""
+
+import os
+import subprocess
+import sys
+
+import openai
+
+client = openai.OpenAI(api_key=os.environ["ORCA_API_KEY"], base_url=os.environ["ORCA_BASE_URL"])
+agents = client.beta.agents
+sessions = agents.sessions
+
+BASE = sys.argv[1] if len(sys.argv) > 1 else "main"
+INSTRUCTIONS = """\
+You review a code diff before it becomes a pull request.
+Look for bugs, missing error handling, security problems, and changes that
+break callers. Ignore style and formatting; a linter handles those.
+Report at most ten findings, most serious first, each in this form:
+  [high|medium|low] path/to/file:line - the problem. Fix: the change to make.
+Only report what the diff shows. If a finding depends on code you cannot see,
+say so in the finding. If there is nothing worth fixing, reply "No findings."
+Do not use emojis."""
+
+
+def review_agent_id():
+    """Reuse the saved agent if REVIEW_AGENT_ID is set; otherwise create one."""
+    if os.environ.get("REVIEW_AGENT_ID"):
+        return os.environ["REVIEW_AGENT_ID"]
+    agent = agents.create(model=os.environ["ORCA_MODEL"], name="code-review", instructions=INSTRUCTIONS)
+    print(f"Created agent {agent.id}. Set REVIEW_AGENT_ID={agent.id} to reuse it.", file=sys.stderr)
+    return agent.id
+
+
+diff = subprocess.run(
+    ["git", "diff", f"{BASE}...HEAD"], check=True, capture_output=True, text=True,
+).stdout
+if not diff.strip():
+    raise SystemExit("Nothing to review.")
+if len(diff) > 200_000:
+    raise SystemExit("Diff too large for one review. Review it in parts.")
+
+session = sessions.create(agent_id=review_agent_id(), environment={"type": "none"})
+try:
+    status = None
+    with sessions.stream(session.id, input=f"Review this diff against {BASE}:\n\n{diff}") as stream:
+        for event in stream:
+            if event.type == "agent.session.turn.completed":
+                status = event.turn.status
+    if status != "completed":
+        raise SystemExit(f"Review did not complete: {status}")
+
+    review = ""
+    for item in sessions.items.list(session.id, limit=10).data:
+        if item.type == "message" and item.role == "assistant":
+            review = " ".join(p.text for p in item.content or [] if getattr(p, "text", None))
+            break
+    print(review)
+    sys.exit(1 if "[high]" in review else 0)
+finally:
+    sessions.delete(session.id)
+    client.close()
+```
+</Tab>
+<Tab title="TypeScript">
+```typescript
+/** Review the current branch's diff and fail on high-severity findings. */
+import { execFileSync } from 'node:child_process';
+import OpenAI from 'openai';
+
+const client = new OpenAI({ apiKey: process.env.ORCA_API_KEY!, baseURL: process.env.ORCA_BASE_URL! });
+const agents = client.beta.agents;
+const sessions = agents.sessions;
+
+const BASE = process.argv[2] ?? 'main';
+const INSTRUCTIONS = `You review a code diff before it becomes a pull request.
+Look for bugs, missing error handling, security problems, and changes that
+break callers. Ignore style and formatting; a linter handles those.
+Report at most ten findings, most serious first, each in this form:
+  [high|medium|low] path/to/file:line - the problem. Fix: the change to make.
+Only report what the diff shows. If a finding depends on code you cannot see,
+say so in the finding. If there is nothing worth fixing, reply "No findings."
+Do not use emojis.`;
+
+/** Reuse the saved agent if REVIEW_AGENT_ID is set; otherwise create one. */
+async function reviewAgentId() {
+  if (process.env.REVIEW_AGENT_ID) return process.env.REVIEW_AGENT_ID;
+  const agent = await agents.create({ model: process.env.ORCA_MODEL!, name: 'code-review', instructions: INSTRUCTIONS });
+  console.error(`Created agent ${agent.id}. Set REVIEW_AGENT_ID=${agent.id} to reuse it.`);
+  return agent.id;
+}
+
+const diff = execFileSync('git', ['diff', `${BASE}...HEAD`], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+if (!diff.trim()) throw new Error('Nothing to review.');
+if (diff.length > 200_000) throw new Error('Diff too large for one review. Review it in parts.');
+
+const session = await sessions.create({ agent_id: await reviewAgentId(), environment: { type: 'none' } });
+try {
+  let status: string | undefined;
+  for await (const event of sessions.stream(session.id, { input: `Review this diff against ${BASE}:\n\n${diff}` })) {
+    if (event.type === 'agent.session.turn.completed') status = event.turn.status;
+  }
+  if (status !== 'completed') throw new Error(`Review did not complete: ${status}`);
+
+  let review = '';
+  for (const item of (await sessions.items.list(session.id, { limit: 10 })).data as any[]) {
+    if (item.type === 'message' && item.role === 'assistant') {
+      review = (item.content ?? []).map((p: any) => p.text).filter(Boolean).join(' ');
+      break;
+    }
+  }
+  console.log(review);
+  process.exitCode = review.includes('[high]') ? 1 : 0;
+} finally {
+  await sessions.delete(session.id).catch(() => {});
+}
+```
+</Tab>
+</Tabs>
+
+The first run creates the agent and prints its ID. Set `REVIEW_AGENT_ID` to reuse it, so you create the agent once and not on every push. Every review gets a fresh session, so reviews never see each other.
+
+## Make it yours
+
+- **Give it your rules.** Add your team's review checklist to the instructions, or put it in a [skill](/guides/skills) if it is long.
+- **Let it read the whole repository.** A diff hides the callers of a changed function. For deeper reviews, stage a snapshot in a [managed sandbox](/guides/environments#managed-sandbox) as in the [flaky test hunter](/recipes/flaky-tests), and tell the agent to search for callers.
+- **Review in parallel.** For a large change, split it by file across [subagents](/guides/subagents), as in the [review team](/recipes/review-team).
+- **Mind what you send.** The diff goes to Orca and to the model provider. Do not review changes that contain secrets; rotate any that slip in.

@@ -148,6 +148,21 @@
             "tab": "Examples",
             "groups": [
               {
+                "group": "Agent recipes",
+                "pages": [
+                  "recipes/overview",
+                  "recipes/research-assistant",
+                  "recipes/support-agent",
+                  "recipes/data-analyst",
+                  "recipes/release-notes",
+                  "recipes/review-team",
+                  "recipes/code-review",
+                  "recipes/readme-pass",
+                  "recipes/flaky-tests",
+                  "recipes/server-health"
+                ]
+              },
+              {
                 "group": "Runnable recipes",
                 "pages": [
                   "examples"

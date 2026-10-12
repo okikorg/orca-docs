@@ -1,0 +1,227 @@
+---
+title: "README pass"
+description: "An agent that checks a README against the code it describes, and proposes an edit you approve before anything changes."
+---
+
+READMEs drift: a flag gets renamed, an install step stops working, an example uses an old function. This agent reads a snapshot of your repository, checks each claim in the README against the code, and proposes a corrected README. Your program shows you the diff and asks before it writes the file. If you say no, you tell the agent why and it tries again in the same session.
+
+**You will use:** a [managed sandbox](/guides/environments#managed-sandbox), [uploaded files](/guides/files-and-artifacts#upload-a-file), and [artifacts](/guides/files-and-artifacts).
+
+<Note>
+A managed sandbox uses [machine time](/plans#machine-time) while it runs and needs your plan's [minimum balance](/plans#paid-work-needs-a-minimum-balance) of Orca credit in your wallet.
+</Note>
+
+## How it works
+
+The agent works on a copy in its sandbox and cannot touch your machine. The only way its edit reaches your files is through your program, after you approve it.
+
+The rule that matters most is "with the file and line that proves it". It makes the agent check claims instead of rewriting prose it likes better, and it gives you something to verify.
+
+## The program
+
+Examples on this page assume the settings from the [shared setup](/recipes/overview#shared-setup). Run it from the root of a Git repository. It packs the committed files with `git archive`, so uncommitted changes and ignored files stay on your machine. Everything staged into one sandbox is limited to 64 MiB.
+
+<Tabs>
+<Tab title="Python">
+```python
+"""Propose README fixes and apply them only after you approve."""
+
+import difflib
+import os
+import subprocess
+from pathlib import Path
+
+import openai
+
+client = openai.OpenAI(api_key=os.environ["ORCA_API_KEY"], base_url=os.environ["ORCA_BASE_URL"])
+agents = client.beta.agents
+sessions = agents.sessions
+
+INSTRUCTIONS = """\
+You keep a README accurate. You work in a Linux sandbox with a shell.
+The repository is in /workspace/repo.tar.gz. Extract it to /workspace/repo if it is
+not there yet.
+Check every concrete claim in README.md against the code: commands, flags, config keys,
+file paths, function names, version numbers, and code examples.
+Fix only what is wrong or missing. Keep the author's structure and voice.
+Do not add marketing, badges, or sections nobody asked for.
+Save the corrected file to /workspace/outputs/README.md, and save a list of each change,
+with the file and line in the code that proves it, to /workspace/outputs/changes.md.
+Reply with a one-paragraph summary. If the user rejects your edit, apply their
+feedback and save both files again. Do not use emojis."""
+README = Path("README.md")
+
+snapshot = subprocess.run(
+    ["git", "archive", "--format=tar.gz", "HEAD"], check=True, capture_output=True,
+).stdout
+if len(snapshot) > 64 * 1024 * 1024:
+    raise SystemExit("Snapshot is over the 64 MiB staging limit. Archive a subfolder instead.")
+uploaded = client.files.create(file=("repo.tar.gz", snapshot), purpose="user_data")
+
+agent = agents.create(model=os.environ["ORCA_MODEL"], name="readme-pass", instructions=INSTRUCTIONS)
+session = sessions.create(
+    agent_id=agent.id,
+    environment={
+        "type": "openai_hosted",
+        "network": {"access": "disabled"},
+        "files": [{"type": "file_id", "file_id": uploaded.id, "path": "/workspace/repo.tar.gz"}],
+    },
+)
+
+
+def run_turn(text):
+    """Send one message, wait for the turn, and return its status and the reply."""
+    status = None
+    with sessions.stream(session.id, input=text) as stream:
+        for event in stream:
+            if event.type == "agent.session.turn.completed":
+                status = event.turn.status
+    for item in sessions.items.list(session.id, limit=20).data:
+        if item.type == "message" and item.role == "assistant":
+            return status, " ".join(p.text for p in item.content or [] if getattr(p, "text", None))
+    return status, ""
+
+
+def newest(name):
+    """The newest artifact with this file name, as text."""
+    matches = [a for a in sessions.artifacts.list(session.id) if Path(a.path).name == name]
+    if not matches:
+        return None
+    latest = max(matches, key=lambda a: a.created_at)
+    return sessions.artifacts.content(latest.id, session_id=session.id).content.decode()
+
+
+try:
+    message = "Check README.md against the code and propose fixes."
+    while True:
+        status, reply = run_turn(message)
+        proposed = newest("README.md")
+        if status != "completed" or proposed is None:
+            raise SystemExit(f"No proposal (turn {status}): {reply}")
+
+        print(reply, "\n")
+        print("".join(difflib.unified_diff(
+            README.read_text().splitlines(keepends=True), proposed.splitlines(keepends=True),
+            "README.md", "README.md (proposed)",
+        )))
+        answer = input("Allow this edit? 1 Yes  2 No: ").strip()
+        if answer == "1":
+            README.write_text(proposed)
+            Path("readme-changes.md").write_text(newest("changes.md") or "")
+            print("README.md updated. Evidence in readme-changes.md.")
+            break
+        message = "I rejected that edit. " + input("What should change? ")
+finally:
+    sessions.delete(session.id)
+    agents.delete(agent.id)
+    client.files.delete(uploaded.id)
+    client.close()
+```
+</Tab>
+<Tab title="TypeScript">
+```typescript
+/** Propose README fixes and apply them only after you approve. */
+import { execFileSync } from 'node:child_process';
+import { readFile, writeFile } from 'node:fs/promises';
+import { basename } from 'node:path';
+import { createInterface } from 'node:readline/promises';
+import OpenAI from 'openai';
+
+const client = new OpenAI({ apiKey: process.env.ORCA_API_KEY!, baseURL: process.env.ORCA_BASE_URL! });
+const agents = client.beta.agents;
+const sessions = agents.sessions;
+const prompt = createInterface({ input: process.stdin, output: process.stdout });
+
+const INSTRUCTIONS = `You keep a README accurate. You work in a Linux sandbox with a shell.
+The repository is in /workspace/repo.tar.gz. Extract it to /workspace/repo if it is
+not there yet.
+Check every concrete claim in README.md against the code: commands, flags, config keys,
+file paths, function names, version numbers, and code examples.
+Fix only what is wrong or missing. Keep the author's structure and voice.
+Do not add marketing, badges, or sections nobody asked for.
+Save the corrected file to /workspace/outputs/README.md, and save a list of each change,
+with the file and line in the code that proves it, to /workspace/outputs/changes.md.
+Reply with a one-paragraph summary. If the user rejects your edit, apply their
+feedback and save both files again. Do not use emojis.`;
+
+const snapshot = execFileSync('git', ['archive', '--format=tar.gz', 'HEAD'], { maxBuffer: 512 * 1024 * 1024 });
+if (snapshot.length > 64 * 1024 * 1024) {
+  throw new Error('Snapshot is over the 64 MiB staging limit. Archive a subfolder instead.');
+}
+const uploaded = await client.files.create({ file: new File([snapshot], 'repo.tar.gz'), purpose: 'user_data' });
+
+const agent = await agents.create({ model: process.env.ORCA_MODEL!, name: 'readme-pass', instructions: INSTRUCTIONS });
+const session = await sessions.create({
+  agent_id: agent.id,
+  environment: {
+    type: 'openai_hosted',
+    network: { access: 'disabled' },
+    files: [{ type: 'file_id', file_id: uploaded.id, path: '/workspace/repo.tar.gz' }],
+  },
+});
+
+/** Send one message, wait for the turn, and return its status and the reply. */
+async function runTurn(text: string) {
+  let status: string | undefined;
+  for await (const event of sessions.stream(session.id, { input: text })) {
+    if (event.type === 'agent.session.turn.completed') status = event.turn.status;
+  }
+  for (const item of (await sessions.items.list(session.id, { limit: 20 })).data as any[]) {
+    if (item.type === 'message' && item.role === 'assistant') {
+      return { status, reply: (item.content ?? []).map((p: any) => p.text).filter(Boolean).join(' ') };
+    }
+  }
+  return { status, reply: '' };
+}
+
+/** The newest artifact with this file name, as text. */
+async function newest(name: string) {
+  let latest: { id: string; created_at: number } | undefined;
+  for await (const artifact of sessions.artifacts.list(session.id)) {
+    if (basename(artifact.path) === name && (!latest || artifact.created_at > latest.created_at)) latest = artifact;
+  }
+  if (!latest) return undefined;
+  return (await sessions.artifacts.content(latest.id, { session_id: session.id })).text();
+}
+
+try {
+  let message = 'Check README.md against the code and propose fixes.';
+  while (true) {
+    const { status, reply } = await runTurn(message);
+    const proposed = await newest('README.md');
+    if (status !== 'completed' || proposed === undefined) throw new Error(`No proposal (turn ${status}): ${reply}`);
+
+    console.log(reply, '\n');
+    await writeFile('README.proposed.md', proposed);
+    try {
+      execFileSync('git', ['diff', '--no-index', '--', 'README.md', 'README.proposed.md'], { stdio: 'inherit' });
+    } catch {
+      // git diff exits 1 when the files differ; the diff is already printed.
+    }
+    const answer = (await prompt.question('Allow this edit? 1 Yes  2 No: ')).trim();
+    if (answer === '1') {
+      await writeFile('README.md', proposed);
+      await writeFile('readme-changes.md', (await newest('changes.md')) ?? '');
+      console.log('README.md updated. Evidence in readme-changes.md.');
+      break;
+    }
+    message = 'I rejected that edit. ' + (await prompt.question('What should change? '));
+  }
+} finally {
+  prompt.close();
+  await sessions.delete(session.id).catch(() => {});
+  await agents.delete(agent.id).catch(() => {});
+  await client.files.delete(uploaded.id).catch(() => {});
+}
+```
+</Tab>
+</Tabs>
+
+Each turn's outputs become new artifacts and the old ones stay as they were, so `newest()` picks the latest copy by its creation time.
+
+## Make it yours
+
+- **Include more docs.** Name other files in the prompt, for example "also check docs/install.md and CONTRIBUTING.md", and have the agent save each one under `/workspace/outputs`.
+- **Run it in CI.** Without the prompt, the same program can fail a build when the agent proposes any change, and attach `changes.md` to the job.
+- **Open a pull request instead.** Write the proposal to a branch and open a pull request from your program, so the review happens where your team already reviews code.
+- **Keep secrets out.** `git archive` only packs committed files. If secrets are committed, rotate them; do not send that snapshot.

@@ -1,0 +1,153 @@
+---
+title: "Data analyst"
+description: "An agent that reads a CSV in a sandbox, checks its numbers with code, and writes a report you download."
+---
+
+This agent gets a CSV file, works on it with Python in a managed sandbox, and writes a Markdown report. It computes every number with code instead of estimating, and the sandbox has no internet access, so the data stays put.
+
+**You will use:** a [managed sandbox](/guides/environments#managed-sandbox) and [files and artifacts](/guides/files-and-artifacts).
+
+<Note>
+A managed sandbox uses [machine time](/plans#machine-time) while it runs and needs your plan's [minimum balance](/plans#paid-work-needs-a-minimum-balance) of Orca credit in your wallet.
+</Note>
+
+## How it works
+
+The instructions name the input folder, the output paths, and the report's sections. Specific paths are what make the files show up as [artifacts](/guides/files-and-artifacts#get-results-back-as-artifacts).
+
+## The program
+
+Examples on this page assume the settings from the [shared setup](/recipes/overview#shared-setup). It uploads `sales.csv` from the current folder, so make one first, or point it at your own file.
+
+<Tabs>
+<Tab title="Python">
+```python
+"""Analyze a CSV in a sandbox and download the report."""
+
+import os
+import sys
+from pathlib import Path
+
+import openai
+
+client = openai.OpenAI(api_key=os.environ["ORCA_API_KEY"], base_url=os.environ["ORCA_BASE_URL"])
+agents = client.beta.agents
+
+INSTRUCTIONS = """\
+You are a data analyst working in a Linux sandbox with a shell and Python 3.
+The data is in /workspace/data. Use only Python's standard library.
+Compute every number you report with code. Never estimate or invent figures.
+First check the data: row count, columns, empty or malformed values. Report problems.
+Write the report to /workspace/outputs/report.md with these sections:
+Summary (three bullets), Data checks, Findings (with the numbers), Open questions.
+Save the script you used to /workspace/outputs/analysis.py.
+Reply with the summary only. Do not use emojis."""
+
+csv_path = Path(sys.argv[1] if len(sys.argv) > 1 else "sales.csv")
+question = "Which products and months drove revenue, and what changed over time?"
+
+# Upload once; the file can be staged into many sessions.
+uploaded = client.files.create(file=(csv_path.name, csv_path.read_bytes()), purpose="user_data")
+
+agent = agents.create(model=os.environ["ORCA_MODEL"], name="analyst", instructions=INSTRUCTIONS)
+session = agents.sessions.create(
+    agent_id=agent.id,
+    environment={
+        "type": "openai_hosted",
+        "network": {"access": "disabled"},
+        "files": [
+            {"type": "file_id", "file_id": uploaded.id, "path": f"/workspace/data/{csv_path.name}"},
+        ],
+    },
+)
+
+try:
+    with agents.sessions.stream(session.id, input=question) as stream:
+        for event in stream:
+            if event.type == "agent.session.turn.completed":
+                print("turn:", event.turn.status)
+
+    # Download every file the agent saved under /workspace/outputs.
+    out = Path("analysis-output")
+    out.mkdir(exist_ok=True)
+    for artifact in agents.sessions.artifacts.list(session.id):
+        content = agents.sessions.artifacts.content(artifact.id, session_id=session.id)
+        (out / Path(artifact.path).name).write_bytes(content.content)
+        print("saved:", out / Path(artifact.path).name)
+finally:
+    # Deleting the session deletes its artifacts, so download first.
+    agents.sessions.delete(session.id)
+    agents.delete(agent.id)
+    client.files.delete(uploaded.id)
+    client.close()
+```
+</Tab>
+<Tab title="TypeScript">
+```typescript
+/** Analyze a CSV in a sandbox and download the report. */
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { basename, join } from 'node:path';
+import OpenAI from 'openai';
+
+const client = new OpenAI({ apiKey: process.env.ORCA_API_KEY!, baseURL: process.env.ORCA_BASE_URL! });
+const agents = client.beta.agents;
+
+const INSTRUCTIONS = `You are a data analyst working in a Linux sandbox with a shell and Python 3.
+The data is in /workspace/data. Use only Python's standard library.
+Compute every number you report with code. Never estimate or invent figures.
+First check the data: row count, columns, empty or malformed values. Report problems.
+Write the report to /workspace/outputs/report.md with these sections:
+Summary (three bullets), Data checks, Findings (with the numbers), Open questions.
+Save the script you used to /workspace/outputs/analysis.py.
+Reply with the summary only. Do not use emojis.`;
+
+const csvPath = process.argv[2] ?? 'sales.csv';
+const question = 'Which products and months drove revenue, and what changed over time?';
+
+// Upload once; the file can be staged into many sessions.
+const uploaded = await client.files.create({
+  file: new File([await readFile(csvPath)], basename(csvPath)),
+  purpose: 'user_data',
+});
+
+const agent = await agents.create({ model: process.env.ORCA_MODEL!, name: 'analyst', instructions: INSTRUCTIONS });
+const session = await agents.sessions.create({
+  agent_id: agent.id,
+  environment: {
+    type: 'openai_hosted',
+    network: { access: 'disabled' },
+    files: [{ type: 'file_id', file_id: uploaded.id, path: `/workspace/data/${basename(csvPath)}` }],
+  },
+});
+
+try {
+  for await (const event of agents.sessions.stream(session.id, { input: question })) {
+    if (event.type === 'agent.session.turn.completed') console.log('turn:', event.turn.status);
+  }
+
+  // Download every file the agent saved under /workspace/outputs.
+  await mkdir('analysis-output', { recursive: true });
+  for await (const artifact of agents.sessions.artifacts.list(session.id)) {
+    const content = await agents.sessions.artifacts.content(artifact.id, { session_id: session.id });
+    const target = join('analysis-output', basename(artifact.path));
+    await writeFile(target, Buffer.from(await content.arrayBuffer()));
+    console.log('saved:', target);
+  }
+} finally {
+  // Deleting the session deletes its artifacts, so download first.
+  await agents.sessions.delete(session.id).catch(() => {});
+  await agents.delete(agent.id).catch(() => {});
+  await client.files.delete(uploaded.id).catch(() => {});
+}
+```
+</Tab>
+</Tabs>
+
+You get `analysis-output/report.md` and `analysis-output/analysis.py`. The script lets you rerun or check the analysis yourself.
+
+## Make it yours
+
+- **Ask follow-ups in the same session.** The sandbox keeps its files between turns, so "Now split it by region" builds on the work already done. Each turn's outputs become new artifacts.
+- **Add libraries.** To use pandas or plotting, list them under `packages` in the environment, for example `{"python": ["pandas", "matplotlib"]}`, set network access to `enabled` so they can be installed, and ask for charts saved as PNG files in `/workspace/outputs`. See [configure the sandbox](/guides/environments#configure-the-sandbox).
+- **Reuse the setup.** If many sessions need the same packages and files, save them once as an [environment template](/guides/skills#environment-templates).
+- **Treat outputs as untrusted.** The report was written from your data, but read it before you send it on, and do not run scripts it produced without reviewing them.

@@ -1,0 +1,96 @@
+---
+title: "Build useful agents"
+description: "How to design an agent that does one job well, and complete recipes to start from."
+---
+
+A useful agent does one job, has only the tools that job needs, and leaves its result somewhere your application can read. The recipes in this section each build one such agent end to end. Copy the one closest to what you need and change the instructions.
+
+If you have not run an agent yet, start with the [quickstart](/quickstart). It explains the client setup every recipe uses.
+
+## Pick a recipe
+
+| Recipe | What it does | Tools | Sandbox |
+| --- | --- | --- | --- |
+| [Research assistant](/recipes/research-assistant) | Answers a question with a short, cited summary | `web_search` | None |
+| [Support agent](/recipes/support-agent) | Answers customers from your own order data | Function tools | None |
+| [Data analyst](/recipes/data-analyst) | Reads a CSV you upload and writes a report | Shell and files | Managed |
+| [Release notes writer](/recipes/release-notes) | Turns a changelog into release notes, the same way every time | A skill | Managed |
+| [Review team](/recipes/review-team) | Splits a review across helpers and merges their findings | Subagents | Managed |
+| [Code reviewer](/recipes/code-review) | Reviews a branch's diff before a pull request | None | None |
+| [README pass](/recipes/readme-pass) | Checks a README against the code and proposes an edit you approve | Shell and files | Managed |
+| [Flaky test hunter](/recipes/flaky-tests) | Reruns a test suite, finds flaky tests, and proposes fixes | Shell and files | Managed |
+| [Server health check](/recipes/server-health) | Diagnoses a server through a fixed list of read-only checks | Function tools | None |
+
+## Design an agent in five decisions
+
+### 1. Name the one job
+
+Write the job as a sentence a teammate would understand: "Answer order questions using our order system." If you need the word "and" twice, you probably want two agents. A narrow agent is easier to instruct, test, and trust.
+
+### 2. Decide where the work happens
+
+| The agent needs to | Use |
+| --- | --- |
+| Talk, and read your data through your code | `environment: {"type": "none"}` and [function tools](/guides/function-tools) |
+| Look things up on the web | [`web_search`](/providers#web-search), no sandbox needed |
+| Run code, read files, or produce files | A [managed sandbox](/guides/environments#managed-sandbox) |
+
+A session without a sandbox uses no machine time. Only add one when the agent must run commands or handle files.
+
+### 3. Give it the fewest tools that work
+
+Every tool is something the model can misuse or call at the wrong time. Prefer narrow tools: `lookup_order(order_id)` rather than `run_sql(query)`. Validate every argument in your code. Instructions such as "never refund more than $50" are guidance for the model, not a security control. See [keep it safe](/guides/function-tools#keep-it-safe).
+
+### 4. Write instructions for the model, not for people
+
+Good instructions say:
+
+- **What the job is**, in one or two sentences.
+- **How to use each tool**, and when not to.
+- **What to do when information is missing**: ask, or say it is unknown. Tell it not to guess.
+- **What the result looks like**: the format, the length, and the path for files (`/workspace/outputs/report.md`).
+
+Keep procedures that are long, or that several agents share, in a [skill](/guides/skills) rather than in the instructions.
+
+### 5. Decide where the result goes
+
+- **A reply.** Read it from the session's items, or stream it as it is written.
+- **A file.** Tell the agent to save it under `/workspace/outputs`. Orca saves it as an [artifact](/guides/files-and-artifacts) when the turn completes.
+- **An action in your system.** Have the agent call a function tool, and let your code decide whether to carry it out.
+
+## Shared setup
+
+Every recipe uses the same three settings as the quickstart:
+
+```bash
+export ORCA_BASE_URL="https://api.orcapods.ai/v1"
+export ORCA_API_KEY="YOUR_ORCA_KEY"
+export ORCA_MODEL="orca/openrouter/YOUR_OPENROUTER_MODEL_ID"
+```
+
+Every recipe has a Python and a TypeScript program. Install the client versions the [quickstart](/quickstart) pins:
+
+<CodeGroup>
+```bash Python
+python -m pip install openai==3.13.0
+python recipe.py
+```
+```bash TypeScript
+npm pkg set type=module
+npm install openai@7.15.0
+node --experimental-strip-types recipe.ts
+```
+</CodeGroup>
+
+The TypeScript programs use top-level `await`, so they need `"type": "module"` in `package.json`, and Node 22.18+ or 24+ to run `.ts` files directly.
+
+<Warning>
+The recipes create real agents and sessions and call paid models. Recipes with a managed sandbox also use [machine time](/plans#machine-time) and need your plan's [minimum balance](/plans#paid-work-needs-a-minimum-balance) of Orca credit in your wallet. Delete what you no longer need.
+</Warning>
+
+## Before you ship an agent
+
+- **Test it with bad input.** Missing IDs, a file in the wrong format, a question outside its job. Check that it says so instead of inventing an answer.
+- **Handle every turn outcome.** A turn can end `completed`, `failed`, or `cancelled`. See [turns and statuses](/turn-lifecycle).
+- **Watch the cost.** Check token usage on a few real runs before you scale up. Subagents and web searches add calls. See [usage and wallet](/wallet).
+- **Share it.** When it works, a [kit](/kits) hands the agent, its skills, and its templates to a teammate or customer as one link.

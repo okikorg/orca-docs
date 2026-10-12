@@ -1,0 +1,125 @@
+---
+title: "Research assistant"
+description: "An agent that searches the web and answers with a short summary that cites its sources."
+---
+
+This agent answers a question in five bullets or fewer and cites a source for each one. It uses the built-in `web_search` tool and needs no sandbox, so it uses no machine time.
+
+**You will use:** [web search](/providers#web-search) and [streaming](/guides/streaming).
+
+## Choose a model that searches
+
+`web_search` runs on the agent's own model. Pick a model with built-in web search: on OpenRouter that is an OpenAI, Anthropic, Google, Perplexity, or xAI model. Other models may answer without searching, and the search then fails with `no_search`. Vercel AI Gateway and CheaperInference models cannot search at all, and saving the agent is refused.
+
+On Orca credit, each search costs the provider's search fee plus your model's tokens for reading the results. See [what a search costs](/providers#what-a-search-costs).
+
+## The program
+
+Examples on this page assume the settings from the [shared setup](/recipes/overview#shared-setup).
+
+<Tabs>
+<Tab title="Python">
+```python
+"""Ask a research question and print the cited answer."""
+
+import os
+import sys
+
+import openai
+
+client = openai.OpenAI(api_key=os.environ["ORCA_API_KEY"], base_url=os.environ["ORCA_BASE_URL"])
+agents = client.beta.agents
+
+INSTRUCTIONS = """\
+You research the user's question on the web and answer in five bullets or fewer.
+Search before you answer. Cite a source link for every bullet.
+If the sources disagree, say so. If you find nothing reliable, say that
+instead of guessing. Do not use emojis."""
+
+question = sys.argv[1] if len(sys.argv) > 1 else "What changed in the latest stable Postgres release?"
+
+agent = agents.create(
+    model=os.environ["ORCA_MODEL"],
+    name="researcher",
+    instructions=INSTRUCTIONS,
+    tools=[{"type": "web_search"}],
+)
+session = agents.sessions.create(agent_id=agent.id, environment={"type": "none"})
+
+try:
+    with agents.sessions.stream(session.id, input=question) as stream:
+        for event in stream:
+            if event.type == "agent.session.turn.completed":
+                print("turn:", event.turn.status)
+
+    # Newest first: show what was searched, then the answer.
+    items = list(reversed(agents.sessions.items.list(session.id, limit=50).data))
+    for item in items:
+        if item.type == "web_search_call":
+            action = getattr(item, "action", None)
+            print("searched:", getattr(action, "query", None), item.status)
+    for item in items:
+        if item.type == "message" and item.role == "assistant":
+            for part in item.content or []:
+                if getattr(part, "text", None):
+                    print(part.text)
+finally:
+    agents.sessions.delete(session.id)
+    agents.delete(agent.id)
+    client.close()
+```
+</Tab>
+<Tab title="TypeScript">
+```typescript
+/** Ask a research question and print the cited answer. */
+import OpenAI from 'openai';
+
+const client = new OpenAI({ apiKey: process.env.ORCA_API_KEY!, baseURL: process.env.ORCA_BASE_URL! });
+const agents = client.beta.agents;
+
+const INSTRUCTIONS = `You research the user's question on the web and answer in five bullets or fewer.
+Search before you answer. Cite a source link for every bullet.
+If the sources disagree, say so. If you find nothing reliable, say that
+instead of guessing. Do not use emojis.`;
+
+const question = process.argv[2] ?? 'What changed in the latest stable Postgres release?';
+
+const agent = await agents.create({
+  model: process.env.ORCA_MODEL!,
+  name: 'researcher',
+  instructions: INSTRUCTIONS,
+  tools: [{ type: 'web_search' }],
+});
+const session = await agents.sessions.create({ agent_id: agent.id, environment: { type: 'none' } });
+
+try {
+  for await (const event of agents.sessions.stream(session.id, { input: question })) {
+    if (event.type === 'agent.session.turn.completed') console.log('turn:', event.turn.status);
+  }
+
+  // Newest first: show what was searched, then the answer.
+  const items = [...(await agents.sessions.items.list(session.id, { limit: 50 })).data].reverse();
+  for (const item of items as any[]) {
+    if (item.type === 'web_search_call') console.log('searched:', item.action?.query, item.status);
+  }
+  for (const item of items as any[]) {
+    if (item.type === 'message' && item.role === 'assistant') {
+      for (const part of item.content ?? []) if (part.text) console.log(part.text);
+    }
+  }
+} finally {
+  await agents.sessions.delete(session.id).catch(() => {});
+  await agents.delete(agent.id).catch(() => {});
+}
+```
+</Tab>
+</Tabs>
+
+Keep the agent instead of deleting it if you will ask it more questions. Create it once, store its ID, and open a new session per question.
+
+## Make it yours
+
+- **Limit the sources.** `web_search` accepts `allowed_domains`, for example your own docs site or a set of trusted publishers.
+- **Ask follow-ups.** Send the next question to the same session; the agent remembers what it already found.
+- **Check failed searches.** A failed search leaves a `web_search_call` item with `status` `incomplete` and an `error`. The turn still goes on. See [when a search fails](/providers#when-a-search-fails).
+- **Quote exact text.** Orca does not fetch the pages behind the results. If the agent must quote a page word for word, add a [function tool](/guides/function-tools) that fetches it.
