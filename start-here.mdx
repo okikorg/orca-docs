@@ -118,16 +118,22 @@ A sandbox is a private machine for one session, where the agent can run commands
 ```bash bash / zsh
 BOX=$(orca sessions create --agent hello --sandbox)
 orca chat hello --session "$BOX" "Create the folder /workspace/outputs, use Python to write the first 20 prime numbers to /workspace/outputs/primes.txt, one per line, then show me the file's contents."
+orca sessions artifacts "$BOX"
+orca sessions artifacts download "$BOX" /workspace/outputs/primes.txt
+cat primes.txt
 orca sessions delete "$BOX" --yes
 ```
 ```fish fish
 set BOX (orca sessions create --agent hello --sandbox)
 orca chat hello --session "$BOX" "Create the folder /workspace/outputs, use Python to write the first 20 prime numbers to /workspace/outputs/primes.txt, one per line, then show me the file's contents."
+orca sessions artifacts "$BOX"
+orca sessions artifacts download "$BOX" /workspace/outputs/primes.txt
+cat primes.txt
 orca sessions delete "$BOX" --yes
 ```
 </CodeGroup>
 
-The reply shows the file. Downloading artifacts from the CLI is coming; until then, your code can [download them with the API](/guides/files-and-artifacts#get-results-back-as-artifacts). Deleting the session stops its sandbox and deletes its artifacts.
+The reply shows the file, and `orca sessions artifacts download` saves it here as `primes.txt` (`--all` saves every file the last turn left in `/workspace/outputs`). To give the agent a file of yours, add `--file data.csv` to `orca chat` or `orca sessions create`: it lands at `/workspace/data.csv`. Your code can do the same [with the API](/guides/files-and-artifacts#get-results-back-as-artifacts). Deleting the session stops its sandbox and deletes its artifacts.
 
 ### Check what it cost
 

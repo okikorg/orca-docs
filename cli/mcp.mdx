@@ -3,7 +3,7 @@ title: "Use Orca from coding agents"
 description: "Run orca mcp serve so Claude Code, Cursor, and Codex can manage and talk to your Orca agents."
 ---
 
-`orca mcp serve` runs an MCP server on stdio with one tool per CLI action. A coding agent can then list and create agents, start sessions and chat with them, manage skills, vaults, files, and kits, and read usage and your wallet, all as you.
+`orca mcp serve` runs an MCP server on stdio with one tool per CLI action. A coding agent can then list models and create agents, start sessions and chat with them, put files in a session's sandbox and download what it made, manage skills, vaults, files, and kits, and read usage and your wallet, all as you.
 
 It uses the CLI's own login, read again on every call, so you can add it before you sign in. Sign in first with [`orca login`](/cli/install#sign-in). Without a key, each tool answers "not logged in to Orca." and how to log in.
 
@@ -56,8 +56,8 @@ args = ["mcp", "serve"]
 | Area | Tools |
 | --- | --- |
 | Identity and keys | `whoami`, `list_keys`, `create_key`, `revoke_key` |
-| Agents | `list_agents`, `get_agent`, `create_agent`, `update_agent`, `delete_agent` |
-| Sessions | `list_sessions`, `get_session`, `create_session`, `list_session_items`, `delete_session`, `chat` |
+| Agents and models | `list_agents`, `get_agent`, `create_agent`, `update_agent`, `delete_agent`, `list_models` |
+| Sessions | `list_sessions`, `get_session`, `create_session`, `list_session_items`, `delete_session`, `chat`, `list_artifacts`, `download_artifact` |
 | Skills | `list_skills`, `get_skill`, `create_skill`, `delete_skill` |
 | Vaults | `list_vaults`, `create_vault`, `delete_vault`, `list_credentials`, `add_credential`, `delete_credential` |
 | Files | `list_files`, `upload_file`, `download_file`, `delete_file` |
@@ -65,6 +65,10 @@ args = ["mcp", "serve"]
 | Kits | `list_kits`, `make_kit`, `edit_kit`, `publish_kit`, `withdraw_kit`, `show_kit`, `copy_kit` |
 
 `chat` sends a message to an agent or session and waits for the reply, by default up to 120 seconds and at most 600. It returns the session ID, whether the turn finished, its status, and the reply, so the coding agent can continue the same session.
+
+`chat` and `create_session` take `files`, a list of `{path, dest}` on your machine, and put them in the session's sandbox as [`--file`](/cli/commands#files-in-and-out-of-a-sandbox) does. `list_artifacts` and `download_artifact` bring back what the agent saved under `/workspace/outputs`: one artifact by ID or path, or with `all` every file of the newest turn into a folder.
+
+`list_models` returns one row per model name, with who pays and, for Orca credit, OpenRouter's price. The list is long, so it pages with `limit` and `after`, and `query` (part of a name, such as `luna`) or `payer` narrows it.
 
 Commands that only touch your machine (login, logout, context, doctor, update) have no tool. Tools act with your key's role, so admin-only actions fail for a member.
 
@@ -74,6 +78,7 @@ Ask your coding agent things like:
 
 - "Create an Orca agent called reviewer on `orca/openrouter/openai/gpt-5.6-luna` that reviews pull request descriptions."
 - "Chat with reviewer about this diff and give me its answer."
+- "Give the analyst agent `sales.csv`, ask it for a chart, and download the chart here."
 - "How much Orca credit do I have left?"
 
 Treat what the agent does with these tools as you would any command it runs: it can create, delete, and spend on your behalf.
