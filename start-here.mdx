@@ -51,14 +51,15 @@ orca billing wallet
 
 ## Create your first agent and talk to it
 
-An agent is a saved model and instructions. Create one called `hello`:
+An agent is a saved model and instructions. Describe one called `hello` in a YAML file, and create it:
 
 ```bash
-orca agents create -f - <<'EOF'
+cat > hello.yaml <<'EOF'
 name: hello
 model: orca/openrouter/openai/gpt-5.6-luna
 instructions: You are a concise, friendly assistant.
 EOF
+orca agents create -f hello.yaml
 ```
 
 The model name says who pays: `orca/openrouter/<id>` runs on your Orca credit, and `<provider>/<id>`, such as `anthropic/claude-sonnet-4-5`, runs on your own key for that provider. See [models and provider keys](/providers).
@@ -95,10 +96,11 @@ The agent remembers the first message, and `orca sessions items` prints the conv
 Give the agent the `web_search` tool, then ask something it has to look up:
 
 ```bash
-orca agents update hello -f - <<'EOF'
+cat > web-search.yaml <<'EOF'
 tools:
   - type: web_search
 EOF
+orca agents update hello -f web-search.yaml
 orca chat hello "Search the web for the current Node.js LTS version, and cite your source."
 ```
 
