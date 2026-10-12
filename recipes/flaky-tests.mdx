@@ -1,0 +1,170 @@
+---
+title: "Flaky test hunter"
+description: "An agent that reruns a test suite in a sandbox, finds the tests that fail only sometimes, and proposes a fix for each."
+---
+
+This agent takes a snapshot of your repository, runs the test suite several times in a managed sandbox, and finds the tests that pass on one run and fail on another. For each one it explains the likely cause and writes a proposed patch. It never pushes anything: you get a report and patch files to review.
+
+**You will use:** a [managed sandbox](/guides/environments#managed-sandbox), [uploaded files](/guides/files-and-artifacts#upload-a-file), and [artifacts](/guides/files-and-artifacts).
+
+<Note>
+A managed sandbox uses [machine time](/plans#machine-time) while it runs and needs at least $0.50 of Orca credit in your wallet. Running a suite many times is the expensive part; start with a small `RUNS` value.
+</Note>
+
+## How it works
+
+The instructions separate flaky tests from broken ones, ask for the evidence (`runs/`), and require the agent to check each fix before claiming it. Without those rules an agent tends to "fix" whatever failed once.
+
+## The program
+
+Examples on this page assume the settings from the [shared setup](/recipes/overview#shared-setup). Run it from the root of a Git repository. It packs the committed files with `git archive`, so uncommitted changes and ignored files stay on your machine.
+
+<Tabs>
+<Tab title="Python">
+```python
+"""Find flaky tests in the current Git repository."""
+
+import os
+import subprocess
+from pathlib import Path
+
+import openai
+
+client = openai.OpenAI(api_key=os.environ["ORCA_API_KEY"], base_url=os.environ["ORCA_BASE_URL"])
+agents = client.beta.agents
+sessions = agents.sessions
+
+RUNS = 5
+INSTRUCTIONS = """\
+You find flaky tests. You work in a Linux sandbox with a shell.
+The repository is in /workspace/repo.tar.gz. Extract it to /workspace/repo first.
+Install its test dependencies, then run the test suite the number of times the user asks,
+recording which tests fail on each run. Save the raw results to /workspace/outputs/runs/.
+A flaky test fails on some runs and passes on others. A test that fails on every run is
+broken, not flaky; list it separately and do not try to fix it.
+For each flaky test, read the test and the code it covers and name the likely cause:
+timing, ordering, shared state, randomness, time zones, or network.
+Write a minimal fix as a unified diff to /workspace/outputs/patches/<test-name>.diff,
+then rerun that test with the fix applied to check it.
+Write /workspace/outputs/flaky_report.md: a table of test, failure rate, cause,
+confidence, and whether the fix held. Never claim a fix works unless you reran it.
+Do not use emojis."""
+
+# Committed files only: no .env files, build output, or local secrets.
+snapshot = subprocess.run(
+    ["git", "archive", "--format=tar.gz", "HEAD"], check=True, capture_output=True,
+).stdout
+if len(snapshot) > 64 * 1024 * 1024:
+    raise SystemExit("Snapshot is over the 64 MiB staging limit. Archive a subfolder instead.")
+uploaded = client.files.create(file=("repo.tar.gz", snapshot), purpose="user_data")
+
+agent = agents.create(model=os.environ["ORCA_MODEL"], name="flaky-hunter", instructions=INSTRUCTIONS)
+session = sessions.create(
+    agent_id=agent.id,
+    environment={
+        "type": "openai_hosted",
+        # Enabled so the agent can install dependencies. Use "disabled" if your
+        # tests need nothing from the internet and the image already has them.
+        "network": {"access": "enabled"},
+        "files": [{"type": "file_id", "file_id": uploaded.id, "path": "/workspace/repo.tar.gz"}],
+    },
+)
+
+try:
+    prompt = f"Run the full test suite {RUNS} times and find the flaky tests."
+    with sessions.stream(session.id, input=prompt) as stream:
+        for event in stream:
+            if event.type == "agent.session.turn.completed":
+                print("turn:", event.turn.status)
+
+    out = Path("flaky-output")
+    for artifact in sessions.artifacts.list(session.id):
+        content = sessions.artifacts.content(artifact.id, session_id=session.id)
+        target = out / artifact.path.split("/outputs/", 1)[-1]
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(content.content)
+        print("saved:", target)
+finally:
+    sessions.delete(session.id)
+    agents.delete(agent.id)
+    client.files.delete(uploaded.id)
+    client.close()
+```
+</Tab>
+<Tab title="TypeScript">
+```typescript
+/** Find flaky tests in the current Git repository. */
+import { execFileSync } from 'node:child_process';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { dirname, join } from 'node:path';
+import OpenAI from 'openai';
+
+const client = new OpenAI({ apiKey: process.env.ORCA_API_KEY!, baseURL: process.env.ORCA_BASE_URL! });
+const agents = client.beta.agents;
+const sessions = agents.sessions;
+
+const RUNS = 5;
+const INSTRUCTIONS = `You find flaky tests. You work in a Linux sandbox with a shell.
+The repository is in /workspace/repo.tar.gz. Extract it to /workspace/repo first.
+Install its test dependencies, then run the test suite the number of times the user asks,
+recording which tests fail on each run. Save the raw results to /workspace/outputs/runs/.
+A flaky test fails on some runs and passes on others. A test that fails on every run is
+broken, not flaky; list it separately and do not try to fix it.
+For each flaky test, read the test and the code it covers and name the likely cause:
+timing, ordering, shared state, randomness, time zones, or network.
+Write a minimal fix as a unified diff to /workspace/outputs/patches/<test-name>.diff,
+then rerun that test with the fix applied to check it.
+Write /workspace/outputs/flaky_report.md: a table of test, failure rate, cause,
+confidence, and whether the fix held. Never claim a fix works unless you reran it.
+Do not use emojis.`;
+
+// Committed files only: no .env files, build output, or local secrets.
+const snapshot = execFileSync('git', ['archive', '--format=tar.gz', 'HEAD'], { maxBuffer: 512 * 1024 * 1024 });
+if (snapshot.length > 64 * 1024 * 1024) {
+  throw new Error('Snapshot is over the 64 MiB staging limit. Archive a subfolder instead.');
+}
+const uploaded = await client.files.create({ file: new File([snapshot], 'repo.tar.gz'), purpose: 'user_data' });
+
+const agent = await agents.create({ model: process.env.ORCA_MODEL!, name: 'flaky-hunter', instructions: INSTRUCTIONS });
+const session = await sessions.create({
+  agent_id: agent.id,
+  environment: {
+    type: 'openai_hosted',
+    // Enabled so the agent can install dependencies.
+    network: { access: 'enabled' },
+    files: [{ type: 'file_id', file_id: uploaded.id, path: '/workspace/repo.tar.gz' }],
+  },
+});
+
+try {
+  const input = `Run the full test suite ${RUNS} times and find the flaky tests.`;
+  for await (const event of sessions.stream(session.id, { input })) {
+    if (event.type === 'agent.session.turn.completed') console.log('turn:', event.turn.status);
+  }
+
+  for await (const artifact of sessions.artifacts.list(session.id)) {
+    const content = await sessions.artifacts.content(artifact.id, { session_id: session.id });
+    const target = join('flaky-output', artifact.path.split('/outputs/').pop()!);
+    await mkdir(dirname(target), { recursive: true });
+    await writeFile(target, Buffer.from(await content.arrayBuffer()));
+    console.log('saved:', target);
+  }
+} finally {
+  await sessions.delete(session.id).catch(() => {});
+  await agents.delete(agent.id).catch(() => {});
+  await client.files.delete(uploaded.id).catch(() => {});
+}
+```
+</Tab>
+</Tabs>
+
+Everything staged into one sandbox is limited to 64 MiB, so for a large repository archive only the part you need, for example `git archive HEAD src tests`. The sandbox has 1 vCPU, 2 GiB of memory, and 5 GiB of disk; a heavy suite run five times may need a narrower selection of tests.
+
+Read `flaky-output/flaky_report.md`, then try a patch locally with `git apply --check flaky-output/patches/<test-name>.diff` before applying it.
+
+## Make it yours
+
+- **Point it at one package.** For a large repository, name the test command or folder in the prompt, such as "run `pytest tests/api` 10 times".
+- **Pre-install dependencies.** Put them under `packages` or `setup_commands` in an [environment template](/guides/skills#environment-templates), so every run starts ready instead of each agent working out how to install them. Installing packages needs network access `enabled`.
+- **Keep secrets out.** Tests that need real credentials should be skipped in this run. Do not stage `.env` files; the agent and every command it runs can read the workspace.
+- **Review patches like any pull request.** They were written by a model, from code that may itself contain misleading comments. Check them before you apply them.

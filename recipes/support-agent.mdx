@@ -1,0 +1,214 @@
+---
+title: "Support agent"
+description: "An agent that answers customer questions from your own order data through function tools, and hands refunds to a person."
+---
+
+This agent answers questions about orders. It reads order data through a function tool that runs in **your** code, so the agent never touches your database. It can ask for a refund, but your code decides; here it only opens a ticket for a person to review.
+
+**You will use:** [function tools](/guides/function-tools) and [streaming](/guides/streaming). No sandbox.
+
+## How it works
+
+Two tools, each with one narrow job. `lookup_order` reads. `request_refund` does not move money; it records a request for a person.
+
+Your program must answer the function calls, or the turn waits. The program below answers them while the stream is open.
+
+## The program
+
+Examples on this page assume the settings from the [shared setup](/recipes/overview#shared-setup). `ORDERS` stands in for your database.
+
+<Tabs>
+<Tab title="Python">
+```python
+"""A support agent that reads orders through your code."""
+
+import os
+
+import openai
+
+client = openai.OpenAI(api_key=os.environ["ORCA_API_KEY"], base_url=os.environ["ORCA_BASE_URL"])
+agents = client.beta.agents
+
+ORDERS = {
+    "order-42": {"status": "shipped", "carrier": "UPS", "eta": "2026-10-14"},
+    "order-43": {"status": "processing"},
+}
+TICKETS = []
+
+
+def object_schema(**properties):
+    return {
+        "type": "object",
+        "properties": {name: {"type": "string"} for name in properties},
+        "required": list(properties),
+        "additionalProperties": False,
+    }
+
+
+TOOLS = [
+    {
+        "type": "function",
+        "name": "lookup_order",
+        "description": "Read one order by ID. Use when the customer asks about an order.",
+        "parameters": object_schema(order_id=True),
+        "defer_loading": False,
+    },
+    {
+        "type": "function",
+        "name": "request_refund",
+        "description": "Record a refund request for a person to review. Does not issue a refund.",
+        "parameters": object_schema(order_id=True, reason=True),
+        "defer_loading": False,
+    },
+]
+
+INSTRUCTIONS = """\
+You answer customer questions about their orders. Be brief and friendly.
+Use lookup_order for any question about an order. Never guess an order's status.
+If the customer has not given an order ID, ask for it in one sentence.
+If they want a refund, call request_refund with the order ID and their reason,
+then tell them a person will review it within one business day.
+Do not promise a refund. Do not use emojis."""
+
+
+# The model chooses these arguments. Validate them like any untrusted request.
+def lookup_order(args):
+    order = ORDERS.get(str(args.get("order_id", "")))
+    return order if order else {"error": "No order with that ID."}
+
+
+def request_refund(args):
+    order_id = str(args.get("order_id", ""))
+    if order_id not in ORDERS:
+        return {"error": "No order with that ID."}
+    TICKETS.append({"order_id": order_id, "reason": str(args.get("reason", ""))[:500]})
+    return {"ticket": f"T-{len(TICKETS)}", "status": "queued for review"}
+
+
+HANDLERS = {"lookup_order": lookup_order, "request_refund": request_refund}
+
+
+def ask(session_id, text):
+    """Send one message, answer tool calls, and return the agent's reply."""
+    with agents.sessions.stream(session_id, input=text, tool_handlers=HANDLERS) as stream:
+        for event in stream:
+            pass  # read to the end, or the helper stops answering calls
+    for item in agents.sessions.items.list(session_id, limit=20).data:
+        if item.type == "message" and item.role == "assistant":
+            return " ".join(p.text for p in item.content or [] if getattr(p, "text", None))
+    return ""
+
+
+agent = agents.create(
+    model=os.environ["ORCA_MODEL"], name="support", instructions=INSTRUCTIONS, tools=TOOLS,
+)
+session = agents.sessions.create(agent_id=agent.id, environment={"type": "none"})
+
+try:
+    print(ask(session.id, "Where is my order?"))
+    print(ask(session.id, "It's order-42."))
+    print(ask(session.id, "It arrived broken. I want my money back."))
+    print("tickets:", TICKETS)
+finally:
+    agents.sessions.delete(session.id)
+    agents.delete(agent.id)
+    client.close()
+```
+</Tab>
+<Tab title="TypeScript">
+```typescript
+/** A support agent that reads orders through your code. */
+import OpenAI from 'openai';
+
+const client = new OpenAI({ apiKey: process.env.ORCA_API_KEY!, baseURL: process.env.ORCA_BASE_URL! });
+const agents = client.beta.agents;
+
+const ORDERS: Record<string, object> = {
+  'order-42': { status: 'shipped', carrier: 'UPS', eta: '2026-10-14' },
+  'order-43': { status: 'processing' },
+};
+const TICKETS: { order_id: string; reason: string }[] = [];
+
+const objectSchema = (...names: string[]) => ({
+  type: 'object',
+  properties: Object.fromEntries(names.map(name => [name, { type: 'string' }])),
+  required: names,
+  additionalProperties: false,
+});
+
+const INSTRUCTIONS = `You answer customer questions about their orders. Be brief and friendly.
+Use lookup_order for any question about an order. Never guess an order's status.
+If the customer has not given an order ID, ask for it in one sentence.
+If they want a refund, call request_refund with the order ID and their reason,
+then tell them a person will review it within one business day.
+Do not promise a refund. Do not use emojis.`;
+
+// The model chooses these arguments. Validate them like any untrusted request.
+const handlers = {
+  lookup_order: (args: Record<string, unknown>) =>
+    ORDERS[String(args.order_id ?? '')] ?? { error: 'No order with that ID.' },
+  request_refund: (args: Record<string, unknown>) => {
+    const orderId = String(args.order_id ?? '');
+    if (!(orderId in ORDERS)) return { error: 'No order with that ID.' };
+    TICKETS.push({ order_id: orderId, reason: String(args.reason ?? '').slice(0, 500) });
+    return { ticket: `T-${TICKETS.length}`, status: 'queued for review' };
+  },
+};
+
+/** Send one message, answer tool calls, and return the agent's reply. */
+async function ask(sessionId: string, text: string) {
+  for await (const _ of agents.sessions.stream(sessionId, { input: text, toolHandlers: handlers })) {
+    // read to the end, or the helper stops answering calls
+  }
+  for (const item of (await agents.sessions.items.list(sessionId, { limit: 20 })).data as any[]) {
+    if (item.type === 'message' && item.role === 'assistant') {
+      return (item.content ?? []).map((p: any) => p.text).filter(Boolean).join(' ');
+    }
+  }
+  return '';
+}
+
+const agent = await agents.create({
+  model: process.env.ORCA_MODEL!,
+  name: 'support',
+  instructions: INSTRUCTIONS,
+  tools: [
+    {
+      type: 'function',
+      name: 'lookup_order',
+      description: 'Read one order by ID. Use when the customer asks about an order.',
+      parameters: objectSchema('order_id'),
+      defer_loading: false,
+    },
+    {
+      type: 'function',
+      name: 'request_refund',
+      description: 'Record a refund request for a person to review. Does not issue a refund.',
+      parameters: objectSchema('order_id', 'reason'),
+      defer_loading: false,
+    },
+  ],
+});
+const session = await agents.sessions.create({ agent_id: agent.id, environment: { type: 'none' } });
+
+try {
+  console.log(await ask(session.id, 'Where is my order?'));
+  console.log(await ask(session.id, "It's order-42."));
+  console.log(await ask(session.id, 'It arrived broken. I want my money back.'));
+  console.log('tickets:', TICKETS);
+} finally {
+  await agents.sessions.delete(session.id).catch(() => {});
+  await agents.delete(agent.id).catch(() => {});
+}
+```
+</Tab>
+</Tabs>
+
+The first message has no order ID, so the agent asks for one. The second one calls `lookup_order`. The third one calls `request_refund`, and your code opens a ticket instead of refunding.
+
+## Make it yours
+
+- **Check who is asking.** In production, look up the order only if it belongs to the signed-in customer. The model does not know your permissions; your handler does.
+- **One session per conversation.** Store the session ID with the chat thread or ticket, and send each new message to it.
+- **Answer from a worker.** If tool calls should run somewhere other than the code that sends messages, answer them from any process instead. See [answer from any process](/guides/function-tools#option-b-answer-from-any-process).
+- **Report tool failures honestly.** Returning `{"error": ...}` lets the model tell the customer what went wrong, instead of inventing an answer.

@@ -1,0 +1,323 @@
+---
+title: "Release notes writer"
+description: "An agent that follows a versioned skill to turn a changelog into release notes in your house style."
+---
+
+This agent turns a raw changelog into customer-facing release notes. The procedure and the layout live in a **skill**, not in the agent's instructions. You can improve the skill as a new version, test it, and then switch every session to it, without touching the agent.
+
+**You will use:** [skills and templates](/guides/skills), a [managed sandbox](/guides/environments#managed-sandbox), and [artifacts](/guides/files-and-artifacts).
+
+<Note>
+A managed sandbox uses [machine time](/plans#machine-time) while it runs and needs at least $0.50 of Orca credit in your wallet.
+</Note>
+
+## The skill
+
+A skill is a folder with a `SKILL.md` and any files it refers to. This one carries a template for the layout.
+
+```text
+release-notes/
+  SKILL.md
+  template.md
+```
+
+```markdown SKILL.md
+---
+name: release-notes
+description: Turn a raw changelog into customer-facing release notes. Use when asked for release notes or a changelog summary.
+---
+Read the changelog you are given. Use only the newest version's entries.
+
+1. Sort each entry into Features, Fixes, or Breaking changes. Drop internal-only entries
+   such as refactors, tests, and CI changes.
+2. Rewrite each entry as one sentence for customers: what they can now do, or what no
+   longer goes wrong. No ticket numbers, no internal names.
+3. Fill in template.md and save the result to /workspace/outputs/release_notes.md.
+4. If an entry is unclear, keep it out of the notes and list it under "Needs a human"
+   in your reply.
+```
+
+```markdown template.md
+# What's new in {version}
+
+## Features
+- ...
+
+## Fixes
+- ...
+
+## Breaking changes
+- ... (leave this section out if there are none)
+```
+
+The program below zips these two files and uploads them as a skill.
+
+## How it works
+
+The agent's instructions stay short. They point at the skill, and the skill carries the procedure.
+
+## The program
+
+Examples on this page assume the settings from the [shared setup](/recipes/overview#shared-setup). The TypeScript version also needs `npm install jszip` to build the zip. It uploads the skill, saves a template that installs a pinned version of it, and runs one session from the template.
+
+<Tabs>
+<Tab title="Python">
+```python
+"""Write release notes with a versioned skill."""
+
+import base64
+import io
+import os
+import zipfile
+from pathlib import Path
+
+import openai
+
+client = openai.OpenAI(api_key=os.environ["ORCA_API_KEY"], base_url=os.environ["ORCA_BASE_URL"])
+agents = client.beta.agents
+
+SKILL_MD = """---
+name: release-notes
+description: Turn a raw changelog into customer-facing release notes. Use when asked for release notes or a changelog summary.
+---
+Read the changelog you are given. Use only the newest version's entries.
+
+1. Sort each entry into Features, Fixes, or Breaking changes. Drop internal-only entries
+   such as refactors, tests, and CI changes.
+2. Rewrite each entry as one sentence for customers: what they can now do, or what no
+   longer goes wrong. No ticket numbers, no internal names.
+3. Fill in template.md and save the result to /workspace/outputs/release_notes.md.
+4. If an entry is unclear, keep it out of the notes and list it under "Needs a human"
+   in your reply.
+"""
+
+TEMPLATE_MD = """# What's new in {version}
+
+## Features
+- ...
+
+## Fixes
+- ...
+
+## Breaking changes
+- ... (leave this section out if there are none)
+"""
+
+CHANGELOG = b"""# Changelog
+
+## 2.4.0
+- Export reports as PDF (#812)
+- Fix totals rounding on invoices with more than 100 lines (#820)
+- Refactor billing service tests
+- The /v1/reports endpoint now requires a date range (#801)
+"""
+
+
+def bundle(files):
+    """Zip a skill folder from {path: text}."""
+    out = io.BytesIO()
+    with zipfile.ZipFile(out, "w") as archive:
+        for path, text in files.items():
+            archive.writestr(path, text)
+    return out.getvalue()
+
+
+# 1. Upload the skill. Version 1 becomes its default.
+skill = client.skills.create(files=[("release-notes.zip", bundle({
+    "release-notes/SKILL.md": SKILL_MD,
+    "release-notes/template.md": TEMPLATE_MD,
+}))])
+
+# 2. Save a template that installs exactly this version, with no internet.
+template = agents.environments.templates.create(
+    name="release-workspace",
+    network={"access": "disabled"},
+    skills=[{"type": "skill_reference", "skill_id": skill.id, "version": skill.default_version}],
+)
+
+agent = agents.create(
+    model=os.environ["ORCA_MODEL"],
+    name="release-writer",
+    instructions=(
+        "You write release notes. Use the release-notes skill for every request.\n"
+        "The changelog is at /workspace/inputs/CHANGELOG.md. Do not use emojis."
+    ),
+)
+
+# 3. Each session builds its sandbox from the template, plus this run's changelog.
+session = agents.sessions.create(
+    agent_id=agent.id,
+    environment={
+        "type": "openai_hosted",
+        "environment_template_id": template.id,
+        "files": [{
+            "type": "inline",
+            "path": "/workspace/inputs/CHANGELOG.md",
+            "data": base64.b64encode(CHANGELOG).decode(),
+        }],
+    },
+)
+
+try:
+    with agents.sessions.stream(session.id, input="Write the release notes for 2.4.0.") as stream:
+        for event in stream:
+            if event.type == "agent.session.turn.completed":
+                print("turn:", event.turn.status)
+
+    for artifact in agents.sessions.artifacts.list(session.id):
+        content = agents.sessions.artifacts.content(artifact.id, session_id=session.id)
+        Path(Path(artifact.path).name).write_bytes(content.content)
+        print("saved:", Path(artifact.path).name)
+finally:
+    agents.sessions.delete(session.id)
+    agents.delete(agent.id)
+    # Delete the template and skill only once no new sessions need them.
+    client.close()
+```
+</Tab>
+<Tab title="TypeScript">
+```typescript
+/** Write release notes with a versioned skill. Needs: npm install jszip */
+import { writeFile } from 'node:fs/promises';
+import { basename } from 'node:path';
+import JSZip from 'jszip';
+import OpenAI from 'openai';
+
+const client = new OpenAI({ apiKey: process.env.ORCA_API_KEY!, baseURL: process.env.ORCA_BASE_URL! });
+const agents = client.beta.agents;
+
+const SKILL_MD = `---
+name: release-notes
+description: Turn a raw changelog into customer-facing release notes. Use when asked for release notes or a changelog summary.
+---
+Read the changelog you are given. Use only the newest version's entries.
+
+1. Sort each entry into Features, Fixes, or Breaking changes. Drop internal-only entries
+   such as refactors, tests, and CI changes.
+2. Rewrite each entry as one sentence for customers: what they can now do, or what no
+   longer goes wrong. No ticket numbers, no internal names.
+3. Fill in template.md and save the result to /workspace/outputs/release_notes.md.
+4. If an entry is unclear, keep it out of the notes and list it under "Needs a human"
+   in your reply.
+`;
+
+const TEMPLATE_MD = `# What's new in {version}
+
+## Features
+- ...
+
+## Fixes
+- ...
+
+## Breaking changes
+- ... (leave this section out if there are none)
+`;
+
+const CHANGELOG = `# Changelog
+
+## 2.4.0
+- Export reports as PDF (#812)
+- Fix totals rounding on invoices with more than 100 lines (#820)
+- Refactor billing service tests
+- The /v1/reports endpoint now requires a date range (#801)
+`;
+
+/** Zip a skill folder from {path: text}. */
+async function bundle(files: Record<string, string>) {
+  const zip = new JSZip();
+  for (const [path, text] of Object.entries(files)) zip.file(path, text);
+  return new File([await zip.generateAsync({ type: 'nodebuffer' })], 'release-notes.zip');
+}
+
+// 1. Upload the skill. Version 1 becomes its default.
+const skill = await client.skills.create({
+  files: [await bundle({ 'release-notes/SKILL.md': SKILL_MD, 'release-notes/template.md': TEMPLATE_MD })],
+});
+
+// 2. Save a template that installs exactly this version, with no internet.
+const template = await agents.environments.templates.create({
+  name: 'release-workspace',
+  network: { access: 'disabled' },
+  skills: [{ type: 'skill_reference', skill_id: skill.id, version: skill.default_version }],
+});
+
+const agent = await agents.create({
+  model: process.env.ORCA_MODEL!,
+  name: 'release-writer',
+  instructions:
+    'You write release notes. Use the release-notes skill for every request.\n' +
+    'The changelog is at /workspace/inputs/CHANGELOG.md. Do not use emojis.',
+});
+
+// 3. Each session builds its sandbox from the template, plus this run's changelog.
+const session = await agents.sessions.create({
+  agent_id: agent.id,
+  environment: {
+    type: 'openai_hosted',
+    environment_template_id: template.id,
+    files: [{
+      type: 'inline',
+      path: '/workspace/inputs/CHANGELOG.md',
+      data: Buffer.from(CHANGELOG).toString('base64'),
+    }],
+  },
+});
+
+try {
+  for await (const event of agents.sessions.stream(session.id, { input: 'Write the release notes for 2.4.0.' })) {
+    if (event.type === 'agent.session.turn.completed') console.log('turn:', event.turn.status);
+  }
+
+  for await (const artifact of agents.sessions.artifacts.list(session.id)) {
+    const content = await agents.sessions.artifacts.content(artifact.id, { session_id: session.id });
+    await writeFile(basename(artifact.path), Buffer.from(await content.arrayBuffer()));
+    console.log('saved:', basename(artifact.path));
+  }
+} finally {
+  await agents.sessions.delete(session.id).catch(() => {});
+  await agents.delete(agent.id).catch(() => {});
+  // Delete the template and skill only once no new sessions need them.
+}
+```
+</Tab>
+</Tabs>
+
+With this changelog, expect the refactor entry to be dropped, the rounding fix to become a sentence a customer understands, and the endpoint change to land under Breaking changes. If a run does something else, tighten the skill, not the agent.
+
+## Improve the skill safely
+
+When the notes need a change, upload a new version without making it the default, try it, then promote it:
+
+<CodeGroup>
+```python Python
+version = client.skills.versions.create(
+    skill.id,
+    files=[("release-notes.zip", bundle({
+        "release-notes/SKILL.md": SKILL_MD + "5. Mention the release date under the title.\n",
+        "release-notes/template.md": TEMPLATE_MD,
+    }))],
+    default=False,
+)
+# Test with a session that references version.version, then:
+client.skills.update(skill.id, default_version=version.version)
+```
+```typescript TypeScript
+const version = await client.skills.versions.create(skill.id, {
+  files: [await bundle({
+    'release-notes/SKILL.md': SKILL_MD + '5. Mention the release date under the title.\n',
+    'release-notes/template.md': TEMPLATE_MD,
+  })],
+  default: false,
+});
+// Test with a session that references version.version, then:
+await client.skills.update(skill.id, { default_version: version.version });
+```
+</CodeGroup>
+
+Templates that pin a version keep using it until you update them, so a test never changes what your other sessions do. See [versions](/guides/skills#versions).
+
+## Make it yours
+
+- **Encode your style once.** Tone, banned words, and section order belong in `SKILL.md`, where every agent that uses the skill gets them.
+- **Add more skills.** An agent can have several installed and picks the one whose description matches the task. Write descriptions that say when to use each.
+- **Share it.** A [kit](/kits) carries the agent, the skill, and the template together.

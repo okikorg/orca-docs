@@ -1,0 +1,165 @@
+---
+title: "Review team"
+description: "A lead agent that splits a review across subagents, one file each, and merges their findings into one report."
+---
+
+This agent reviews several documents at once. The lead hands each file to a helper (a [subagent](/guides/subagents)), each helper reviews only its own file with a clean context, and the lead merges the findings into one report. The same pattern works for contracts, pull request files, support transcripts, or competitor pages.
+
+**You will use:** [subagents](/guides/subagents), a [managed sandbox](/guides/environments#managed-sandbox), and [artifacts](/guides/files-and-artifacts).
+
+<Note>
+A managed sandbox uses [machine time](/plans#machine-time) while it runs and needs at least $0.50 of Orca credit in your wallet. Each helper makes its own model calls, so a review with helpers uses more tokens than one without.
+</Note>
+
+## How it works
+
+`multi_agent` lets the lead delegate. It does not force it to, so the instructions say exactly when to delegate and what each helper must return.
+
+## The program
+
+Examples on this page assume the settings from the [shared setup](/recipes/overview#shared-setup). It stages every `.md` file from a local `docs` folder into the sandbox.
+
+<Tabs>
+<Tab title="Python">
+```python
+"""Review several documents in parallel with subagents."""
+
+import base64
+import os
+import sys
+from pathlib import Path
+
+import openai
+
+client = openai.OpenAI(api_key=os.environ["ORCA_API_KEY"], base_url=os.environ["ORCA_BASE_URL"])
+agents = client.beta.agents
+sessions = agents.sessions
+
+INSTRUCTIONS = """\
+You lead a document review. The documents are in /workspace/docs.
+Start one subagent per document. Give each one the file path and this task:
+"Review this one file for unclear wording, missing steps, and claims without evidence.
+Return at most five findings, each with the line it is about, the problem,
+and a suggested fix. Return 'No findings' if there are none."
+Do not review the files yourself. When every subagent is done, merge the findings
+into /workspace/outputs/review.md, grouped by file, most serious first.
+Where subagents disagree or a finding looks wrong, say so. Do not use emojis."""
+
+folder = Path(sys.argv[1] if len(sys.argv) > 1 else "docs")
+staged = [
+    {
+        "type": "inline",
+        "path": f"/workspace/docs/{path.name}",
+        "data": base64.b64encode(path.read_bytes()).decode(),
+    }
+    for path in sorted(folder.glob("*.md"))
+]
+
+agent = agents.create(
+    model=os.environ["ORCA_MODEL"],
+    name="review-lead",
+    instructions=INSTRUCTIONS,
+    multi_agent={"enabled": True, "max_concurrent_subagents": 3},
+)
+session = sessions.create(
+    agent_id=agent.id,
+    environment={"type": "openai_hosted", "network": {"access": "disabled"}, "files": staged},
+)
+
+try:
+    # The lead's turn ends only after all its helpers are done.
+    with sessions.stream(session.id, input=f"Review the {len(staged)} documents.") as stream:
+        for event in stream:
+            if event.type == "agent.session.turn.completed":
+                print("turn:", event.turn.status)
+
+    # A closed helper is not always a successful one: check its turns.
+    for child in sessions.subagents.list(session.id):
+        statuses = [t.status for t in sessions.subagents.turns.list(child.id, session_id=session.id)]
+        print("helper:", child.id, statuses)
+
+    for artifact in sessions.artifacts.list(session.id):
+        content = sessions.artifacts.content(artifact.id, session_id=session.id)
+        Path(Path(artifact.path).name).write_bytes(content.content)
+        print("saved:", Path(artifact.path).name)
+finally:
+    sessions.delete(session.id)
+    agents.delete(agent.id)
+    client.close()
+```
+</Tab>
+<Tab title="TypeScript">
+```typescript
+/** Review several documents in parallel with subagents. */
+import { readdir, readFile, writeFile } from 'node:fs/promises';
+import { basename, join } from 'node:path';
+import OpenAI from 'openai';
+
+const client = new OpenAI({ apiKey: process.env.ORCA_API_KEY!, baseURL: process.env.ORCA_BASE_URL! });
+const agents = client.beta.agents;
+const sessions = agents.sessions;
+
+const INSTRUCTIONS = `You lead a document review. The documents are in /workspace/docs.
+Start one subagent per document. Give each one the file path and this task:
+"Review this one file for unclear wording, missing steps, and claims without evidence.
+Return at most five findings, each with the line it is about, the problem,
+and a suggested fix. Return 'No findings' if there are none."
+Do not review the files yourself. When every subagent is done, merge the findings
+into /workspace/outputs/review.md, grouped by file, most serious first.
+Where subagents disagree or a finding looks wrong, say so. Do not use emojis.`;
+
+const folder = process.argv[2] ?? 'docs';
+const names = (await readdir(folder)).filter(name => name.endsWith('.md')).sort();
+const staged = await Promise.all(names.map(async name => ({
+  type: 'inline' as const,
+  path: `/workspace/docs/${name}`,
+  data: (await readFile(join(folder, name))).toString('base64'),
+})));
+
+const agent = await agents.create({
+  model: process.env.ORCA_MODEL!,
+  name: 'review-lead',
+  instructions: INSTRUCTIONS,
+  multi_agent: { enabled: true, max_concurrent_subagents: 3 },
+});
+const session = await sessions.create({
+  agent_id: agent.id,
+  environment: { type: 'openai_hosted', network: { access: 'disabled' }, files: staged },
+});
+
+try {
+  // The lead's turn ends only after all its helpers are done.
+  for await (const event of sessions.stream(session.id, { input: `Review the ${staged.length} documents.` })) {
+    if (event.type === 'agent.session.turn.completed') console.log('turn:', event.turn.status);
+  }
+
+  // A closed helper is not always a successful one: check its turns.
+  for await (const child of sessions.subagents.list(session.id)) {
+    const statuses: string[] = [];
+    for await (const turn of sessions.subagents.turns.list(child.id, { session_id: session.id })) {
+      statuses.push(turn.status);
+    }
+    console.log('helper:', child.id, statuses);
+  }
+
+  for await (const artifact of sessions.artifacts.list(session.id)) {
+    const content = await sessions.artifacts.content(artifact.id, { session_id: session.id });
+    await writeFile(basename(artifact.path), Buffer.from(await content.arrayBuffer()));
+    console.log('saved:', basename(artifact.path));
+  }
+} finally {
+  await sessions.delete(session.id).catch(() => {});
+  await agents.delete(agent.id).catch(() => {});
+}
+```
+</Tab>
+</Tabs>
+
+Keep each staged file small: inline files are limited to 16 MiB each and 64 MiB per sandbox. For larger inputs, [upload them](/guides/files-and-artifacts#upload-a-file) and stage them by `file_id`.
+
+## Make it yours
+
+- **Give each helper a bounded task.** "Review this file and return at most five findings" works better than "review this". The lead only sees what helpers return, so ask for the evidence you want in the final report.
+- **Set the concurrency for your budget.** `max_concurrent_subagents` caps how many helpers run at once; it is 6 if you leave it out. Helpers cannot start helpers of their own.
+- **Skip helper turns when you poll.** If you wait by polling the turn list instead of streaming, helper turns appear there too. Skip turns with a `subagent_id`, as the [quickstart](/quickstart) does.
+- **Delegation is not a security boundary.** Helpers share the lead's tools and sandbox. Give the lead only what every helper may use.
