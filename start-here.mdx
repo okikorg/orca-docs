@@ -156,18 +156,6 @@ It shows the same definition as the code above.
 </Tab>
 <Tab title="Build it from code">
 <Steps>
-<Step title="Make an API key">
-This creates a key and keeps it in your shell as `ORCA_API_KEY`, without printing it:
-
-<CodeGroup>
-```bash bash / zsh
-export ORCA_API_KEY=$(orca keys create start-here </dev/null)
-```
-```fish fish
-set -x ORCA_API_KEY (orca keys create start-here </dev/null)
-```
-</CodeGroup>
-</Step>
 <Step title="Install the openai package">
 It needs Python 3.10 or later, or Node 22.18 or later. Check your version first, and update it if it's older:
 
@@ -181,6 +169,18 @@ python3 -m venv .venv
 node --version       # 22.18 or later
 npm init -y && npm pkg set type=module
 npm install openai@7.15.0
+```
+</CodeGroup>
+</Step>
+<Step title="Make an API key">
+In the terminal you'll run the code from, create a key and keep it there as `ORCA_API_KEY`, without printing it:
+
+<CodeGroup>
+```bash bash / zsh
+export ORCA_API_KEY=$(orca keys create start-here </dev/null)
+```
+```fish fish
+set -x ORCA_API_KEY (orca keys create start-here </dev/null)
 ```
 </CodeGroup>
 </Step>
@@ -302,22 +302,9 @@ Your coding agent acts as you with these tools: it can create, delete, and spend
 
 ## 6. Run it from your own code
 
-Everything so far went through the CLI, which calls the same API your application will. Your code uses the official `openai` package with an Orca API key. If you built Scout from code in step 2, you already have both: skip to the program.
+Everything so far went through the CLI, which calls the same API your application will. Your code uses the official `openai` package with an Orca API key. If you built Scout from code in step 2, you already have the package: skip to the key.
 
-Otherwise, make a key and keep it in your shell as `ORCA_API_KEY`:
-
-<CodeGroup>
-```bash bash / zsh
-export ORCA_API_KEY=$(orca keys create start-here </dev/null)
-```
-```fish fish
-set -x ORCA_API_KEY (orca keys create start-here </dev/null)
-```
-</CodeGroup>
-
-The key is shown only once, so this stores it without printing it. You can also create one in the dashboard under **Settings**, **API keys**.
-
-Then install the `openai` package. It needs Python 3.10 or later, or Node 22.18 or later. Check your version first, and update it if it's older:
+Install the `openai` package. It needs Python 3.10 or later, or Node 22.18 or later. Check your version first, and update it if it's older:
 
 <CodeGroup>
 ```bash Python
@@ -329,6 +316,17 @@ python3 -m venv .venv
 node --version       # 22.18 or later
 npm init -y && npm pkg set type=module
 npm install openai@7.15.0
+```
+</CodeGroup>
+
+Then make a key, in the terminal you'll run the program from. This keeps it there as `ORCA_API_KEY` without printing it. A new terminal won't have it, so run this again there.
+
+<CodeGroup>
+```bash bash / zsh
+export ORCA_API_KEY=$(orca keys create start-here </dev/null)
+```
+```fish fish
+set -x ORCA_API_KEY (orca keys create start-here </dev/null)
 ```
 </CodeGroup>
 
