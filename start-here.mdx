@@ -409,18 +409,11 @@ The numbers for each plan, the signup credit, and the minimum balance are on the
 
 Keep Scout if you like it. To remove everything this page made instead, delete Scout's sessions, then Scout, then the key. Deleting an agent does not delete its sessions.
 
-<CodeGroup>
-```bash bash / zsh
-for id in $(orca sessions list --agent scout --all | cut -f1); do orca sessions delete "$id" --yes; done
+```bash
+orca sessions list --agent scout --all | cut -f1 | xargs -I{} orca sessions delete {} --yes
 orca agents delete scout --yes
 orca keys list
 ```
-```fish fish
-for id in (orca sessions list --agent scout --all | cut -f1); orca sessions delete "$id" --yes; end
-orca agents delete scout --yes
-orca keys list
-```
-</CodeGroup>
 
 Then revoke the key named `start-here` with `orca keys revoke <its id> --yes`, and close the terminal: its `ORCA_API_KEY` still holds the revoked key.
 
