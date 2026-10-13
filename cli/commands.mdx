@@ -1,6 +1,6 @@
 ---
 title: "CLI commands"
-description: "Every command in CLI 1.0, grouped by what it manages, with output and exit codes."
+description: "Every command in the CLI, grouped by what it manages, with output and exit codes."
 ---
 
 Run `orca <command> --help` for every flag. Where a command takes `[agent]` or another positional in brackets, leaving it out in a terminal opens a picker; in a script it is required. An `<agent>` is an agent ID or the name of exactly one agent.
@@ -22,12 +22,13 @@ See [install and sign in](/cli/install).
 ## Chat
 
 ```text
-orca chat [agent] [prompt...] [--session id] [--sandbox] [--template id] [--vault id]...
+orca chat [agent] [prompt...] [--session id] [--sandbox] [--template id] [--vault id]... [--file path[:dest]]...
 ```
 
 - **With no prompt** in a terminal, `orca chat` opens a conversation. Ctrl-C cancels a running turn on the server, then exits and prints the command that resumes the session.
 - **With a prompt or piped input** it runs one turn and streams the answer to stdout. The session ID goes to stderr, so a script can continue with `--session`.
 - Without `--session` it creates a session first, with no sandbox. `--sandbox` gives it a managed sandbox, `--template` builds the sandbox from an environment template, and `--vault` lets its tools use a vault's credentials.
+- `--file` puts a file from your machine into the sandbox. See [files in and out of a sandbox](#files-in-and-out-of-a-sandbox).
 
 ```bash
 orca chat support                                   # a conversation
@@ -46,10 +47,14 @@ orca agents create -f agent.yaml           # YAML or JSON; - reads stdin
 orca agents update <agent> -f fields.yaml  # only the fields in the file change
 orca agents delete [agent] [--yes]
 
+orca models [--payer orca|<provider>]      # every model you can use, grouped by who pays
+
 orca sessions list [--agent agent]
 orca sessions get <id>                     # includes the session's cost, tokens, and machine time
-orca sessions create --agent <agent> [--sandbox] [--template id] [--vault id]...
+orca sessions create --agent <agent> [--sandbox] [--template id] [--vault id]... [--file path[:dest]]...
 orca sessions items <id> [--limit n]
+orca sessions artifacts <id>               # the files its turns saved under /workspace/outputs
+orca sessions artifacts download <id> [artifact] [-o path|-] [--all]
 orca sessions delete <id> [--yes]
 ```
 
@@ -64,6 +69,25 @@ reasoning: { effort: medium }
 ```
 
 In a terminal, a file with no `model` opens a picker of every model you can use, grouped by who pays. The server checks every field and the CLI prints its message. See [models and provider keys](/providers).
+
+`orca models` lists the same names anywhere, including in scripts and coding agents: one line per model with its name, who pays (`orca`, or the provider whose key you saved), and OpenRouter's price for Orca credit models. `--payer orca` or `--payer anthropic` keeps one group, and `--json` prints the server's list.
+
+```bash
+orca models --payer orca | grep luna
+```
+
+### Files in and out of a sandbox
+
+`--file <path>[:<dest>]` on `orca chat` and `orca sessions create` uploads a file from your machine and puts it in the session's sandbox, at `/workspace/<its name>` unless you give a destination after the colon. A relative destination is under `/workspace`. Repeat it for more files. It implies `--sandbox`, and with `--session` it puts the files into that session's sandbox before the message is sent. A file over the [size limits](/guides/files-and-artifacts#size-limits) is refused before anything is uploaded. The uploaded files stay in `orca files list` until you delete them.
+
+Files the agent saves under `/workspace/outputs` are kept as artifacts when its turn completes. `orca sessions artifacts <id>` lists them with their path, size, and turn. `orca sessions artifacts download <id> <artifact>` saves one, given its ID or its path as listed, under its own file name, or to `-o path`, or to stdout with `-o -`. `--all` saves every file from the newest turn into the current folder, or the folder `-o` names. A file name from the server never leaves that folder.
+
+```bash
+orca chat support --file sales.csv "Chart /workspace/sales.csv into /workspace/outputs/chart.png"
+orca sessions artifacts download sess_123 --all -o results
+```
+
+Deleting the session stops its sandbox and deletes its artifacts.
 
 ## Skills, vaults, and files
 
@@ -133,7 +157,7 @@ See [use Orca from coding agents](/cli/mcp).
 ## Output
 
 - `--json` on any list or get command prints the raw API response.
-- When stdout is not a terminal, output is plain tab-separated lines, so `orca agents list | cut -f1` works.
+- When stdout is not a terminal, output is plain tab-separated lines, so `orca agents list | cut -f1` works. A reader that stops early, such as `head`, ends the command quietly.
 - List commands take `--limit N` (1 to 100, default 10), `--after <id>`, and `--all`.
 
 | Exit code | Meaning |
