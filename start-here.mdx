@@ -136,23 +136,19 @@ A model, its instructions, and one tool. There is no loop to write, no search AP
 Get Scout into your account whichever way you like:
 
 <Tabs>
-<Tab title="Copy it">
-Scout is shared as a [kit](/kits), a link anyone can copy an agent from. One command copies it into your account:
+<Tab title="Copy it (one command)">
+Scout is shared as a [kit](/kits), a link anyone can copy an agent from. Copy it into your account:
 
 ```bash
 orca kits copy https://app.orcapods.ai/kits/kit-tdCEUXGA3NbuIWJJ6 --yes
 ```
 
-Then see what you copied. It is the definition above:
-
-```bash
-orca agents get scout
-```
+`orca agents get scout` then shows what you copied: the same definition as the code above.
 </Tab>
 <Tab title="Build it from code">
-Run the code above yourself. It needs an Orca API key and the `openai` package.
-
-Make a key with the CLI and keep it in your shell as `ORCA_API_KEY`. The key is shown only once, so this stores it without printing it:
+<Steps>
+<Step title="Make an API key">
+This creates a key and keeps it in your shell as `ORCA_API_KEY`, without printing it:
 
 <CodeGroup>
 ```bash bash / zsh
@@ -162,27 +158,40 @@ export ORCA_API_KEY=$(orca keys create start-here </dev/null)
 set -x ORCA_API_KEY (orca keys create start-here </dev/null)
 ```
 </CodeGroup>
-
-Save the code above as `scout_agent.py` or `scout_agent.ts`, install the package, and run it. You need Python 3.10 or later, or Node 22.18+ or 24+, which runs `.ts` files directly:
+</Step>
+<Step title="Install the openai package">
+Python 3.10 or later, or Node 22.18 or later:
 
 <CodeGroup>
 ```bash Python
 python3 -m venv .venv
 .venv/bin/pip install openai==3.13.0
-.venv/bin/python scout_agent.py
 ```
 ```bash TypeScript
 npm init -y && npm pkg set type=module
 npm install openai@7.15.0
+```
+</CodeGroup>
+</Step>
+<Step title="Save the code and run it">
+Save the code above as `scout_agent.py` or `scout_agent.ts`, then run it:
+
+<CodeGroup>
+```bash Python
+.venv/bin/python scout_agent.py
+```
+```bash TypeScript
 node --experimental-strip-types scout_agent.ts
 ```
 </CodeGroup>
 
-It prints Scout's ID. The same agent is in [orca-kits on GitHub](https://github.com/okikorg/orca-kits/tree/main/kits/scout), where every kit is defined in code this way.
+It prints Scout's new ID.
+</Step>
+</Steps>
 </Tab>
 </Tabs>
 
-Either way, you now have an agent called `scout`. Make it yours any time: change its instructions, model, or tools on its page in the [dashboard](https://app.orcapods.ai/agents).
+Either way, Scout is now in your account. Make it yours any time: change its instructions, model, or tools on its page in the [dashboard](https://app.orcapods.ai/agents). Every kit's agent is defined in code like this in [orca-kits on GitHub](https://github.com/okikorg/orca-kits/tree/main/kits).
 
 ## 3. Ask it something
 
