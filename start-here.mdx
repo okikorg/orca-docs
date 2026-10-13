@@ -169,7 +169,7 @@ set -x ORCA_API_KEY (orca keys create start-here </dev/null)
 </CodeGroup>
 </Step>
 <Step title="Install the openai package">
-Python 3.10 or later, or Node 22.18 or later:
+You need Python 3.10 or later, or Node 22.18 or later. The `python3` that comes with macOS is 3.9, which is too old: pip then says `No matching distribution found for openai==3.13.0`. If `python3 --version` says 3.9, install a newer Python first (`brew install python`), open a new terminal, and start again.
 
 <CodeGroup>
 ```bash Python
@@ -315,7 +315,7 @@ set -x ORCA_API_KEY (orca keys create start-here </dev/null)
 
 The key is shown only once, so this stores it without printing it. You can also create one in the dashboard under **Settings**, **API keys**.
 
-Then install the package. You need Python 3.10 or later, or Node 22.18+ or 24+, which runs `.ts` files directly:
+Then install the package. You need Python 3.10 or later, or Node 22.18 or later, which runs `.ts` files directly. The `python3` that comes with macOS is 3.9, which is too old: pip then says `No matching distribution found for openai==3.13.0`. If `python3 --version` says 3.9, install a newer Python first (`brew install python`), open a new terminal, and start again.
 
 <CodeGroup>
 ```bash Python
