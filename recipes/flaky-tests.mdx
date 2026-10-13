@@ -41,7 +41,6 @@ STAGED_FILE_LIMIT = 16 * 1024 * 1024
 INSTRUCTIONS = """\
 You find flaky tests. You work in a Linux sandbox with a shell.
 The repository is in /workspace/repo.tar.gz. Extract it to /workspace/repo first.
-Create /workspace/outputs if it does not exist.
 Install its test dependencies, then run the test suite the number of times the user asks,
 recording which tests fail on each run. Save the raw results to /workspace/outputs/runs/.
 A flaky test fails on some runs and passes on others. A test that fails on every run is
@@ -127,7 +126,6 @@ const RUNS = Number(process.env.RUNS ?? '5');
 const STAGED_FILE_LIMIT = 16 * 1024 * 1024;
 const INSTRUCTIONS = `You find flaky tests. You work in a Linux sandbox with a shell.
 The repository is in /workspace/repo.tar.gz. Extract it to /workspace/repo first.
-Create /workspace/outputs if it does not exist.
 Install its test dependencies, then run the test suite the number of times the user asks,
 recording which tests fail on each run. Save the raw results to /workspace/outputs/runs/.
 A flaky test fails on some runs and passes on others. A test that fails on every run is
