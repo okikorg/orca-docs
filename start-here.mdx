@@ -137,13 +137,22 @@ Get Scout into your account whichever way you like:
 
 <Tabs>
 <Tab title="Copy it (one command)">
-Scout is shared as a [kit](/kits), a link anyone can copy an agent from. Copy it into your account:
+Scout is shared as a [kit](/kits), a link anyone can copy an agent from.
 
+<Steps>
+<Step title="Copy it into your account">
 ```bash
 orca kits copy https://app.orcapods.ai/kits/kit-tdCEUXGA3NbuIWJJ6 --yes
 ```
+</Step>
+<Step title="See your agent">
+```bash
+orca agents get scout
+```
 
-`orca agents get scout` then shows what you copied: the same definition as the code above.
+It shows the same definition as the code above.
+</Step>
+</Steps>
 </Tab>
 <Tab title="Build it from code">
 <Steps>
@@ -186,6 +195,11 @@ node --experimental-strip-types scout_agent.ts
 </CodeGroup>
 
 It prints Scout's new ID.
+</Step>
+<Step title="See your agent">
+```bash
+orca agents get scout
+```
 </Step>
 </Steps>
 </Tab>
