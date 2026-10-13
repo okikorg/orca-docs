@@ -156,8 +156,24 @@ It shows the same definition as the code above.
 </Tab>
 <Tab title="Build it from code">
 <Steps>
+<Step title="Install the openai package">
+It needs Python 3.10 or later, or Node 22.18 or later. Check your version first, and update it if it's older:
+
+<CodeGroup>
+```bash Python
+python3 --version    # 3.10 or later
+python3 -m venv .venv
+.venv/bin/pip install openai==3.13.0
+```
+```bash TypeScript
+node --version       # 22.18 or later
+npm init -y && npm pkg set type=module
+npm install openai@7.15.0
+```
+</CodeGroup>
+</Step>
 <Step title="Make an API key">
-This creates a key and keeps it in your shell as `ORCA_API_KEY`, without printing it:
+In the terminal you'll run the code from, create a key and keep it there as `ORCA_API_KEY`, without printing it:
 
 <CodeGroup>
 ```bash bash / zsh
@@ -165,20 +181,6 @@ export ORCA_API_KEY=$(orca keys create start-here </dev/null)
 ```
 ```fish fish
 set -x ORCA_API_KEY (orca keys create start-here </dev/null)
-```
-</CodeGroup>
-</Step>
-<Step title="Install the openai package">
-Python 3.10 or later, or Node 22.18 or later:
-
-<CodeGroup>
-```bash Python
-python3 -m venv .venv
-.venv/bin/pip install openai==3.13.0
-```
-```bash TypeScript
-npm init -y && npm pkg set type=module
-npm install openai@7.15.0
 ```
 </CodeGroup>
 </Step>
@@ -300,9 +302,24 @@ Your coding agent acts as you with these tools: it can create, delete, and spend
 
 ## 6. Run it from your own code
 
-Everything so far went through the CLI, which calls the same API your application will. Your code uses the official `openai` package with an Orca API key. If you built Scout from code in step 2, you already have both: skip to the program.
+Everything so far went through the CLI, which calls the same API your application will. Your code uses the official `openai` package with an Orca API key. If you built Scout from code in step 2, you already have the package: skip to the key.
 
-Otherwise, make a key and keep it in your shell as `ORCA_API_KEY`:
+Install the `openai` package. It needs Python 3.10 or later, or Node 22.18 or later. Check your version first, and update it if it's older:
+
+<CodeGroup>
+```bash Python
+python3 --version    # 3.10 or later
+python3 -m venv .venv
+.venv/bin/pip install openai==3.13.0
+```
+```bash TypeScript
+node --version       # 22.18 or later
+npm init -y && npm pkg set type=module
+npm install openai@7.15.0
+```
+</CodeGroup>
+
+Then make a key, in the terminal you'll run the program from. This keeps it there as `ORCA_API_KEY` without printing it. A new terminal won't have it, so run this again there.
 
 <CodeGroup>
 ```bash bash / zsh
@@ -310,21 +327,6 @@ export ORCA_API_KEY=$(orca keys create start-here </dev/null)
 ```
 ```fish fish
 set -x ORCA_API_KEY (orca keys create start-here </dev/null)
-```
-</CodeGroup>
-
-The key is shown only once, so this stores it without printing it. You can also create one in the dashboard under **Settings**, **API keys**.
-
-Then install the package. You need Python 3.10 or later, or Node 22.18+ or 24+, which runs `.ts` files directly:
-
-<CodeGroup>
-```bash Python
-python3 -m venv .venv
-.venv/bin/pip install openai==3.13.0
-```
-```bash TypeScript
-npm init -y && npm pkg set type=module
-npm install openai@7.15.0
 ```
 </CodeGroup>
 
@@ -401,24 +403,17 @@ orca billing wallet        # your balance and plan
 
 - **Model tokens and web searches** on an Orca credit model are paid from your credit. On your own provider key, that provider bills you.
 - **Sessions without a sandbox use no machine time.** On this page, only step 4 used any.
-- **Sandboxes use [machine time](/plans#machine-time)** from your plan, and need your plan's [minimum balance](/plans#paid-work-needs-a-minimum-balance) of Orca credit in your wallet, even for included time. Delete a sandbox session when you are done with it.
+- **Sandboxes use [machine time](/plans#machine-time)** from your plan. They also need a small balance of Orca credit, your plan's [minimum balance](/plans#paid-work-needs-a-minimum-balance), since the agent's model calls in the sandbox run on credit too. Delete a sandbox session when you are done with it.
 
 The numbers for each plan, the signup credit, and the minimum balance are on the [pricing page](https://orcapods.ai/pricing). See [usage and wallet](/wallet#read-the-wallet-and-your-usage) for the rest.
 
 Keep Scout if you like it. To remove everything this page made instead, delete Scout's sessions, then Scout, then the key. Deleting an agent does not delete its sessions.
 
-<CodeGroup>
-```bash bash / zsh
-for id in $(orca sessions list --agent scout --all | cut -f1); do orca sessions delete "$id" --yes; done
+```bash
+orca sessions list --agent scout --all | cut -f1 | xargs -I{} orca sessions delete {} --yes
 orca agents delete scout --yes
 orca keys list
 ```
-```fish fish
-for id in (orca sessions list --agent scout --all | cut -f1); orca sessions delete "$id" --yes; end
-orca agents delete scout --yes
-orca keys list
-```
-</CodeGroup>
 
 Then revoke the key named `start-here` with `orca keys revoke <its id> --yes`, and close the terminal: its `ORCA_API_KEY` still holds the revoked key.
 
