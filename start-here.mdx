@@ -1,30 +1,30 @@
 ---
 title: "Start here"
-description: "Try Orca 2.0 in a few minutes: copy Scout, a sample agent, from your terminal, give it real work, then run it from your coding agent and your own code."
+description: "Try Orca in about ten minutes: get a research agent of your own, give it a computer to work on, then drive it from your coding agent and your own code."
 ---
 
-Orca 2.0 runs AI agents for you in the cloud. You describe an agent once, as a model, its instructions and its tools, and Orca runs every conversation with it to the end: it calls the model, runs the tools, works on a private machine when the job needs one, keeps the history, and streams it all back as it happens. Your code talks to Orca through the OpenAI Agents API with the official `openai` package, so there is no SDK of ours to learn.
+Orca runs AI agents for you in the cloud. You describe an agent once: a model, its instructions, and the tools it may use. Orca does the rest. It runs every conversation to the end, searches the web, runs code on a private machine when the job needs one, and keeps the whole history. Your code talks to Orca with the official `openai` package, so there is no new SDK to learn.
 
-This page gets you hands on with a sample agent called Scout, a research assistant that searches the web and cites its sources. You'll copy it into your account, give it real questions, give it a machine of its own, then drive it from your coding agent and from a few lines of code.
+In about ten minutes you'll have a research agent of your own that looks things up and cites its sources, give it a computer to work on, and then hand the controls to your coding agent and your own code.
 
 <Tip>
-**No account yet?** [Sign up](https://app.orcapods.ai/sign-up) first. New accounts start with free credit and no card, and every step here runs on it.
+**No account yet?** [Sign up](https://app.orcapods.ai/sign-up) first. New accounts start with free credit and no card, and every step on this page runs on it.
 </Tip>
 
-## What's new in Orca 2.0
+## Why Orca
 
 <CardGroup cols={2}>
   <Card title="The OpenAI Agents API, hosted" icon="plug" href="/quickstart">
     Point the official `openai` package at Orca and keep your code standard. No new SDK.
   </Card>
-  <Card title="A machine for every session" icon="server" href="/guides/environments">
-    A session can have its own sandbox to run commands and write files. Idle sandboxes are paused with their files kept.
+  <Card title="A computer for every session" icon="server" href="/guides/environments">
+    A session can have its own sandbox to run commands and write files. Idle sandboxes pause with their files kept.
   </Card>
   <Card title="Any model, and you choose who pays" icon="shuffle" href="/providers">
     Any model on OpenRouter on your Orca credit, or your own provider key. The model name says which, and Orca never switches it.
   </Card>
   <Card title="Web search in one line" icon="magnifying-glass" href="/providers#web-search">
-    Add the `web_search` tool and the agent looks things up on its own model, paid like its model calls.
+    Add the `web_search` tool and the agent looks things up on its own, paid like its model calls.
   </Card>
   <Card title="Agents you can share as a link" icon="share-nodes" href="/kits">
     A kit carries an agent with its skills and templates. Anyone can copy it into their own account, as you're about to.
@@ -37,32 +37,32 @@ This page gets you hands on with a sample agent called Scout, a research assista
 ## What you'll do
 
 1. [Install the CLI and sign in](#1-install-the-cli-and-sign-in).
-2. [Copy Scout and see how it's built](#2-copy-scout-and-see-how-its-built).
-3. [Put Scout to work](#3-put-scout-to-work).
-4. [Give Scout a machine of its own](#4-give-scout-a-machine-of-its-own).
-5. [Put your coding agent at the controls](#5-put-your-coding-agent-at-the-controls).
-6. [Run Scout from your own code](#6-run-scout-from-your-own-code).
+2. [Get your first agent](#2-get-your-first-agent): copy it with one command, or build it from a few lines of code.
+3. [Ask it something](#3-ask-it-something), then have a conversation.
+4. [Give it a computer](#4-give-it-a-computer) to run code and save files on.
+5. [Let your coding agent drive](#5-let-your-coding-agent-drive).
+6. [Run it from your own code](#6-run-it-from-your-own-code).
 7. [See what it cost, and clean up](#7-see-what-it-cost-and-clean-up).
 
-Only step 4 uses machine time. Everything else is model tokens and web searches on your credit.
+You need a terminal on macOS or Linux. Python or Node is only needed to build the agent from code (step 2) and in step 6. Only step 4 uses machine time; everything else is model tokens and web searches on your credit.
 
 ## Or hand this page to your coding agent
 
-If you work in Claude Code, Codex, or Cursor, it can do the typing. Paste this prompt and it works through the steps with you:
+If you work in Claude Code, Codex, or Cursor, it can do the typing while you watch. Paste this prompt:
 
 ```text
-Set me up on Orca (orcapods.ai), the cloud platform that runs AI agents through the OpenAI Agents API. Work through https://docs.orcapods.ai/start-here, which is written for you to follow, and run its commands yourself.
+Set me up on Orca (orcapods.ai), a platform that runs AI agents in the cloud. Follow https://docs.orcapods.ai/start-here with me, and run its commands yourself.
 
 1. Install the Orca CLI with `curl -fsSL https://orcapods.ai/install.sh | sh` and check it with `orca --version`.
-2. Run `orca login`. It prints a one-time code and a URL: relay both to me so I can approve the sign-in, and wait for it to finish. Then run `orca billing wallet` and tell me my balance.
-3. Copy the sample agent Scout with `orca kits copy https://app.orcapods.ai/kits/kit-tdCEUXGA3NbuIWJJ6 --yes`, show me its definition with `orca agents get scout`, and explain it in two sentences.
-4. Ask me for a question Scout should research, run it with `orca chat scout`, and show me the answer with its sources.
-5. Connect Orca's MCP server to yourself, as step 5 on that page shows. If it only loads after a restart, tell me, and use the CLI until then.
+2. Sign me in with `orca login`. It prints a one-time code and a link: show me both, wait while I approve, then tell me my balance from `orca billing wallet`.
+3. Copy the sample research agent, Scout, with `orca kits copy https://app.orcapods.ai/kits/kit-tdCEUXGA3NbuIWJJ6 --yes`. Show me how it's built with `orca agents get scout`, and explain it in two sentences.
+4. Ask me for a question for Scout, run it with `orca chat scout`, and show me the answer with its sources.
+5. Give yourself Orca's tools, so that from now on I can ask you to run my Orca agents: add Orca's MCP server with the command for you in step 5 of that page, and tell me if you need a restart to load it.
 
 Never print or paste my API keys.
 ```
 
-The commands below run in bash, zsh, and fish, on macOS and Linux. Where the shells differ, a block has a tab for each. Run them in one terminal, since later steps use variables that earlier ones set.
+The commands below work in bash, zsh, and fish, on macOS and Linux. Where the shells differ, a block has a tab for each.
 
 ## 1. Install the CLI and sign in
 
@@ -87,25 +87,19 @@ orca billing wallet
 
 `balance` is your Orca credit. The amount new accounts start with is on the [pricing page](https://orcapods.ai/pricing).
 
-## 2. Copy Scout and see how it's built
+## 2. Get your first agent
 
-Scout is published as a [kit](/kits): a link that anyone can copy an agent from. Copy it into your account:
-
-```bash
-orca kits copy https://app.orcapods.ai/kits/kit-tdCEUXGA3NbuIWJJ6 --yes
-```
-
-The CLI prints the agent it created, `scout`, with its ID. Now look at what you copied:
-
-```bash
-orca agents get scout
-```
-
-This is all of Scout, as you would create it from code with the `openai` package:
+Your first agent is **Scout**, a research assistant that searches the web and answers with its sources. This is all of it:
 
 <CodeGroup>
-```python Python
-agents.create(
+```python scout_agent.py
+import os
+
+from openai import OpenAI
+
+client = OpenAI(api_key=os.environ["ORCA_API_KEY"], base_url="https://api.orcapods.ai/v1")
+
+scout = client.beta.agents.create(
     name="scout",
     model="orca/openrouter/openai/gpt-5.6-luna",
     instructions=(
@@ -116,9 +110,14 @@ agents.create(
     ),
     tools=[{"type": "web_search"}],
 )
+print(scout.id)
 ```
-```typescript TypeScript
-await agents.create({
+```typescript scout_agent.ts
+import OpenAI from 'openai';
+
+const client = new OpenAI({ apiKey: process.env.ORCA_API_KEY, baseURL: 'https://api.orcapods.ai/v1' });
+
+const scout = await client.beta.agents.create({
   name: 'scout',
   model: 'orca/openrouter/openai/gpt-5.6-luna',
   instructions:
@@ -128,68 +127,108 @@ await agents.create({
     'If the sources disagree, or you cannot find an answer, say so instead of guessing.',
   tools: [{ type: 'web_search' }],
 });
+console.log(scout.id);
 ```
 </CodeGroup>
 
-A model, its instructions, and the tools it may use. There is no loop to write, no search API to call, and no history to store: Orca runs each conversation to the end, calls the search when the model asks for it, and keeps every message. The model name also says who pays. `orca/openrouter/<id>` runs on your Orca credit; `<provider>/<id>`, such as `anthropic/claude-sonnet-4-5`, runs on your own key for that provider. See [models and provider keys](/providers).
+A model, its instructions, and one tool. There is no loop to write, no search API to call, and no history to store: Orca runs each conversation, calls the search whenever the model asks for it, and keeps every message. The model name also says who pays. `orca/openrouter/<id>` runs on your Orca credit; `<provider>/<id>`, such as `anthropic/claude-sonnet-4-5`, runs on your own key for that provider. See [models and provider keys](/providers).
 
-## 3. Put Scout to work
+Get Scout into your account whichever way you like:
 
-Ask it something it has to look up:
+<Tabs>
+<Tab title="Copy it">
+Scout is shared as a [kit](/kits), a link anyone can copy an agent from. One command copies it into your account:
+
+```bash
+orca kits copy https://app.orcapods.ai/kits/kit-tdCEUXGA3NbuIWJJ6 --yes
+```
+
+Then see what you copied. It is the definition above:
+
+```bash
+orca agents get scout
+```
+</Tab>
+<Tab title="Build it from code">
+Run the code above yourself. It needs an Orca API key and the `openai` package.
+
+Make a key with the CLI and keep it in your shell as `ORCA_API_KEY`. The key is shown only once, so this stores it without printing it:
+
+<CodeGroup>
+```bash bash / zsh
+export ORCA_API_KEY=$(orca keys create start-here </dev/null)
+```
+```fish fish
+set -x ORCA_API_KEY (orca keys create start-here </dev/null)
+```
+</CodeGroup>
+
+Save the code above as `scout_agent.py` or `scout_agent.ts`, install the package, and run it. You need Python 3.10 or later, or Node 22.18+ or 24+, which runs `.ts` files directly:
+
+<CodeGroup>
+```bash Python
+python3 -m venv .venv
+.venv/bin/pip install openai==3.13.0
+.venv/bin/python scout_agent.py
+```
+```bash TypeScript
+npm init -y && npm pkg set type=module
+npm install openai@7.15.0
+node --experimental-strip-types scout_agent.ts
+```
+</CodeGroup>
+
+It prints Scout's ID. The same agent is in [orca-kits on GitHub](https://github.com/okikorg/orca-kits/tree/main/kits/scout), where every kit is defined in code this way.
+</Tab>
+</Tabs>
+
+Either way, you now have an agent called `scout`. Make it yours any time: change its instructions, model, or tools on its page in the [dashboard](https://app.orcapods.ai/agents).
+
+## 3. Ask it something
+
+Ask Scout something it has to look up:
 
 ```bash
 orca chat scout "What's new in the latest Python release? Cite your sources."
 ```
 
-The reply streams into your terminal as the model writes it, after the searches it ran. The line `session session_...` names the session (the conversation) it started. Run `orca chat scout` with no message for a back-and-forth conversation; Ctrl-C leaves it.
+Scout searches the web, then streams its answer into your terminal, with a link for each source.
 
-Each `orca chat` without `--session` starts a new conversation. To keep one going, create a session and pass its ID:
+To have a conversation, run `orca chat scout` with no question. You're now chatting with Scout, and it remembers what you said. Try a question, then a follow-up:
 
-<CodeGroup>
-```bash bash / zsh
-SESSION=$(orca sessions create --agent scout)
-orca chat scout --session "$SESSION" "Which three Python web frameworks are most used today?"
-orca chat scout --session "$SESSION" "Compare the first two in a short table."
-orca sessions items "$SESSION"
+```bash
+orca chat scout
 ```
-```fish fish
-set SESSION (orca sessions create --agent scout)
-orca chat scout --session "$SESSION" "Which three Python web frameworks are most used today?"
-orca chat scout --session "$SESSION" "Compare the first two in a short table."
-orca sessions items "$SESSION"
+
+```text
+Which three Python web frameworks are most used today?
+Compare the first two in a short table.
 ```
-</CodeGroup>
 
-Scout knows what "the first two" means, because the session keeps the conversation. `orca sessions items` prints it all, and Orca keeps it on the server, so you can come back to it tomorrow.
+Ctrl-C leaves the chat. On the way out it prints `session session_...`: a session is one conversation, and Orca keeps it. `orca chat scout --session session_...` (with your session's ID) picks it up again tomorrow, and the [Sessions page](https://app.orcapods.ai/sessions) in the dashboard shows every turn.
 
-## 4. Give Scout a machine of its own
+## 4. Give it a computer
 
-A sandbox is a private machine for one session, where the agent can run commands and write files. Files it saves under `/workspace/outputs` are kept as artifacts when its turn completes:
+Add `--sandbox`, and the conversation runs on a private machine of its own, where Scout can run code and save files. Anything it saves in `/workspace/outputs` is kept for you to download:
 
-<CodeGroup>
-```bash bash / zsh
-BOX=$(orca sessions create --agent scout --sandbox)
-orca chat scout --session "$BOX" "Use Python to write the first 20 prime numbers to /workspace/outputs/primes.txt, one per line, then show me the file's contents."
-orca sessions artifacts "$BOX"
-orca sessions artifacts download "$BOX" /workspace/outputs/primes.txt
-cat primes.txt
-orca sessions delete "$BOX" --yes
+```bash
+orca chat scout --sandbox "Look up the release dates of the last five Python versions, then use Python to save them to /workspace/outputs/python-releases.csv, with the number of days between each release."
 ```
-```fish fish
-set BOX (orca sessions create --agent scout --sandbox)
-orca chat scout --session "$BOX" "Use Python to write the first 20 prime numbers to /workspace/outputs/primes.txt, one per line, then show me the file's contents."
-orca sessions artifacts "$BOX"
-orca sessions artifacts download "$BOX" /workspace/outputs/primes.txt
-cat primes.txt
-orca sessions delete "$BOX" --yes
+
+Scout searches the web, writes a short Python script, runs it on its machine, and tells you what it saved. The last line names the session: `session session_...`. Use that ID in place of `session_...` to download the file here, then delete the session to switch the machine off:
+
+```bash
+orca sessions artifacts download session_... --all
+orca sessions delete session_... --yes
 ```
-</CodeGroup>
 
-Scout writes and runs the code on its machine, and the reply shows the file. `orca sessions artifacts download` saves it here as `primes.txt` (`--all` saves every file the last turn left in `/workspace/outputs`). To give Scout a file of yours, add `--file data.csv` to `orca chat` or `orca sessions create`: it lands at `/workspace/data.csv`. Your code can do the same [with the API](/guides/files-and-artifacts#get-results-back-as-artifacts). Deleting the session stops its sandbox and deletes its artifacts.
+`--all` saves every file from Scout's last turn here, so you now have `python-releases.csv`. To keep working on the same machine first, with its files where Scout left them, run `orca chat scout --session session_...` before you delete it. A machine that sits idle pauses itself and stops using machine time, with its files kept for when the session needs it again.
 
-## 5. Put your coding agent at the controls
+To hand Scout a file of yours, add `--file data.csv` to `orca chat`: it lands on the machine at `/workspace/data.csv`.
 
-`orca mcp serve` gives your coding agent one tool per CLI action, so it can copy kits, create agents, chat with them, and read your usage and wallet. It uses the CLI's login, which you already have.
+## 5. Let your coding agent drive
+
+Give your coding agent Orca's tools, and you can run your agents just by asking. `orca mcp serve` is an MCP server with one tool per CLI action, so your coding agent can copy kits, create agents, chat with them, and read your usage and wallet. It uses the login you already have.
 
 <Tabs>
 <Tab title="Claude Code">
@@ -236,9 +275,11 @@ Start a new session of your coding agent so it loads the server. Then ask it thi
 
 Your coding agent acts as you with these tools: it can create, delete, and spend. See [use Orca from coding agents](/cli/mcp) for every tool.
 
-## 6. Run Scout from your own code
+## 6. Run it from your own code
 
-Everything so far went through the CLI, which calls the same API your application would. Your code uses the official `openai` package with an Orca API key. Make one with the CLI and keep it in your shell as `ORCA_API_KEY`:
+Everything so far went through the CLI, which calls the same API your application will. Your code uses the official `openai` package with an Orca API key. If you built Scout from code in step 2, you already have both: skip to the program.
+
+Otherwise, make a key and keep it in your shell as `ORCA_API_KEY`:
 
 <CodeGroup>
 ```bash bash / zsh
@@ -251,7 +292,7 @@ set -x ORCA_API_KEY (orca keys create start-here </dev/null)
 
 The key is shown only once, so this stores it without printing it. You can also create one in the dashboard under **Settings**, **API keys**.
 
-Install the client. You need Python 3.10 or later, or Node 22.18+ or 24+, which runs `.ts` files directly:
+Then install the package. You need Python 3.10 or later, or Node 22.18+ or 24+, which runs `.ts` files directly:
 
 <CodeGroup>
 ```bash Python
@@ -296,7 +337,7 @@ const agents = client.beta.agents;
 
 let scout;
 for await (const agent of agents.list()) if (agent.name === 'scout') { scout = agent; break; }
-if (!scout) throw new Error('No agent called scout. Copy it first (step 2).');
+if (!scout) throw new Error('No agent called scout. Get it first (step 2).');
 
 const session = await agents.sessions.create({ agent_id: scout.id, environment: { type: 'none' } });
 try {
@@ -322,17 +363,18 @@ node --experimental-strip-types scout.ts
 ```
 </CodeGroup>
 
-Scout lives on Orca, so your code only opens a session and reads the answer. The [quickstart](/quickstart) explains each call, including how to create agents from code.
+Scout lives on Orca, so your code only opens a session and reads the answer. The [quickstart](/quickstart) explains each call.
 
 ## 7. See what it cost, and clean up
 
 Every call is recorded with what it cost, down to the session:
 
 ```bash
-orca sessions get "$SESSION"   # one session's cost, tokens, and machine time
-orca usage --days 1            # today's usage, by the hour
-orca billing wallet            # your balance and plan
+orca usage --days 1        # today's usage, by the hour
+orca billing wallet        # your balance and plan
 ```
+
+`orca sessions get session_...` shows one session's cost, tokens, and machine time.
 
 - **Model tokens and web searches** on an Orca credit model are paid from your credit. On your own provider key, that provider bills you.
 - **Sessions without a sandbox use no machine time.** On this page, only step 4 used any.
@@ -340,7 +382,7 @@ orca billing wallet            # your balance and plan
 
 The numbers for each plan, the signup credit, and the minimum balance are on the [pricing page](https://orcapods.ai/pricing). See [usage and wallet](/wallet#read-the-wallet-and-your-usage) for the rest.
 
-Keep Scout if you like it, and make it yours: change its instructions or model on its page in the [dashboard](https://app.orcapods.ai/agents). To remove everything this page made instead, delete Scout's sessions, then Scout, then the key. Deleting an agent does not delete its sessions.
+Keep Scout if you like it. To remove everything this page made instead, delete Scout's sessions, then Scout, then the key. Deleting an agent does not delete its sessions.
 
 <CodeGroup>
 ```bash bash / zsh
@@ -360,14 +402,14 @@ Then revoke the key named `start-here` with `orca keys revoke <its id> --yes`, a
 ## Where to go next
 
 <CardGroup cols={2}>
+  <Card title="Build your own agent" icon="code" href="/quickstart">
+    Every call explained, from creating an agent to streaming its answers.
+  </Card>
   <Card title="Agent recipes" icon="book-open" href="/recipes/overview">
     Complete agents to copy: a support agent, a data analyst, a code reviewer, and more.
   </Card>
   <Card title="Subagents" icon="sitemap" href="/guides/subagents">
     Let one agent split a task and hand the pieces to helpers.
-  </Card>
-  <Card title="Skills and templates" icon="layer-group" href="/guides/skills">
-    Package instructions an agent follows the same way every time, and reuse a sandbox setup.
   </Card>
   <Card title="Share your own agent" icon="share-nodes" href="/kits">
     Publish an agent as a kit, the way Scout is shared, and send the link to anyone.
