@@ -169,14 +169,16 @@ set -x ORCA_API_KEY (orca keys create start-here </dev/null)
 </CodeGroup>
 </Step>
 <Step title="Install the openai package">
-You need Python 3.10 or later, or Node 22.18 or later. The `python3` that comes with macOS is 3.9, which is too old: pip then says `No matching distribution found for openai==3.13.0`. If `python3 --version` says 3.9, install a newer Python first (`brew install python`), open a new terminal, and start again.
+It needs Python 3.10 or later, or Node 22.18 or later. Check your version first, and update it if it's older:
 
 <CodeGroup>
 ```bash Python
+python3 --version    # 3.10 or later
 python3 -m venv .venv
 .venv/bin/pip install openai==3.13.0
 ```
 ```bash TypeScript
+node --version       # 22.18 or later
 npm init -y && npm pkg set type=module
 npm install openai@7.15.0
 ```
@@ -315,14 +317,16 @@ set -x ORCA_API_KEY (orca keys create start-here </dev/null)
 
 The key is shown only once, so this stores it without printing it. You can also create one in the dashboard under **Settings**, **API keys**.
 
-Then install the package. You need Python 3.10 or later, or Node 22.18 or later, which runs `.ts` files directly. The `python3` that comes with macOS is 3.9, which is too old: pip then says `No matching distribution found for openai==3.13.0`. If `python3 --version` says 3.9, install a newer Python first (`brew install python`), open a new terminal, and start again.
+Then install the `openai` package. It needs Python 3.10 or later, or Node 22.18 or later. Check your version first, and update it if it's older:
 
 <CodeGroup>
 ```bash Python
+python3 --version    # 3.10 or later
 python3 -m venv .venv
 .venv/bin/pip install openai==3.13.0
 ```
 ```bash TypeScript
+node --version       # 22.18 or later
 npm init -y && npm pkg set type=module
 npm install openai@7.15.0
 ```
