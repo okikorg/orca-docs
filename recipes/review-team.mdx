@@ -236,5 +236,5 @@ Keep the documents small. Inline files travel in the request that creates the se
 
 - **Give each helper a bounded task.** "Review this file and return at most five findings" works better than "review this". The lead only sees what helpers return, so ask for the evidence you want in the final report.
 - **Set the concurrency for your budget.** `max_concurrent_subagents` caps how many helpers run at once; it is 6 if you leave it out. Change `MAX_HELPERS` to change both the cap and the batch size in the instructions. Helpers cannot start helpers of their own.
-- **Skip helper turns when you poll.** If you wait by polling the turn list instead of streaming, helper turns appear there too. Skip turns with a `subagent_id`, as the [quickstart](/quickstart) does.
+- **Skip helper turns when you poll.** If you wait by polling the turn list instead of streaming, helper turns appear there too. Skip turns with a `subagent_id`, as [Build with the API](/build-with-the-api) does.
 - **Delegation is not a security boundary.** Helpers share the lead's tools and sandbox. Give the lead only what every helper may use.

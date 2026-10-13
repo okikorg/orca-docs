@@ -81,8 +81,8 @@ def main():
                 errors.append(f"{name}: plan number \"{number}\"; link the pricing page instead")
     all_text = "\n".join(texts.values())
     for pin in (f"openai=={versions['python']}", f"openai@{versions['typescript']}"):
-        if pin not in texts.get("quickstart", ""):
-            errors.append(f"Quickstart is missing client pin: {pin}")
+        if pin not in texts.get("build-with-the-api", ""):
+            errors.append(f"Build with the API is missing client pin: {pin}")
     endpoints = json.loads((SERVER / "contract/endpoints.json").read_text())
     reference = "\n".join(text for name, text in texts.items() if name.startswith("reference/"))
     count = 0

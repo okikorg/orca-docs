@@ -58,11 +58,11 @@
             "tab": "Documentation",
             "groups": [
               {
-                "group": "Start here",
+                "group": "Get started",
                 "pages": [
                   "start-here",
                   "introduction",
-                  "quickstart",
+                  "build-with-the-api",
                   "concepts",
                   "turn-lifecycle",
                   "glossary",
@@ -259,13 +259,18 @@
   },
   "redirects": [
     {
+      "source": "/quickstart",
+      "destination": "/start-here",
+      "permanent": true
+    },
+    {
       "source": "/dashboard-and-api",
-      "destination": "/quickstart",
+      "destination": "/build-with-the-api",
       "permanent": true
     },
     {
       "source": "/sdk/:slug*",
-      "destination": "/quickstart",
+      "destination": "/build-with-the-api",
       "permanent": true
     },
     {
