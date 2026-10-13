@@ -3,7 +3,7 @@ title: "Runnable examples"
 description: "Find the example code for each Orca topic, and run it against your endpoint."
 ---
 
-The guides in these docs carry example code for each topic, written with the official OpenAI packages. Start with the [Orca quickstart](/quickstart); consult the [OpenAI Agent API quickstart](https://developers.openai.com/api/docs/guides/agents-api/quickstart/) for the upstream programming model.
+The guides in these docs carry example code for each topic, written with the official OpenAI packages. Start with [Build with the API](/build-with-the-api); consult the [OpenAI Agent API quickstart](https://developers.openai.com/api/docs/guides/agents-api/quickstart/) for the upstream programming model.
 
 <Tip>
 Looking for complete agents to copy, such as a research assistant, a support agent, or a code reviewer? See [build useful agents](/recipes/overview).
@@ -13,7 +13,7 @@ Looking for complete agents to copy, such as a research assistant, a support age
 
 | Topic | What it covers | Where the code is |
 | --- | --- | --- |
-| Quickstart | Agent, session, turn status, usage, history | [Quickstart](/quickstart) |
+| Build with the API | Agent, session, turn status, usage, history | [Build with the API](/build-with-the-api) |
 | Streaming | Text deltas, watching from another process, cancellation | [Streaming](/guides/streaming) |
 | Function tools | Application-side tool calls and results | [Function tools](/guides/function-tools) |
 | MCP tools | Remote tools, credential binding, filtering | [MCP tools](/guides/mcp) |
@@ -23,7 +23,7 @@ Looking for complete agents to copy, such as a research assistant, a support age
 
 ## Run against your endpoint
 
-Configure the same variables as the quickstart:
+Configure the same variables as [Build with the API](/build-with-the-api):
 
 ```bash
 export ORCA_BASE_URL="https://api.orcapods.ai/v1"
@@ -31,7 +31,7 @@ export ORCA_API_KEY="YOUR_ORCA_KEY"
 export ORCA_MODEL="orca/openrouter/YOUR_OPENROUTER_MODEL_ID"
 ```
 
-Save the example as a file, install the client version the quickstart pins, and run it:
+Save the example as a file, install the client version pinned in [Build with the API](/build-with-the-api), and run it:
 
 <CodeGroup>
 ```bash Python

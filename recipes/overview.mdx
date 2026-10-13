@@ -5,7 +5,7 @@ description: "How to design an agent that does one job well, and complete recipe
 
 A useful agent does one job, has only the tools that job needs, and leaves its result somewhere your application can read. The recipes in this section each build one such agent end to end. Copy the one closest to what you need and change the instructions.
 
-If you have not run an agent yet, start with the [quickstart](/quickstart). It explains the client setup every recipe uses.
+If you have not run an agent yet, start with [Build with the API](/build-with-the-api). It explains the client setup every recipe uses.
 
 ## Pick a recipe
 
@@ -60,7 +60,7 @@ Keep procedures that are long, or that several agents share, in a [skill](/guide
 
 ## Shared setup
 
-Every recipe uses the same three settings as the quickstart:
+Every recipe uses the same three settings as [Build with the API](/build-with-the-api):
 
 ```bash
 export ORCA_BASE_URL="https://api.orcapods.ai/v1"
@@ -68,7 +68,7 @@ export ORCA_API_KEY="YOUR_ORCA_KEY"
 export ORCA_MODEL="orca/openrouter/YOUR_OPENROUTER_MODEL_ID"
 ```
 
-Every recipe has a Python and a TypeScript program. Install the client versions the [quickstart](/quickstart) pins:
+Every recipe has a Python and a TypeScript program. Install the client versions pinned in [Build with the API](/build-with-the-api):
 
 <CodeGroup>
 ```bash Python

@@ -25,7 +25,7 @@ Files and artifacts need a sandbox. Sessions with `environment: {"type": "none"}
 
 ## Upload a file
 
-Examples on this page assume `client` is an `OpenAI` client configured as in the [quickstart](/quickstart).
+Examples on this page assume `client` is an `OpenAI` client configured as in [Build with the API](/build-with-the-api).
 
 `client.files.create` stores a file in Orca and returns an ID. Upload once and stage it into as many sessions as you like.
 
@@ -96,7 +96,7 @@ for artifact in agents.sessions.artifacts.list(session.id):
     Path(Path(artifact.path).name).write_bytes(content.content)
 ```
 
-It assumes an `agent` created as in the quickstart. It uploads a file, stages it, asks the agent for a summary, then saves every artifact to the current folder.
+It assumes an `agent` created as in [Build with the API](/build-with-the-api). It uploads a file, stages it, asks the agent for a summary, then saves every artifact to the current folder.
 
 ### How capture works
 
