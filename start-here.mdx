@@ -169,7 +169,7 @@ A sandbox is a private machine for one session, where the agent can run commands
 <CodeGroup>
 ```bash bash / zsh
 BOX=$(orca sessions create --agent scout --sandbox)
-orca chat scout --session "$BOX" "Create the folder /workspace/outputs, use Python to write the first 20 prime numbers to /workspace/outputs/primes.txt, one per line, then show me the file's contents."
+orca chat scout --session "$BOX" "Use Python to write the first 20 prime numbers to /workspace/outputs/primes.txt, one per line, then show me the file's contents."
 orca sessions artifacts "$BOX"
 orca sessions artifacts download "$BOX" /workspace/outputs/primes.txt
 cat primes.txt
@@ -177,7 +177,7 @@ orca sessions delete "$BOX" --yes
 ```
 ```fish fish
 set BOX (orca sessions create --agent scout --sandbox)
-orca chat scout --session "$BOX" "Create the folder /workspace/outputs, use Python to write the first 20 prime numbers to /workspace/outputs/primes.txt, one per line, then show me the file's contents."
+orca chat scout --session "$BOX" "Use Python to write the first 20 prime numbers to /workspace/outputs/primes.txt, one per line, then show me the file's contents."
 orca sessions artifacts "$BOX"
 orca sessions artifacts download "$BOX" /workspace/outputs/primes.txt
 cat primes.txt
