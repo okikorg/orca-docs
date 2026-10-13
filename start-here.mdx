@@ -1,11 +1,11 @@
 ---
 title: "Start here"
-description: "Try Orca in about ten minutes: get a research agent of your own, give it a computer to work on, then drive it from your coding agent and your own code."
+description: "Try Orca in about ten minutes: get a research agent of your own, give it a sandbox to work in, then drive it from your coding agent and your own code."
 ---
 
-Orca runs AI agents for you in the cloud. You describe an agent once: a model, its instructions, and the tools it may use. Orca does the rest. It runs every conversation to the end, searches the web, runs code on a private machine when the job needs one, and keeps the whole history. Your code talks to Orca with the official `openai` package, so there is no new SDK to learn.
+Orca runs AI agents for you in the cloud. You describe an agent once: a model, its instructions, and the tools it may use. Orca does the rest. It runs every conversation to the end, searches the web, runs code in a private sandbox when the job needs one, and keeps the whole history. Your code talks to Orca with the official `openai` package, so there is no new SDK to learn.
 
-In about ten minutes you'll have a research agent of your own that looks things up and cites its sources, give it a computer to work on, and then hand the controls to your coding agent and your own code.
+In about ten minutes you'll have a research agent of your own that looks things up and cites its sources, give it a sandbox to work in, and then hand the controls to your coding agent and your own code.
 
 <Tip>
 **No account yet?** [Sign up](https://app.orcapods.ai/sign-up) first. New accounts start with free credit and no card, and every step on this page runs on it.
@@ -17,7 +17,7 @@ In about ten minutes you'll have a research agent of your own that looks things 
   <Card title="The OpenAI Agents API, hosted" icon="plug" href="/quickstart">
     Point the official `openai` package at Orca and keep your code standard. No new SDK.
   </Card>
-  <Card title="A computer for every session" icon="server" href="/guides/environments">
+  <Card title="A sandbox for every session" icon="server" href="/guides/environments">
     A session can have its own sandbox to run commands and write files. Idle sandboxes pause with their files kept.
   </Card>
   <Card title="Any model, and you choose who pays" icon="shuffle" href="/providers">
@@ -39,7 +39,7 @@ In about ten minutes you'll have a research agent of your own that looks things 
 1. [Install the CLI and sign in](#1-install-the-cli-and-sign-in).
 2. [Get your first agent](#2-get-your-first-agent): copy it with one command, or build it from a few lines of code.
 3. [Ask it something](#3-ask-it-something), then have a conversation.
-4. [Give it a computer](#4-give-it-a-computer) to run code and save files on.
+4. [Give it a sandbox](#4-give-it-a-sandbox) to run code and save files in.
 5. [Let your coding agent drive](#5-let-your-coding-agent-drive).
 6. [Run it from your own code](#6-run-it-from-your-own-code).
 7. [See what it cost, and clean up](#7-see-what-it-cost-and-clean-up).
@@ -207,24 +207,24 @@ Compare the first two in a short table.
 
 Ctrl-C leaves the chat. On the way out it prints `session session_...`: a session is one conversation, and Orca keeps it. `orca chat scout --session session_...` (with your session's ID) picks it up again tomorrow, and the [Sessions page](https://app.orcapods.ai/sessions) in the dashboard shows every turn.
 
-## 4. Give it a computer
+## 4. Give it a sandbox
 
-Add `--sandbox`, and the conversation runs on a private machine of its own, where Scout can run code and save files. Anything it saves in `/workspace/outputs` is kept for you to download:
+Add `--sandbox`, and the conversation runs in a sandbox, a private machine of its own where Scout can run code and save files. Anything it saves in `/workspace/outputs` is kept for you to download:
 
 ```bash
 orca chat scout --sandbox "Look up the release dates of the last five Python versions, then use Python to save them to /workspace/outputs/python-releases.csv, with the number of days between each release."
 ```
 
-Scout searches the web, writes a short Python script, runs it on its machine, and tells you what it saved. The last line names the session: `session session_...`. Use that ID in place of `session_...` to download the file here, then delete the session to switch the machine off:
+Scout searches the web, writes a short Python script, runs it in the sandbox, and tells you what it saved. The last line names the session: `session session_...`. Use that ID in place of `session_...` to download the file here, then delete the session to shut the sandbox down:
 
 ```bash
 orca sessions artifacts download session_... --all
 orca sessions delete session_... --yes
 ```
 
-`--all` saves every file from Scout's last turn here, so you now have `python-releases.csv`. To keep working on the same machine first, with its files where Scout left them, run `orca chat scout --session session_...` before you delete it. A machine that sits idle pauses itself and stops using machine time, with its files kept for when the session needs it again.
+`--all` saves every file from Scout's last turn here, so you now have `python-releases.csv`. To keep working in the same sandbox first, with the files where Scout left them, run `orca chat scout --session session_...` before you delete it. A sandbox that sits idle pauses itself and stops using machine time, with its files kept for when the session needs it again.
 
-To hand Scout a file of yours, add `--file data.csv` to `orca chat`: it lands on the machine at `/workspace/data.csv`.
+To hand Scout a file of yours, add `--file data.csv` to `orca chat`: it lands in the sandbox at `/workspace/data.csv`.
 
 ## 5. Let your coding agent drive
 
