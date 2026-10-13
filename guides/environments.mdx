@@ -96,7 +96,6 @@ session = agents.sessions.create(
         "type": "openai_hosted",
         "network": {"access": "enabled"},
         "packages": {"python": ["requests"]},
-        "setup_commands": [{"command": "mkdir -p /workspace/outputs"}],
         "env": {"REPORT_TITLE": "Weekly report"},
     },
 )
