@@ -1,0 +1,370 @@
+---
+title: "A frontier model plans, cheaper models do the work"
+sidebarTitle: "Plan and delegate"
+description: "Put the parent on your ChatGPT subscription and the workers on cheaper OpenRouter models, then run one task that fans out across both."
+---
+
+## What you will set up
+
+One Orcacode session that uses two providers at once:
+
+- The parent plans on your ChatGPT subscription (`openai-codex`). It reads, breaks the task up and checks the results.
+- Fast and mid workers run on cheaper models through OpenRouter. They do the edits, the shell work and the reading.
+- The frontier tier stays on the subscription, for work that needs the stronger model.
+
+The models come from three makers: OpenAI, DeepSeek and Qwen. Every transcript and number on this page comes from one setup in a throwaway copy of a small test repo. A real run on 2026-10-15 with orcacode 0.9.0.
+
+## 1. Install
+
+```bash
+$ curl -fsSL https://orcapods.ai/orcacode.sh | sh
+$ orcacode --version
+orcacode 0.9.0
+```
+
+Run `orcacode` from the repo you want the tools rooted in.
+
+## 2. Put the parent on your ChatGPT subscription
+
+Type `/provider` and pick `openai-codex`.
+
+```text
+  Select provider · ↑↓ move  →/enter use  esc close
+
+  › openrouter    https://openrouter.ai/api/v1          key from $OPENROUTER_API_KEY
+    openai-codex  https://chatgpt.com/backend-api/cod…  subscription OAuth · signed in with ChatGPT
+```
+
+If you already use the Codex CLI, Orcacode reads that login where it is, so the row says `signed in with ChatGPT` and there is nothing to do. Without one, picking the row starts a device login: Orcacode prints a code to enter at `https://auth.openai.com/codex/device`. No API key either way.
+
+```text
+provider: openai-codex · model: gpt-6.1-sol
+```
+
+Then pick the parent's model and reasoning effort with `/models`. Do this even if the model shown is the one you want: `/models` saves it, and in this run a provider switch alone did not. The next launch started on `gpt-5.4`.
+
+```text
+model: gpt-6.1-sol · effort medium
+```
+
+## 3. Put the workers on OpenRouter
+
+Export your OpenRouter key in the shell you start Orcacode from:
+
+```bash
+$ export OPENROUTER_API_KEY=<your key>
+```
+
+The `/provider` picker above already shows `key from $OPENROUTER_API_KEY`. Workers read the key themselves, so the parent stays on the subscription. You do not need to switch it to OpenRouter.
+
+Open `/subagents`. Each tier is one row. Pick a row, pick a provider, type to filter its catalog and select a model.
+
+```text
+  Subagent fast model · ↑↓ move  ← back  →/enter use  esc close · choose provider
+
+  › openrouter
+    vercel
+    cheaperinference
+    openai
+    openai-codex
+    anthropic
+    local
+```
+
+```text
+  Subagent fast / openrouter · filter: deepseek-v4-flash · →/enter select  esc close                               4/4
+  Missing models? Update Orcacode or check account access.
+    deepseek/deepseek-v4-flash-vision-exp  1M ctx  $0.22/M in $0.65/M out
+    ~deepseek/deepseek-v4-flash-latest     1M ctx  $0.01/M in $0.58/M out
+    deepseek/deepseek-v4-flash-0731        1M ctx  $0.02/M in $0.64/M out
+  › deepseek/deepseek-v4-flash             1M ctx  $0.09/M in $0.18/M out
+```
+
+```text
+• subagent flash model saved; applies to new spawns
+```
+
+The fast tier is called `flash` in messages and in `config.json`. This setup uses one model per tier:
+
+| Tier | Provider | Model |
+| --- | --- | --- |
+| fast | `openrouter` | `deepseek/deepseek-v4-flash` |
+| mid | `openrouter` | `qwen/qwen3-coder` |
+| frontier | `openai-codex` | `gpt-6.1-sol`, the same model as the parent |
+| local | not selected | |
+
+Setting a tier's model is not enough: set default route to preference, or every worker runs on the parent's model. Open the **default route** row:
+
+```text
+  Subagent default route · ↑↓ move  ← back  →/enter use  esc close
+  › inherit       always use the parent model
+    auto          model chooses per subagent
+    preference    model chooses only from your preferred models
+    flash         always use the preferred fast model
+    mid           always use the preferred balanced model
+    frontier      always use the preferred strongest model
+```
+
+With `preference`, the parent picks one of your tier models for each worker and cannot name any other. The finished list:
+
+```text
+• subagent default route set to preference (saved; next spawn)
+  Subagents (this session) · ↑↓ move  →/enter open  esc close                                                     1/17
+  › default route       preference
+    local model         not selected
+    fast model          flash/openrouter/deepseek/deepseek-v4-flash
+    mid model           mid/openrouter/qwen/qwen3-coder
+    frontier model      frontier/openai-codex/gpt-6.1-sol
+    nesting depth       1
+    background agents   unlimited
+    model steps         24
+    wall clock          300
+    tool output         8000
+```
+
+These settings are saved and apply to later sessions.
+
+### Optional: a local worker
+
+The local tier talks to an OpenAI-compatible server at `http://localhost:11434/v1`, which is where Ollama listens. It needs no key. Start the server and pull a model first; the tier's catalog is whatever the server lists. Then pick **local model**, then `local`, then the model. This run left the local tier unset.
+
+## 4. Start in orchestrate mode
+
+```bash
+$ orcacode --orchestrate
+```
+
+In a running session, `/mode orchestrate` does the same. The status line shows the parent's provider, model, effort and mode:
+
+```text
+ openai-codex:gpt-6.1-sol · medium · orchestrate · ctx 0% · enter send  @ paths  ctrl+o expand  ctrl+t split      ⑂ main
+```
+
+In orchestrate mode the parent cannot run shell commands. It reads, makes small edits and hands the real work to workers. [Orchestrate mode](/orcacode/orchestrate-mode) lists exactly what it may do.
+
+## 5. Run one task that fans out
+
+The prompt names the tiers. With `preference`, the parent would choose by itself; naming them keeps the work on the cheap ones.
+
+```text wrap
+Three independent jobs. Give each to a worker and run them in parallel, on the cheap tiers: fast for the two small ones, mid for the code fix. 1) Fix the off-by-one in src/retry.rs: max_attempts is the total number of attempts allowed. 2) Make the heartbeat timeout in config/worker.yaml match docs/workers.md. 3) Trace request req-1042 through logs/gateway.log and logs/ledger.log and report the root cause. Then summarize what changed.
+```
+
+Starting a worker needs your approval. `a` allows it for the rest of the session. The workers' own tool calls do not ask.
+
+```text
+  ╭─ ! Approval required · subagent ───────────────────────────────────────────────────────────────────────────────────╮
+  │ subagent Fix the off-by-one in src/retry.rs in this workspace: max_attempts is the total number of …               │
+  │                                                                                                                    │
+  │   Allow once                                                                                                     y │
+  │   Always this session                                                                                            a │
+  │   Always for workspace                                                                                           A │
+  │   Deny                                                                                                           n │
+  ╰─────────────────────────────────────────────────────────────────────────────── ↑↓ choose  enter confirm  esc deny ─╯
+```
+
+The parent writes a task for each worker and starts all three at once. Each row ends with the model it runs on:
+
+```text
+  ■ Work · 3 tools
+    ├─ ■ Subagent · Fix the off-by-one in src/retry.rs in this workspace: max_attempts is the tot… · qwen3-coder · 14.6s
+    ├─ ■ Subagent · Small independent task: make heartbeat timeout in config/worker.yaml match docs… · deepseek-v4-flash
+    └─ ■ Subagent · Read-only investigation: trace request req-1042 through logs/gateway.log and lo… · deepseek-v4-flash
+  All three jobs are running in parallel:
+  • Mid: retry off-by-one fix and focused tests.
+  • Fast: heartbeat timeout alignment.
+  • Fast: req-1042 log trace and root-cause analysis.
+  I’ll summarize the changes, verification results, and root cause when the workers finish.
+  done · 26.7s · 3 tools · ↑116 ↓377
+```
+
+The two fast workers finished in seconds. As each one reports, the parent reads the files it touched to check the result:
+
+```text
+• 1 background agent reported · spawn 2
+  ■ Work · 2 tools
+    ├─ ■ Read · config/worker.yaml · read 81 bytes · 1ms
+    └─ ■ Read · docs/workers.md · read 171 bytes · 1ms
+  Heartbeat config is updated and verified: timeout_seconds changed from 20 to 75, matching docs/workers.md. The
+  interval remains 30 seconds, already correct.
+```
+
+The mid worker did not finish. It used all 24 of its model steps writing and compiling test files, and stopped. This is the right-hand pane of the agent panel:
+
+```text
+Let's run one final test to make sure our fix is working correctly:
+
+■ Work · 1 tool
+  └─ ■ Shell · $ cd src && echo -e '#[cfg(… · exit 1 · error: … · 38ms
+
+failed · step limit exceeded
+```
+
+The parent read the file the worker left behind and sent a second mid worker to repair it:
+
+```text
+• 1 background agent reported · spawn 1
+  ■ Work · 1 tool
+    └─ ■ Read · src/retry.rs · read 449 bytes
+  The retry worker hit its step limit and left a malformed test declaration. I’m assigning a bounded repair and
+  verification pass to another mid-tier worker. The other two jobs are complete.
+  ■ Work · 1 tool
+    └─ ■ Subagent · Finish/repair prior worker's retry fix. src/retry.rs currently has correct-looking at… · qwen3-coder
+```
+
+When it finished, the parent summarized:
+
+```text
+  Root cause: `req-1042`
+  Ledger’s storage dependency reported connection_pool_exhausted on all three attempts:
+  Time (UTC) │ Ledger                    │ Gateway
+  ───────────┼───────────────────────────┼───────────────────────────
+  10:15:00   │ Pool exhausted, attempt 1 │ Ledger 503
+  10:15:01   │ Pool exhausted, attempt 2 │ Ledger 503
+  10:15:03   │ Pool exhausted, attempt 3 │ Ledger 503, then final 502
+  The immediate cause was storage connection-pool exhaustion, followed by a gateway 502 after three failed attempts. The
+  logs do not explain why the pool was exhausted.
+  Only the retry source/tests and heartbeat config were changed; the log investigation was read-only.
+  done · 10.9s · 1 tool · ↑0 ↓305
+```
+
+Check that last line against `git status`:
+
+```bash
+$ git status --short
+ M config/worker.yaml
+ M src/retry.rs
+?? src/lib
+?? src/retry_old_test
+?? src/retry_tests.rs
+```
+
+The two fixes are right, but the first mid worker also left compiled test binaries and a test file in `src/`. The parent sees each worker's final report, not every command it ran, so its summary missed them. Review `git status` after a delegated run. A worker's step budget is the **model steps** row in `/subagents`.
+
+```bash
+$ git diff
+diff --git a/config/worker.yaml b/config/worker.yaml
+index f0c838e..88fa512 100644
+--- a/config/worker.yaml
++++ b/config/worker.yaml
+@@ -2,4 +2,4 @@ worker:
+   concurrency: 8
+ heartbeat:
+   interval_seconds: 30
+-  timeout_seconds: 20
++  timeout_seconds: 75
+diff --git a/src/retry.rs b/src/retry.rs
+index 3cd9138..8efe05c 100644
+--- a/src/retry.rs
++++ b/src/retry.rs
+@@ -1,3 +1,20 @@
+ pub fn should_retry(attempts_made: u32, max_attempts: u32) -> bool {
+-    attempts_made <= max_attempts
++    attempts_made < max_attempts
+ }
++#[cfg(test)]
++mod tests {
++    #[test]
++    fn test_should_retry() {
++        assert_eq!(super::should_retry(0, 3), true);
++        assert_eq!(super::should_retry(1, 3), true);
++        assert_eq!(super::should_retry(2, 3), true);
++        assert_eq!(super::should_retry(3, 3), false);
++        assert_eq!(super::should_retry(4, 3), false);
++        // Test edge cases for max_attempts 0 and 1
++        assert_eq!(super::should_retry(0, 0), false);
++        assert_eq!(super::should_retry(1, 0), false);
++        assert_eq!(super::should_retry(0, 1), true);
++        assert_eq!(super::should_retry(1, 1), false);
++    }
++}
++
+```
+
+## 6. What each model spent
+
+### This run
+
+Orcacode counts the parent and each worker separately. There are three places to look.
+
+**The agent panel**, for each worker. While workers run, the status line shows `agents N ↓`. Press `↓`, move to it with `→` and press `enter`. Each worker shows its provider, model and tokens in the right-hand pane. `in` leaves out tokens read from the provider's cache.
+
+```text
+■ done · 19.3s · background
+#0 · ⑂ subagent · openrouter:deepseek/deepseek-v4-flash
+Tokens: in 1.7k · out 1.6k · depth 0
+```
+
+```text
+× failed · 3m 39s · background
+#1 · ⑂ subagent · openrouter:qwen/qwen3-coder
+Tokens: in 11.1k · out 2.4k · depth 0
+```
+
+**`/usage`**, for the parent. It counts the parent's own model calls and none of the workers'. The `↑ ↓` figures on each `done` line are the parent's too.
+
+```text
+  Session usage · esc close
+  model        gpt-6.1-sol
+  context      11489 / 500000 (2%)
+  input        93002
+  output       1303
+  cache read   0
+  cache write  0
+  total        94305
+  model steps  11
+```
+
+**`--json`**, for both in one file. The same task, run headless on a fresh copy of the repo, with the prompt above saved in `prompt.txt`:
+
+```bash
+$ orcacode --orchestrate --auto-approve --json -p "$(cat prompt.txt)" > run.ndjson
+```
+
+The closing `summary` event carries the parent's usage. Each `tool_result` from `subagent` carries one worker's usage and the route it ran on. This `jq` filter prints them side by side:
+
+```bash
+$ cat tally.jq
+if .type == "tool_result" and .tool_name == "subagent" then
+  "worker  \(.output.identity.route)  in \(.output.usage.inputTokens)  cache read \(.output.usage.cacheReadTokens)  out \(.output.usage.outputTokens)"
+elif .type == "summary" then
+  "parent  \(.provider)/\(.model)  in \(.usage.inputTokens)  cache read \(.usage.cacheReadTokens)  out \(.usage.outputTokens)"
+else empty end
+$ jq -r -f tally.jq run.ndjson
+worker  mid/openrouter/qwen/qwen3-coder  in 8051  cache read 55474  out 1918
+worker  flash/openrouter/deepseek/deepseek-v4-flash  in 1218  cache read 6655  out 566
+worker  flash/openrouter/deepseek/deepseek-v4-flash  in 2792  cache read 3584  out 2203
+worker  mid/openrouter/qwen/qwen3-coder  in 8452  cache read 28873  out 771
+parent  openai-codex/gpt-6.1-sol  in 16843  cache read 0  out 765
+```
+
+This time all four workers finished on their first try. The headless run left only the two intended files changed.
+
+Orcacode 0.9.0 shows no dollar amounts on screen. The panel shows tokens per worker, and only `--json` carries cost: OpenRouter's cost for the parent's own requests when the parent runs on OpenRouter, never for a worker.
+
+So the worker costs below are computed from the token counts at OpenRouter's prices on 2026-10-15, for the headless run:
+
+| Worker | Model | Cost |
+| --- | --- | --- |
+| mid | `qwen/qwen3-coder` | $0.0099 |
+| fast | `deepseek/deepseek-v4-flash` | $0.0003 |
+| fast | `deepseek/deepseek-v4-flash` | $0.0007 |
+| mid | `qwen/qwen3-coder` | $0.0062 |
+
+The parent and the frontier tier ran on the ChatGPT subscription at no extra cost.
+
+### When every tier is paid
+
+Because the parent ran on the subscription, this run cannot show what the split costs when every model is billed. A run that was billed per model through OpenRouter on purpose can: the docs review of 2026-09-24, in [okikorg/orca-harness PR #32](https://github.com/okikorg/orca-harness/pull/32) (the run's commit is `57ea044`).
+
+- **Models:** GPT-6 Astra orchestrated through OpenRouter (status bar: `openrouter:openai/gpt-6-astra`). 100 reviewers ran on GPT-6 Luna, and 25 editors, a summary and the final checks on GPT-6 Sol.
+- **Fan-out:** that run used the `workflow` tool, not single `subagent` calls like this page.
+- **Cost:** about $5.75 in all.
+  - Astra was about $2.94, priced from its usage panel (111 in, 11,566 out, 1,420,720 cache read, 74,880 cache write) at OpenRouter's list rates.
+  - Sol was \$2.08 and Luna \$0.73. Those two are OpenRouter's day totals for 2026-09-24, and no other local session used those models that day.
+
+## Next
+
+- [Subagents](/orcacode/subagents): every routing policy, depth, step and time budgets, background workers and sidekicks.
+- [Orchestrate mode](/orcacode/orchestrate-mode): what the parent may still do itself, and approvals in headless runs.
+- [Providers & models](/orcacode/providers): every provider, its key and where settings are saved.

@@ -43,4 +43,4 @@ Flags and environment values take precedence over saved values. An explicit `--a
 
 Orcacode stores the provider, last model per provider, theme, API keys, extension settings, MCP servers, skills overrides, and workspace-scoped approvals in `config.json`. The default directory is `~/.config/orcacode` on Unix-like systems, `$XDG_CONFIG_HOME/orcacode` when set, or `%APPDATA%\orcacode` on Windows. Set `ORCA_CONFIG_DIR` to override the directory.
 
-For an OpenAI ChatGPT subscription, select `openai-codex` in `/provider`; Orcacode opens a device login flow and can import an existing official Codex login as a fallback.
+For an OpenAI ChatGPT subscription, select `openai-codex` in `/provider`. Orcacode uses an existing Codex login if it finds one, and otherwise starts a device login. To plan on the subscription and delegate to cheaper models elsewhere, see [Plan and delegate](/orcacode/plan-and-delegate).

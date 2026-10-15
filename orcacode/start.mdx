@@ -115,17 +115,9 @@ The second session is where Orcacode stops being a demo. Give it the rules of th
 
 ### 04. Plan on one provider, delegate to others
 
-The parent and its workers do not have to share a provider. One setup: sign in with ChatGPT for the parent, add an OpenRouter key for workers, give each worker tier a model, then start in orchestrate mode so the parent plans and delegates the heavy work.
+The parent plans on your ChatGPT subscription and cheaper OpenRouter models do the work. Setting a tier's model in `/subagents` is not enough: set default route to preference, or every worker runs on the parent's model.
 
-```bash
-$ orcacode
-› /provider              # pick openai-codex; a device login opens
-› /provider              # pick openrouter and paste its key, then switch back
-› /subagents             # give local, fast, mid and frontier a model each
-$ orcacode --orchestrate
-```
-
-Tier choices persist and apply to new workers; the parent's model never changes when you pick one. [Subagents](/orcacode/subagents) covers routing policy and budgets, and [Orchestrate mode](/orcacode/orchestrate-mode) what the parent may still do itself.
+[Plan and delegate](/orcacode/plan-and-delegate) walks the whole setup with a real run.
 
 ## 3. Your product
 
