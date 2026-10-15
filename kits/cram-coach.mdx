@@ -1,0 +1,673 @@
+---
+title: "Cram Coach"
+description: "Turn one textbook chapter and your exam date into a day-by-day study plan, Anki flashcards, a practice test, and its answers. Copy it, run it, hand it to your coding agent, and run it from your own code."
+---
+
+Cram Coach turns one chapter of your textbook into what you need for the exam. Give it the chapter as a PDF and your exam date, and it saves four files: a day-by-day study plan worked back from the exam, flashcards you can import into Anki, a practice test, and its answers, each cited to the section and page it comes from. It uses only what the chapter says.
+
+This page takes you from nothing to using Cram Coach every way Orca offers: in your terminal, through your coding agent, and from your own code.
+
+<Tip>
+**No account yet?** [Sign up](https://app.orcapods.ai/sign-up) first. New accounts start with free credit and no card, and every step on this page runs on it.
+</Tip>
+
+## What it can read
+
+- **Text PDFs only.** If you can select and copy text from the PDF in your viewer, Cram Coach can read it. A scanned PDF has no text to read: Cram Coach says so and stops. It does no OCR.
+- **One chapter per run.** If the PDF holds more than one chapter, Cram Coach asks which one you want and stops. Save just the chapter's pages as a new PDF first, for example with your viewer's **Print**, then **Save as PDF**.
+- **For now, PDFs under 48 KB.** A bigger file fails before Cram Coach sees it, with `Sandbox file staging failed (environment.files)`. This is a bug in how Orca copies files into a sandbox, and it is being fixed. When it is, the kit and this page will be updated.
+
+<Note>
+Most real chapters are bigger than 48 KB for now, since a PDF carries its fonts and images. Check yours with `wc -c < chapter.pdf`: it prints the size in bytes, which must be under 48000.
+</Note>
+
+## What you'll do
+
+1. [Install the CLI and sign in](#1-install-the-cli-and-sign-in).
+2. [Copy Cram Coach](#2-copy-cram-coach) with one command, or build it from code.
+3. [Use it](#3-use-it): attach your chapter, download the four files, and import the flashcards into Anki.
+4. [Let your coding agent drive](#4-let-your-coding-agent-drive).
+5. [Run it from your own code](#5-run-it-from-your-own-code).
+6. [See what it cost, and clean up](#6-see-what-it-cost-and-clean-up).
+
+You need a terminal on macOS or Linux, and Anki if you want the flashcards. Python or Node is only needed to build Cram Coach from code (step 2) and in step 5. Cram Coach reads your PDF in a sandbox, so every run uses a little machine time as well as model tokens.
+
+## Or hand this page to your coding agent
+
+If you work in Claude Code, Codex, or Cursor, it can do the typing while you watch. Paste this prompt:
+
+```text
+Set me up with Cram Coach, a study agent on Orca (orcapods.ai), a platform that runs AI agents in the cloud. Follow https://docs.orcapods.ai/kits/cram-coach with me, and run its commands yourself.
+
+1. Install the Orca CLI with `curl -fsSL https://orcapods.ai/install.sh | sh` and check it with `orca --version`.
+2. Sign me in with `orca login`. It prints a one-time code and a link: show me both, wait while I approve, then tell me my balance from `orca billing wallet`.
+3. Copy Cram Coach with `orca kits copy https://app.orcapods.ai/kits/kit-KDdGOG9YTLrtpQs64 --yes`, and check it's there with `orca agents get cram-coach`.
+4. Ask me for my chapter's PDF and my exam date. If I have no chapter, download the sample with `curl -L -o chapter.pdf https://github.com/okikorg/orca-kits/raw/main/kits/cram-coach/chapter.pdf`. Check the PDF's size with `wc -c`: if it is 48000 bytes or more, tell me Cram Coach takes PDFs under 48 KB for now, and stop.
+5. Run `orca chat cram-coach --sandbox --file <my PDF> "My exam is on <my date>."`. The last line names the session. Download the four files here with `orca sessions artifacts download <session id> --all`, and show me the first days of cram-plan.md.
+6. Delete the session with `orca sessions delete <session id> --yes` so the sandbox stops, then tell me how to import flashcards.csv into Anki.
+7. Give yourself Orca's tools, so that from now on I can ask you to run Cram Coach: add Orca's MCP server with the command for you in step 4 of that page, and tell me if you need a restart to load it.
+
+Never print or paste my API keys.
+```
+
+The commands below work in bash, zsh, and fish, on macOS and Linux. Where the shells differ, a block has a tab for each.
+
+## 1. Install the CLI and sign in
+
+```bash
+curl -fsSL https://orcapods.ai/install.sh | sh
+orca --version
+```
+
+The script installs a single `orca` binary to `~/.local/bin`. If your shell then says `orca: command not found`, add that folder to your `PATH` as the script suggests, and open a new terminal. On Windows, download the binary from the [releases page](https://github.com/okikorg/orca-cli/releases). An older CLI updates itself with `orca update`.
+
+```bash
+orca login
+```
+
+It prints a one-time code and a link to the Orca dashboard. Open the link, sign in, check that the code matches, and choose **Approve**. The CLI then prints "Logged in to Orca as" your role and organization. It works the same over SSH and inside a coding agent, which relays the code and the link to you.
+
+Check your credit:
+
+```bash
+orca billing wallet
+```
+
+`balance` is your Orca credit. The amount new accounts start with is on the [pricing page](https://orcapods.ai/pricing).
+
+## 2. Copy Cram Coach
+
+Cram Coach is a model and its instructions. It lists no tools: in a sandbox, an agent can already run commands and read and write files, and that is all Cram Coach needs. This is all of it:
+
+<CodeGroup>
+```python cram_coach_agent.py
+import os
+
+from openai import OpenAI
+
+client = OpenAI(api_key=os.environ["ORCA_API_KEY"], base_url="https://api.orcapods.ai/v1")
+
+coach = client.beta.agents.create(
+    name="cram-coach",
+    model="orca/openrouter/openai/gpt-5.6-luna",
+    instructions=(
+        "You are Cram Coach. A student gives you one chapter of a textbook as a PDF in /workspace and the date of "
+        "their exam. You turn the chapter into four files under /workspace/outputs: cram-plan.md, flashcards.csv, "
+        "practice-test.md and answers.md.\n"
+        "\n"
+        "Before you write anything:\n"
+        "1. Run `date +%Y-%m-%d` in the sandbox for today's date; never assume it. If the student states today's "
+        "date, use theirs, since the sandbox clock is UTC.\n"
+        "2. Find the exam date in the student's message. If it is missing, unclear or before today, ask for it and "
+        "stop; never guess it.\n"
+        "3. Run Python to print the calendar you will use: every date from today to the exam date, one line each, "
+        "written with datetime as `date.strftime('%A %Y-%m-%d')`, such as Monday 2026-11-02. Build the plan only "
+        "from that printed list: copy each date and its weekday from it, and never work out a weekday yourself.\n"
+        "4. Find the PDF with `ls /workspace`. If there is none, ask the student to attach it with "
+        "`--file chapter.pdf` and stop.\n"
+        "5. Run `pip install --quiet pypdf==6.20.1`, then extract the text page by page into /workspace/chapter.txt. "
+        "Find each page's printed page number, the number in its header or footer, and put a line "
+        "`=== PDF page N, printed page P ===` before each page; where a page shows no number, count on from its "
+        "neighbours. If most pages give no text, the PDF is a scan with no "
+        "text layer: say so plainly, say that Cram Coach reads only PDFs with selectable text and does no OCR, and "
+        "stop. If the PDF holds more than one chapter, say that Cram Coach takes one chapter per run, ask which "
+        "one, and stop.\n"
+        "6. Read all of chapter.txt. Note the chapter's sections with their numbers, titles and the printed pages "
+        "each one spans, and its hardest topics: the most new terms, formulas or steps of reasoning.\n"
+        "\n"
+        "Use only what the chapter says. Never add facts, examples, numbers or definitions that are not in it, "
+        "even ones you know. Every page you write is a printed page read from the markers in chapter.txt: search "
+        "chapter.txt for the passage and take the number from the marker above it; never estimate a page.\n"
+        "Write plain text: ranges with a hyphen or 'to', and no en or em dashes.\n"
+        "\n"
+        "The files:\n"
+        "- cram-plan.md: a day-by-day plan from today to the exam date, worked backwards from the exam. The exam "
+        "day is a light look at the flashcards only. The day before it is the review day: the practice test under "
+        "exam conditions, then answers.md, then the cards missed. The days before that cover the chapter, hardest "
+        "topics first, in sessions of 25 to 45 minutes, at most two a day; each session names its section, its "
+        "pages and one concrete task. If the exam is today or tomorrow, fit the plan into the days there are. "
+        "Write each date as weekday and YYYY-MM-DD, copied from the calendar of step 3. Head the plan with the "
+        "chapter, today's date, the exam date and the days left.\n"
+        "- flashcards.csv: for Anki, UTF-8 and comma separated. Write the three header lines `#separator:Comma`, "
+        "`#html:false` and `#columns:Front,Back` as plain text, not through the csv module, which would put quotes "
+        "around the last one and break the import. Then write one card per row with Python's csv module, exactly "
+        "two fields, front and back. 20 to 40 cards, one fact each: key terms, definitions, causes and effects, how "
+        "to read the chapter's graphs and tables. End each back with its section in brackets, such as (3.2).\n"
+        "- practice-test.md: 10 to 15 numbered questions in the style of the chapter's own review questions, a mix "
+        "of multiple choice (options A to D, one right) and short answer, across every section and weighted to the "
+        "hardest topics. At least a third apply the chapter's methods to its own examples, tables or numbers "
+        "rather than recall a definition. No answers and no hints.\n"
+        "- answers.md: the same numbers, each with the answer, one or two sentences on why, and its source as "
+        "section and page, such as Section 3.2, page 61: the page of the sentence or table that states the "
+        "answer, found by searching chapter.txt for it. Drop a question you cannot source and renumber.\n"
+        "\n"
+        "Then check the files with Python: the CSV's first three lines are exactly the header lines, with no "
+        "quotes, and it reads back with two fields on every card row; the test and the "
+        "answers hold the same 10 to 15 numbers; and the plan's dates run from today to the exam date. For the "
+        "weekdays, parse every `Weekday YYYY-MM-DD` in cram-plan.md with a regular expression and compare each "
+        "weekday with datetime's `strftime('%A')` for its date; correct every mismatch in the file and run the "
+        "check again. Fix what fails, and answer only once every check passes.\n"
+        "\n"
+        "In chat, reply only with a short summary: the chapter, the days to the exam, the number of cards and "
+        "questions, and the four file names. Never paste the files into chat."
+    ),
+)
+print(coach.id)
+```
+```typescript cram_coach_agent.ts
+import OpenAI from 'openai';
+
+const client = new OpenAI({ apiKey: process.env.ORCA_API_KEY, baseURL: 'https://api.orcapods.ai/v1' });
+
+const coach = await client.beta.agents.create({
+  name: 'cram-coach',
+  model: 'orca/openrouter/openai/gpt-5.6-luna',
+  instructions:
+    'You are Cram Coach. A student gives you one chapter of a textbook as a PDF in /workspace and the date of ' +
+    'their exam. You turn the chapter into four files under /workspace/outputs: cram-plan.md, flashcards.csv, ' +
+    'practice-test.md and answers.md.\n' +
+    '\n' +
+    'Before you write anything:\n' +
+    '1. Run `date +%Y-%m-%d` in the sandbox for today\'s date; never assume it. If the student states today\'s ' +
+    'date, use theirs, since the sandbox clock is UTC.\n' +
+    '2. Find the exam date in the student\'s message. If it is missing, unclear or before today, ask for it and ' +
+    'stop; never guess it.\n' +
+    '3. Run Python to print the calendar you will use: every date from today to the exam date, one line each, ' +
+    'written with datetime as `date.strftime(\'%A %Y-%m-%d\')`, such as Monday 2026-11-02. Build the plan only ' +
+    'from that printed list: copy each date and its weekday from it, and never work out a weekday yourself.\n' +
+    '4. Find the PDF with `ls /workspace`. If there is none, ask the student to attach it with ' +
+    '`--file chapter.pdf` and stop.\n' +
+    '5. Run `pip install --quiet pypdf==6.20.1`, then extract the text page by page into /workspace/chapter.txt. ' +
+    'Find each page\'s printed page number, the number in its header or footer, and put a line ' +
+    '`=== PDF page N, printed page P ===` before each page; where a page shows no number, count on from its ' +
+    'neighbours. If most pages give no text, the PDF is a scan with no ' +
+    'text layer: say so plainly, say that Cram Coach reads only PDFs with selectable text and does no OCR, and ' +
+    'stop. If the PDF holds more than one chapter, say that Cram Coach takes one chapter per run, ask which ' +
+    'one, and stop.\n' +
+    '6. Read all of chapter.txt. Note the chapter\'s sections with their numbers, titles and the printed pages ' +
+    'each one spans, and its hardest topics: the most new terms, formulas or steps of reasoning.\n' +
+    '\n' +
+    'Use only what the chapter says. Never add facts, examples, numbers or definitions that are not in it, ' +
+    'even ones you know. Every page you write is a printed page read from the markers in chapter.txt: search ' +
+    'chapter.txt for the passage and take the number from the marker above it; never estimate a page.\n' +
+    'Write plain text: ranges with a hyphen or \'to\', and no en or em dashes.\n' +
+    '\n' +
+    'The files:\n' +
+    '- cram-plan.md: a day-by-day plan from today to the exam date, worked backwards from the exam. The exam ' +
+    'day is a light look at the flashcards only. The day before it is the review day: the practice test under ' +
+    'exam conditions, then answers.md, then the cards missed. The days before that cover the chapter, hardest ' +
+    'topics first, in sessions of 25 to 45 minutes, at most two a day; each session names its section, its ' +
+    'pages and one concrete task. If the exam is today or tomorrow, fit the plan into the days there are. ' +
+    'Write each date as weekday and YYYY-MM-DD, copied from the calendar of step 3. Head the plan with the ' +
+    'chapter, today\'s date, the exam date and the days left.\n' +
+    '- flashcards.csv: for Anki, UTF-8 and comma separated. Write the three header lines `#separator:Comma`, ' +
+    '`#html:false` and `#columns:Front,Back` as plain text, not through the csv module, which would put quotes ' +
+    'around the last one and break the import. Then write one card per row with Python\'s csv module, exactly ' +
+    'two fields, front and back. 20 to 40 cards, one fact each: key terms, definitions, causes and effects, how ' +
+    'to read the chapter\'s graphs and tables. End each back with its section in brackets, such as (3.2).\n' +
+    '- practice-test.md: 10 to 15 numbered questions in the style of the chapter\'s own review questions, a mix ' +
+    'of multiple choice (options A to D, one right) and short answer, across every section and weighted to the ' +
+    'hardest topics. At least a third apply the chapter\'s methods to its own examples, tables or numbers ' +
+    'rather than recall a definition. No answers and no hints.\n' +
+    '- answers.md: the same numbers, each with the answer, one or two sentences on why, and its source as ' +
+    'section and page, such as Section 3.2, page 61: the page of the sentence or table that states the ' +
+    'answer, found by searching chapter.txt for it. Drop a question you cannot source and renumber.\n' +
+    '\n' +
+    'Then check the files with Python: the CSV\'s first three lines are exactly the header lines, with no ' +
+    'quotes, and it reads back with two fields on every card row; the test and the ' +
+    'answers hold the same 10 to 15 numbers; and the plan\'s dates run from today to the exam date. For the ' +
+    'weekdays, parse every `Weekday YYYY-MM-DD` in cram-plan.md with a regular expression and compare each ' +
+    'weekday with datetime\'s `strftime(\'%A\')` for its date; correct every mismatch in the file and run the ' +
+    'check again. Fix what fails, and answer only once every check passes.\n' +
+    '\n' +
+    'In chat, reply only with a short summary: the chapter, the days to the exam, the number of cards and ' +
+    'questions, and the four file names. Never paste the files into chat.',
+});
+console.log(coach.id);
+```
+</CodeGroup>
+
+The instructions are the whole program: Orca runs the conversation and the sandbox, and the model follows the steps. The model name also says who pays: `orca/openrouter/<id>` runs on your Orca credit. See [models and provider keys](/providers).
+
+Get Cram Coach into your account whichever way you like:
+
+<Tabs>
+<Tab title="Copy it (one command)">
+Cram Coach is shared as a [kit](/kits), a link anyone can copy an agent from.
+
+<Steps>
+<Step title="Copy it into your account">
+```bash
+orca kits copy https://app.orcapods.ai/kits/kit-KDdGOG9YTLrtpQs64 --yes
+```
+
+Or open [Cram Coach's kit page](https://app.orcapods.ai/kits/kit-KDdGOG9YTLrtpQs64) and choose **Copy**.
+</Step>
+<Step title="See your agent">
+```bash
+orca agents get cram-coach
+```
+
+It shows the same definition as the code above.
+</Step>
+</Steps>
+</Tab>
+<Tab title="Build it from code">
+<Steps>
+<Step title="Install the openai package">
+It needs Python 3.10 or later, or Node 22.18 or later. Check your version first, and update it if it's older:
+
+<CodeGroup>
+```bash Python
+python3 --version    # 3.10 or later
+python3 -m venv .venv
+.venv/bin/pip install openai==3.13.0
+```
+```bash TypeScript
+node --version       # 22.18 or later
+npm init -y && npm pkg set type=module
+npm install openai@7.15.0
+```
+</CodeGroup>
+</Step>
+<Step title="Make an API key">
+In the terminal you'll run the code from, create a key and keep it there as `ORCA_API_KEY`, without printing it:
+
+<CodeGroup>
+```bash bash / zsh
+export ORCA_API_KEY=$(orca keys create cram-coach </dev/null)
+```
+```fish fish
+set -x ORCA_API_KEY (orca keys create cram-coach </dev/null)
+```
+</CodeGroup>
+</Step>
+<Step title="Save the code and run it">
+Save the code above as `cram_coach_agent.py` or `cram_coach_agent.ts`, then run it:
+
+<CodeGroup>
+```bash Python
+.venv/bin/python cram_coach_agent.py
+```
+```bash TypeScript
+node --experimental-strip-types cram_coach_agent.ts
+```
+</CodeGroup>
+
+It prints Cram Coach's new ID.
+</Step>
+<Step title="See your agent">
+```bash
+orca agents get cram-coach
+```
+</Step>
+</Steps>
+</Tab>
+</Tabs>
+
+Either way, Cram Coach is now in your account. Make it yours any time: open it on the [Agents page](https://app.orcapods.ai/agents), choose **Edit agent**, and change its instructions, for example "20 to 40 cards" to "50 to 80 cards". Its code is in [orca-kits on GitHub](https://github.com/okikorg/orca-kits/tree/main/kits/cram-coach).
+
+## 3. Use it
+
+No chapter at hand? Start with the sample: Section 3.1 of the OpenStax textbook Principles of Microeconomics 2e, pages 45 to 51, re-set as a 16 KB text PDF ([source and license](https://github.com/okikorg/orca-kits/blob/main/kits/cram-coach/chapter-source.md)). Download it into this folder:
+
+```bash
+curl -L -o chapter.pdf https://github.com/okikorg/orca-kits/raw/main/kits/cram-coach/chapter.pdf
+```
+
+To use your own chapter instead, save it in this folder as `chapter.pdf`, and check it's [under 48 KB](#what-it-can-read). The steps from here are the same.
+
+Run Cram Coach on it, with your own exam date in the message:
+
+```bash
+orca chat cram-coach --sandbox --file chapter.pdf "My exam is on 2026-10-22."
+```
+
+2026-10-22 is the date of the example below, and it has passed by now: put your exam's date in its place. Given a date that's missing or already past, Cram Coach asks for another and stops; answer it in the same session with `orca chat cram-coach --session session_...`.
+
+`--file chapter.pdf` copies your PDF into the session's sandbox, a private machine of its own, at `/workspace/chapter.pdf`. If a file name has spaces, put it in quotes: `--file "Chapter 3.pdf"`.
+
+The dashboard can't attach a PDF to a chat yet, so run Cram Coach from the CLI, your coding agent, or your code.
+
+While it works, Cram Coach:
+
+1. Checks today's date in the sandbox, and prints a calendar from today to your exam.
+2. Installs a PDF reader and reads the chapter page by page, noting each page's printed number.
+3. Finds the sections and the hardest topics.
+4. Writes four files to `/workspace/outputs`, then checks them in code: the flashcards' format, the questions against the answers, and every date and weekday in the plan.
+
+Then it replies with a short summary. A real run on the sample chapter, on 2026-10-15, replied after 1 minute 19 seconds:
+
+```text
+Chapter 3, Demand and Supply. You have 7 days to the exam. Created 28 flashcards and 12 practice questions.
+
+Files: `cram-plan.md`, `flashcards.csv`, `practice-test.md`, `answers.md`
+```
+
+### Download the four files
+
+The last line names the session: `session session_...`. Use that ID in place of `session_...` to download the files here:
+
+```bash
+orca sessions artifacts download session_... --all
+```
+
+| File | What it is |
+| --- | --- |
+| `cram-plan.md` | Your plan from today to the exam, hardest topics first, in sessions of 25 to 45 minutes. The day before the exam is a review day: the practice test, then the answers, then the cards you missed. |
+| `flashcards.csv` | 20 to 40 flashcards with a front and a back, ready for Anki. Each back ends with its section, such as (3.1). |
+| `practice-test.md` | 10 to 15 questions in the style of the chapter, multiple choice and short answer. No answers. |
+| `answers.md` | The answers, each with a reason and its section and page in the chapter. |
+
+Take the practice test before you read the answers.
+
+Here is part of what that run wrote for the sample chapter, with the exam a week away:
+
+<Tabs>
+<Tab title="Study plan">
+The plan starts with its heading and the first days:
+
+```markdown cram-plan.md
+# Cram plan
+
+- Chapter: Chapter 3, Demand and Supply
+- Today's date: 2026-10-15
+- Exam date: 2026-10-22
+- Days left: 7
+
+## Thursday 2026-10-15
+- Session 1, 35 minutes: Section 3.1, pages 45 to 47. Read the introduction and demand material, then write a one-sentence distinction between demand and quantity demanded and copy the seven rows of Table 3.1.
+
+## Friday 2026-10-16
+- Session 1, 35 minutes: Section 3.1, pages 48 to 49. Read supply and make a two-column comparison of the law of demand and the law of supply.
+- Session 2, 30 minutes: Section 3.1, pages 47 to 49. Draw the demand and supply curves from Tables 3.1 and 3.2, labeling price on the vertical axis and quantity on the horizontal axis.
+```
+
+and ends with the review day and the exam:
+
+```markdown cram-plan.md
+## Wednesday 2026-10-21
+- Review day. Take practice-test.md under exam conditions. Then check answers.md. Finally, review only the flashcards you missed.
+
+## Thursday 2026-10-22
+- Exam day. Light review of flashcards only.
+```
+</Tab>
+<Tab title="Flashcards">
+The three header lines, then a few of its 28 cards:
+
+```text flashcards.csv
+#separator:Comma
+#html:false
+#columns:Front,Back
+What is the law of demand?,The inverse relationship between price and quantity demanded: a higher price almost always decreases quantity demanded and a lower price increases it. (3.1)
+What is the difference between demand and quantity demanded?,"Demand is the relationship across a range of prices, while quantity demanded is one point or one quantity on the demand schedule. (3.1)"
+What is the gasoline equilibrium in Figure 3.4?,The equilibrium price is $1.40 per gallon and the equilibrium quantity is 600 million gallons. (3.1)
+Why does a surplus put pressure on sellers to cut prices?,"Unsold gasoline means firms are not receiving enough cash to pay workers and cover expenses, so some sellers cut prices to sell it. (3.1)"
+```
+</Tab>
+<Tab title="Practice test">
+One of its 12 questions:
+
+```markdown practice-test.md
+9. Short answer: At $1.80 per gallon, what is the difference between quantity supplied and quantity demanded? What pressure does the chapter say this creates?
+```
+
+and its answer, cited to the page of the chapter that explains it:
+
+```markdown answers.md
+9. **Answer:** The difference is 180 million gallons: 680 supplied minus 500 demanded. The surplus puts pressure on sellers to cut prices, which stimulates a higher quantity demanded. Source: Section 3.1, page 51.
+```
+</Tab>
+</Tabs>
+
+### Import the flashcards into Anki
+
+`flashcards.csv` starts with three lines that tell Anki how to read it: comma separated, plain text, and a Front and a Back column. So there is nothing to set up. You need Anki 2.1.54 or later.
+
+1. In Anki, open the **File** menu and choose **Import**.
+2. Choose `flashcards.csv`.
+3. Check that the fronts and backs go to the **Basic** note type, and pick the **Deck** you want the cards in.
+4. Choose **Import**.
+
+See Anki's guide to [importing text files](https://docs.ankiweb.net/importing/text-files.html) for more.
+
+### Delete the session
+
+When you have your files, delete the session so the sandbox stops:
+
+```bash
+orca sessions delete session_... --yes
+```
+
+To ask for more first, such as more cards on the hardest section, keep going in the same session, where the chapter is still in the sandbox:
+
+```bash
+orca chat cram-coach --session session_... "Make ten more flashcards on the hardest section."
+```
+
+Then download again with `orca sessions artifacts download session_... --all`, which saves the files from the newest turn, and delete the session.
+
+## 4. Let your coding agent drive
+
+Give your coding agent Orca's tools, and you can run Cram Coach just by asking. `orca mcp serve` is an MCP server with one tool per CLI action, so your coding agent can copy kits, chat with agents, download their files, and read your usage and wallet. It uses the login you already have.
+
+<Tabs>
+<Tab title="Claude Code">
+Install the Orca plugin. It registers the MCP server and adds a skill that knows the CLI:
+
+```bash
+claude plugin marketplace add okikorg/orca-cli
+claude plugin install orca@orca
+```
+
+Or add only the MCP server:
+
+```bash
+claude mcp add orca -- orca mcp serve
+```
+</Tab>
+<Tab title="Cursor">
+Add this to `~/.cursor/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "orca": {
+      "command": "orca",
+      "args": ["mcp", "serve"]
+    }
+  }
+}
+```
+</Tab>
+<Tab title="Codex">
+```bash
+codex mcp add orca -- orca mcp serve
+```
+</Tab>
+</Tabs>
+
+Start a new session of your coding agent so it loads the server. Its `chat` tool takes `files` from your machine, the same as `--file`, so your coding agent can attach the PDF itself. Then ask it things like:
+
+- "Run Cram Coach on chapter.pdf in this folder, for my exam a week from today. Download the four files here, then delete the session."
+- "Show me the first three days of the plan, and the flashcards for the hardest section."
+- "Quiz me on practice-test.md one question at a time, and check my answers against answers.md."
+- "How much Orca credit do I have left, and what did Cram Coach cost today?"
+
+The 48 KB limit applies here too, since the PDF is copied into the sandbox the same way. Your coding agent acts as you with these tools: it can create, delete, and spend. See [use Orca from coding agents](/cli/mcp) for every tool.
+
+## 5. Run it from your own code
+
+Everything so far went through the CLI, which calls the same API your application will. Your code uses the official `openai` package with an Orca API key. If you built Cram Coach from code in step 2, you already have the package: skip to the key.
+
+Install the `openai` package. It needs Python 3.10 or later, or Node 22.18 or later. Check your version first, and update it if it's older:
+
+<CodeGroup>
+```bash Python
+python3 --version    # 3.10 or later
+python3 -m venv .venv
+.venv/bin/pip install openai==3.13.0
+```
+```bash TypeScript
+node --version       # 22.18 or later
+npm init -y && npm pkg set type=module
+npm install openai@7.15.0
+```
+</CodeGroup>
+
+Then make a key, in the terminal you'll run the program from. This keeps it there as `ORCA_API_KEY` without printing it. A new terminal won't have it, so run this again there.
+
+<CodeGroup>
+```bash bash / zsh
+export ORCA_API_KEY=$(orca keys create cram-coach </dev/null)
+```
+```fish fish
+set -x ORCA_API_KEY (orca keys create cram-coach </dev/null)
+```
+</CodeGroup>
+
+This program uploads your PDF, opens a session with it in the sandbox, streams Cram Coach's reply, saves the four files here, and then deletes the session and the upload:
+
+<CodeGroup>
+```python cram_coach.py
+import os
+import sys
+from pathlib import Path
+
+from openai import OpenAI
+
+client = OpenAI(api_key=os.environ["ORCA_API_KEY"], base_url="https://api.orcapods.ai/v1")
+agents = client.beta.agents
+pdf, exam = sys.argv[1], sys.argv[2]
+
+coach = next(agent for agent in agents.list() if agent.name == "cram-coach")
+with open(pdf, "rb") as f:
+    uploaded = client.files.create(file=(Path(pdf).name, f), purpose="user_data")
+session = agents.sessions.create(
+    agent_id=coach.id,
+    environment={
+        "type": "openai_hosted",
+        "files": [{"type": "file_id", "file_id": uploaded.id, "path": "/workspace/chapter.pdf"}],
+    },
+)
+try:
+    with agents.sessions.stream(session.id, input=f"My exam is on {exam}.") as stream:
+        for event in stream:
+            if event.type == "agent.session.turn.output_text.delta":
+                print(event.delta, end="", flush=True)
+            elif event.type in ("agent.session.turn.failed", "agent.session.turn.cancelled"):
+                print("\nThe turn ended:", event.type)
+    print()
+    for artifact in agents.sessions.artifacts.list(session.id):
+        name = Path(artifact.path).name
+        agents.sessions.artifacts.content(artifact.id, session_id=session.id).write_to_file(name)
+        print("Saved", name)
+finally:
+    agents.sessions.delete(session.id)
+    client.files.delete(uploaded.id)
+```
+```typescript cram_coach.ts
+import { readFile, writeFile } from 'node:fs/promises';
+import { basename } from 'node:path';
+import OpenAI, { toFile } from 'openai';
+
+const client = new OpenAI({ apiKey: process.env.ORCA_API_KEY, baseURL: 'https://api.orcapods.ai/v1' });
+const agents = client.beta.agents;
+const [pdf, exam] = process.argv.slice(2);
+
+let coach;
+for await (const agent of agents.list()) if (agent.name === 'cram-coach') { coach = agent; break; }
+if (!coach) throw new Error('No agent called cram-coach. Copy it first (step 2).');
+
+const uploaded = await client.files.create({ file: await toFile(await readFile(pdf), basename(pdf)), purpose: 'user_data' });
+const session = await agents.sessions.create({
+  agent_id: coach.id,
+  environment: {
+    type: 'openai_hosted',
+    files: [{ type: 'file_id', file_id: uploaded.id, path: '/workspace/chapter.pdf' }],
+  },
+});
+try {
+  for await (const event of agents.sessions.stream(session.id, { input: `My exam is on ${exam}.` })) {
+    if (event.type === 'agent.session.turn.output_text.delta') process.stdout.write(event.delta);
+    else if (event.type === 'agent.session.turn.failed' || event.type === 'agent.session.turn.cancelled') {
+      console.log('\nThe turn ended:', event.type);
+    }
+  }
+  console.log();
+  for await (const artifact of agents.sessions.artifacts.list(session.id)) {
+    const name = basename(artifact.path);
+    const content = await agents.sessions.artifacts.content(artifact.id, { session_id: session.id });
+    await writeFile(name, Buffer.from(await content.arrayBuffer()));
+    console.log('Saved', name);
+  }
+} finally {
+  await agents.sessions.delete(session.id);
+  await client.files.delete(uploaded.id);
+}
+```
+</CodeGroup>
+
+Run it with your PDF and your own exam date in place of 2026-10-22:
+
+<CodeGroup>
+```bash Python
+.venv/bin/python cram_coach.py chapter.pdf 2026-10-22
+```
+```bash TypeScript
+node --experimental-strip-types cram_coach.ts chapter.pdf 2026-10-22
+```
+</CodeGroup>
+
+Cram Coach lives on Orca, so your code only hands it the file and collects the results. [Files and artifacts](/guides/files-and-artifacts) explains uploading, staging, and downloading, and [Build with the API](/build-with-the-api) explains the rest.
+
+## 6. See what it cost, and clean up
+
+Every call is recorded with what it cost, down to the session:
+
+```bash
+orca usage --days 1        # today's usage, by the hour
+orca billing wallet        # your balance and plan
+```
+
+`orca sessions get session_...` shows one session's cost, tokens, and machine time. Do it before you delete the session.
+
+- **Model tokens** are paid from your Orca credit, since Cram Coach's model starts with `orca/`. The run in the example above cost $0.02 in tokens, for 198.5K tokens. A longer chapter costs more.
+- **Machine time** comes from your plan, since every run has a sandbox. It counts from the sandbox's start until it pauses or you delete the session, not only while Cram Coach works: the run above replied after 1 minute 19 seconds and used 3 minutes of machine time. Sandboxes also need a small balance of credit, your plan's [minimum balance](/plans#paid-work-needs-a-minimum-balance). Delete each session when you have your files.
+
+The numbers for each plan are on the [pricing page](https://orcapods.ai/pricing). See [usage and wallet](/wallet#read-the-wallet-and-your-usage) for the rest.
+
+The CLI also keeps a copy of each PDF you send with `--file` in your organization's files. Find its ID in the list, then delete it:
+
+```bash
+orca files list
+orca files delete file_... --yes
+```
+
+Keep Cram Coach if you like it. To remove everything this page made instead, delete Cram Coach's sessions, then Cram Coach, then the key. Deleting an agent does not delete its sessions.
+
+```bash
+orca sessions list --agent cram-coach --all | cut -f1 | xargs -I{} orca sessions delete {} --yes
+orca agents delete cram-coach --yes
+orca keys list
+```
+
+Then revoke the key named `cram-coach` with `orca keys revoke <its id> --yes`, and close the terminal: its `ORCA_API_KEY` still holds the revoked key.
+
+## Where to go next
+
+<CardGroup cols={2}>
+  <Card title="Scout" icon="magnifying-glass" href="/kits/scout">
+    Another kit: a research assistant that searches the web and answers with its sources.
+  </Card>
+  <Card title="Files and artifacts" icon="file-arrow-down" href="/guides/files-and-artifacts">
+    Give any agent files to work on, and download the files it makes.
+  </Card>
+  <Card title="Agent recipes" icon="book-open" href="/recipes/overview">
+    Complete agents to copy: a support agent, a data analyst, a code reviewer, and more.
+  </Card>
+  <Card title="Share your own agent" icon="share-nodes" href="/kits">
+    Publish an agent as a kit, the way Cram Coach is shared, and send the link to anyone.
+  </Card>
+</CardGroup>
