@@ -193,10 +193,3 @@ step { border-color: var(--vl-line); }
   background-color: var(--vl-canvas) !important; color: var(--vl-ink-2) !important; fill: var(--vl-ink-2) !important;
 }
 [data-component-name="mermaid-container"] svg .edgeLabel rect { fill: var(--vl-canvas) !important; opacity: 1 !important; }
-
-/* Kits pages only: a long code block, such as an agent's whole definition,
-   stops at a fixed height and scrolls inside. #content carries the page's
-   path, so start-here and every other page keep their full-length blocks. */
-#content[data-page-href*="/kits/"] [data-component-part="code-block-root"] [data-component-part="scroll-area-viewport"] {
-  max-height: 32rem;
-}

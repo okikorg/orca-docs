@@ -3,9 +3,11 @@ title: "Cram Coach"
 description: "Turn one textbook chapter and your exam date into a day-by-day study plan, Anki flashcards, a practice test, and its answers. Copy it, run it, hand it to your coding agent, and run it from your own code."
 ---
 
-Cram Coach turns one chapter of your textbook into what you need for the exam. Give it the chapter as a PDF and your exam date, and it saves four files: a day-by-day study plan worked back from the exam, flashcards you can import into Anki, a practice test, and its answers, each cited to the section and page it comes from. It uses only what the chapter says.
+This guide takes you from a textbook chapter to everything you need for the exam. Cram Coach reads one chapter and gives you a day-by-day plan up to your exam date, flashcards for Anki, a practice test, and answers that each point to the page they came from.
 
-This page takes you from nothing to using Cram Coach every way Orca offers: in your terminal, through your coding agent, and from your own code.
+Orca is where it runs. Your chapter goes into a private sandbox that runs only for this session, Cram Coach works through it there, and you download the four files. Tokens cost [OpenRouter's price](https://orcapods.ai/pricing) with no markup from us, the harness underneath is built to spend fewer of them, a model call that hits a hiccup is retried for you, and every session shows exactly what it cost. An idea becomes an agent like this in minutes, and that agent becomes part of your product in hours.
+
+Each step below builds on the one before, and the first few are all you need to get your files.
 
 <Tip>
 **No account yet?** [Sign up](https://app.orcapods.ai/sign-up) first. New accounts start with free credit and no card, and every step on this page runs on it.
@@ -128,11 +130,23 @@ coach = client.beta.agents.create(
         "pages and one concrete task. If the exam is today or tomorrow, fit the plan into the days there are. "
         "Write each date as weekday and YYYY-MM-DD, copied from the calendar of step 3. Head the plan with the "
         "chapter, today's date, the exam date and the days left.\n"
-        "- flashcards.csv: for Anki, UTF-8 and comma separated. Write the three header lines `#separator:Comma`, "
-        "`#html:false` and `#columns:Front,Back` as plain text, not through the csv module, which would put quotes "
-        "around the last one and break the import. Then write one card per row with Python's csv module, exactly "
-        "two fields, front and back. 20 to 40 cards, one fact each: key terms, definitions, causes and effects, how "
-        "to read the chapter's graphs and tables. End each back with its section in brackets, such as (3.2).\n"
+        "- flashcards.csv: for Anki. 20 to 40 cards, one fact each: key terms, definitions, causes and "
+        "effects, how to read the chapter's graphs and tables. End each back with its section in brackets, "
+        "such as (3.2). Never write the CSV yourself. First write the cards as JSON to "
+        "/workspace/cards.json: a list of objects with a front and a back, each one line of plain text. Then "
+        "run exactly this Python, which writes the file and checks that it reads back as your cards:\n"
+        "```python\n"
+        "import csv, json\n"
+        "cards = [[c['front'], c['back']] for c in json.load(open('/workspace/cards.json'))]\n"
+        "with open('/workspace/outputs/flashcards.csv', 'w', newline='', encoding='utf-8') as f:\n"
+        "    f.write('#separator:Comma\\n#html:false\\n#columns:Front,Back\\n')\n"
+        "    csv.writer(f, lineterminator='\\n').writerows(cards)\n"
+        "with open('/workspace/outputs/flashcards.csv', encoding='utf-8') as f:\n"
+        "    lines = f.read().split('\\n')\n"
+        "assert lines[:3] == ['#separator:Comma', '#html:false', '#columns:Front,Back']\n"
+        "assert list(csv.reader(lines[3:-1])) == cards\n"
+        "print(len(cards), 'cards')\n"
+        "```\n"
         "- practice-test.md: 10 to 15 numbered questions in the style of the chapter's own review questions, a mix "
         "of multiple choice (options A to D, one right) and short answer, across every section and weighted to the "
         "hardest topics. At least a third apply the chapter's methods to its own examples, tables or numbers "
@@ -141,8 +155,8 @@ coach = client.beta.agents.create(
         "section and page, such as Section 3.2, page 61: the page of the sentence or table that states the "
         "answer, found by searching chapter.txt for it. Drop a question you cannot source and renumber.\n"
         "\n"
-        "Then check the files with Python: the CSV's first three lines are exactly the header lines, with no "
-        "quotes, and it reads back with two fields on every card row; the test and the "
+        "Then check the files with Python: run the flashcards code above again, which must print the card count "
+        "with no error; the test and the "
         "answers hold the same 10 to 15 numbers; and the plan's dates run from today to the exam date. For the "
         "weekdays, parse every `Weekday YYYY-MM-DD` in cram-plan.md with a regular expression and compare each "
         "weekday with datetime's `strftime('%A')` for its date; correct every mismatch in the file and run the "
@@ -200,11 +214,23 @@ const coach = await client.beta.agents.create({
     'pages and one concrete task. If the exam is today or tomorrow, fit the plan into the days there are. ' +
     'Write each date as weekday and YYYY-MM-DD, copied from the calendar of step 3. Head the plan with the ' +
     'chapter, today\'s date, the exam date and the days left.\n' +
-    '- flashcards.csv: for Anki, UTF-8 and comma separated. Write the three header lines `#separator:Comma`, ' +
-    '`#html:false` and `#columns:Front,Back` as plain text, not through the csv module, which would put quotes ' +
-    'around the last one and break the import. Then write one card per row with Python\'s csv module, exactly ' +
-    'two fields, front and back. 20 to 40 cards, one fact each: key terms, definitions, causes and effects, how ' +
-    'to read the chapter\'s graphs and tables. End each back with its section in brackets, such as (3.2).\n' +
+    '- flashcards.csv: for Anki. 20 to 40 cards, one fact each: key terms, definitions, causes and ' +
+    'effects, how to read the chapter\'s graphs and tables. End each back with its section in brackets, ' +
+    'such as (3.2). Never write the CSV yourself. First write the cards as JSON to ' +
+    '/workspace/cards.json: a list of objects with a front and a back, each one line of plain text. Then ' +
+    'run exactly this Python, which writes the file and checks that it reads back as your cards:\n' +
+    '```python\n' +
+    'import csv, json\n' +
+    'cards = [[c[\'front\'], c[\'back\']] for c in json.load(open(\'/workspace/cards.json\'))]\n' +
+    'with open(\'/workspace/outputs/flashcards.csv\', \'w\', newline=\'\', encoding=\'utf-8\') as f:\n' +
+    '    f.write(\'#separator:Comma\\n#html:false\\n#columns:Front,Back\\n\')\n' +
+    '    csv.writer(f, lineterminator=\'\\n\').writerows(cards)\n' +
+    'with open(\'/workspace/outputs/flashcards.csv\', encoding=\'utf-8\') as f:\n' +
+    '    lines = f.read().split(\'\\n\')\n' +
+    'assert lines[:3] == [\'#separator:Comma\', \'#html:false\', \'#columns:Front,Back\']\n' +
+    'assert list(csv.reader(lines[3:-1])) == cards\n' +
+    'print(len(cards), \'cards\')\n' +
+    '```\n' +
     '- practice-test.md: 10 to 15 numbered questions in the style of the chapter\'s own review questions, a mix ' +
     'of multiple choice (options A to D, one right) and short answer, across every section and weighted to the ' +
     'hardest topics. At least a third apply the chapter\'s methods to its own examples, tables or numbers ' +
@@ -213,8 +239,8 @@ const coach = await client.beta.agents.create({
     'section and page, such as Section 3.2, page 61: the page of the sentence or table that states the ' +
     'answer, found by searching chapter.txt for it. Drop a question you cannot source and renumber.\n' +
     '\n' +
-    'Then check the files with Python: the CSV\'s first three lines are exactly the header lines, with no ' +
-    'quotes, and it reads back with two fields on every card row; the test and the ' +
+    'Then check the files with Python: run the flashcards code above again, which must print the card count ' +
+    'with no error; the test and the ' +
     'answers hold the same 10 to 15 numbers; and the plan\'s dates run from today to the exam date. For the ' +
     'weekdays, parse every `Weekday YYYY-MM-DD` in cram-plan.md with a regular expression and compare each ' +
     'weekday with datetime\'s `strftime(\'%A\')` for its date; correct every mismatch in the file and run the ' +
@@ -336,12 +362,16 @@ While it works, Cram Coach:
 3. Finds the sections and the hardest topics.
 4. Writes four files to `/workspace/outputs`, then checks them in code: the flashcards' format, the questions against the answers, and every date and weekday in the plan.
 
-Then it replies with a short summary. A real run on the sample chapter, on 2026-10-15, replied after 1 minute 19 seconds:
+Then it replies with a short summary. A real run on the sample chapter, on 2026-10-15, replied:
 
 ```text
-Chapter 3, Demand and Supply. You have 7 days to the exam. Created 28 flashcards and 12 practice questions.
+Chapter 3, Demand and Supply: 7 days to the exam. Created 24 flashcards and 13 practice questions.
 
-Files: `cram-plan.md`, `flashcards.csv`, `practice-test.md`, `answers.md`
+Files:
+- `cram-plan.md`
+- `flashcards.csv`
+- `practice-test.md`
+- `answers.md`
 ```
 
 ### Download the four files
@@ -370,53 +400,58 @@ The plan starts with its heading and the first days:
 ```markdown cram-plan.md
 # Cram plan
 
-- Chapter: Chapter 3, Demand and Supply
-- Today's date: 2026-10-15
-- Exam date: 2026-10-22
-- Days left: 7
+Chapter: 3, Demand and Supply
+Today's date: 2026-10-15
+Exam date: 2026-10-22
+Days left: 7
 
 ## Thursday 2026-10-15
-- Session 1, 35 minutes: Section 3.1, pages 45 to 47. Read the introduction and demand material, then write a one-sentence distinction between demand and quantity demanded and copy the seven rows of Table 3.1.
+- Session 1, 35 minutes: Section 3.1, pages 50 to 51. Reconstruct Table 3.3 from the chapter and identify equilibrium, surplus, and shortage at $1.20, $1.40, and $1.80.
+- Session 2, 30 minutes: Section 3.1, pages 47 to 49. Make a two-column comparison of demand versus supply, including each law and each curve's slope.
 
 ## Friday 2026-10-16
-- Session 1, 35 minutes: Section 3.1, pages 48 to 49. Read supply and make a two-column comparison of the law of demand and the law of supply.
-- Session 2, 30 minutes: Section 3.1, pages 47 to 49. Draw the demand and supply curves from Tables 3.1 and 3.2, labeling price on the vertical axis and quantity on the horizontal axis.
+- Session 1, 35 minutes: Section 3.1, pages 50 to 51. Use the demand and supply schedules to find equilibrium and explain why prices above or below it create pressure to move.
+- Session 2, 25 minutes: Section 3.1, pages 47 to 49. Draw the demand and supply curves from Tables 3.1 and 3.2, labeling price and quantity axes.
 ```
 
 and ends with the review day and the exam:
 
 ```markdown cram-plan.md
 ## Wednesday 2026-10-21
-- Review day. Take practice-test.md under exam conditions. Then check answers.md. Finally, review only the flashcards you missed.
+- Review day. Under exam conditions, complete practice-test.md. Then read answers.md and review the flashcards you missed.
 
 ## Thursday 2026-10-22
-- Exam day. Light review of flashcards only.
+- Exam day. Light review only: look through the flashcards, focusing on missed cards.
 ```
 </Tab>
 <Tab title="Flashcards">
-The three header lines, then a few of its 28 cards:
+The three header lines, then a few of its 24 cards:
 
 ```text flashcards.csv
 #separator:Comma
 #html:false
 #columns:Front,Back
-What is the law of demand?,The inverse relationship between price and quantity demanded: a higher price almost always decreases quantity demanded and a lower price increases it. (3.1)
-What is the difference between demand and quantity demanded?,"Demand is the relationship across a range of prices, while quantity demanded is one point or one quantity on the demand schedule. (3.1)"
-What is the gasoline equilibrium in Figure 3.4?,The equilibrium price is $1.40 per gallon and the equilibrium quantity is 600 million gallons. (3.1)
-Why does a surplus put pressure on sellers to cut prices?,"Unsold gasoline means firms are not receiving enough cash to pay workers and cover expenses, so some sellers cut prices to sell it. (3.1)"
+What is the law of demand?,"The inverse relationship between price and quantity demanded, with other variables held constant. (3.1)"
+How is demand different from quantity demanded?,"Demand is the relationship across a range of prices, shown by a curve or schedule; quantity demanded is one point on that curve or schedule. (3.1)"
+"In the gasoline example, what are the equilibrium price and quantity?",The equilibrium price is $1.40 per gallon and the equilibrium quantity is 600 million gallons. (3.1)
+"In the gasoline example at $1.80, what are quantity demanded and quantity supplied?","Quantity demanded is 500 million gallons and quantity supplied is 680 million gallons, so there is a surplus. (3.1)"
 ```
 </Tab>
 <Tab title="Practice test">
-One of its 12 questions:
+One of its 13 questions:
 
 ```markdown practice-test.md
-9. Short answer: At $1.80 per gallon, what is the difference between quantity supplied and quantity demanded? What pressure does the chapter say this creates?
+11. Multiple choice. Using Table 3.3, what occurs at $1.20 per gallon?
+   A. A surplus of 150 million gallons
+   B. A shortage of 150 million gallons
+   C. Equilibrium because both quantities are 600 million gallons
+   D. A shortage of 50 million gallons
 ```
 
-and its answer, cited to the page of the chapter that explains it:
+and its answer, cited to the chapter's page:
 
 ```markdown answers.md
-9. **Answer:** The difference is 180 million gallons: 680 supplied minus 500 demanded. The surplus puts pressure on sellers to cut prices, which stimulates a higher quantity demanded. Source: Section 3.1, page 51.
+11. **B.** At $1.20, quantity demanded is 700 million gallons and quantity supplied is 550 million gallons, producing a shortage of 150 million gallons. Source: Section 3.1, page 50.
 ```
 </Tab>
 </Tabs>
@@ -425,10 +460,7 @@ and its answer, cited to the page of the chapter that explains it:
 
 `flashcards.csv` starts with three lines that tell Anki how to read it: comma separated, plain text, and a Front and a Back column. So there is nothing to set up. You need Anki 2.1.54 or later.
 
-1. In Anki, open the **File** menu and choose **Import**.
-2. Choose `flashcards.csv`.
-3. Check that the fronts and backs go to the **Basic** note type, and pick the **Deck** you want the cards in.
-4. Choose **Import**.
+In Anki, File, then Import, then choose `flashcards.csv`.
 
 See Anki's guide to [importing text files](https://docs.ankiweb.net/importing/text-files.html) for more.
 
@@ -495,7 +527,18 @@ Start a new session of your coding agent so it loads the server. Its `chat` tool
 - "Quiz me on practice-test.md one question at a time, and check my answers against answers.md."
 - "How much Orca credit do I have left, and what did Cram Coach cost today?"
 
-The 48 KB limit applies here too, since the PDF is copied into the sandbox the same way. Your coding agent acts as you with these tools: it can create, delete, and spend. See [use Orca from coding agents](/cli/mcp) for every tool.
+A real run of the first ask, on the sample chapter: the coding agent's `chat` call staged the PDF, and Orca's MCP server answered with:
+
+```json
+{
+ "sessionId": "session_cd1f17510fab4ae6bc6bbcf7daaaf128",
+ "done": true,
+ "status": "completed",
+ "reply": "Chapter 3: Demand and Supply, 7 days to the exam. Created 24 flashcards and 12 practice questions. Files: - `cram-plan.md` - `flashcards.csv` - `practice-test.md` - `answers.md`"
+}
+```
+
+The coding agent then saved the four files with `download_artifact` and deleted the session with `delete_session`. The 48 KB limit applies here too, since the PDF is copied into the sandbox the same way. Your coding agent acts as you with these tools: it can create, delete, and spend. See [use Orca from coding agents](/cli/mcp) for every tool.
 
 ## 5. Run it from your own code
 
@@ -620,7 +663,23 @@ node --experimental-strip-types cram_coach.ts chapter.pdf 2026-10-22
 ```
 </CodeGroup>
 
-Cram Coach lives on Orca, so your code only hands it the file and collects the results. [Files and artifacts](/guides/files-and-artifacts) explains uploading, staging, and downloading, and [Build with the API](/build-with-the-api) explains the rest.
+A real run of the Python program on the sample chapter printed:
+
+```text
+Chapter 3: Demand and Supply; 7 days to the exam. Created 24 flashcards and 14 practice questions.
+
+Files:
+- `cram-plan.md`
+- `flashcards.csv`
+- `practice-test.md`
+- `answers.md`
+Saved flashcards.csv
+Saved cram-plan.md
+Saved answers.md
+Saved practice-test.md
+```
+
+Each run writes its own plan, cards, and questions, so the counts change from run to run. Cram Coach lives on Orca, so your code only hands it the file and collects the results. [Files and artifacts](/guides/files-and-artifacts) explains uploading, staging, and downloading, and [Build with the API](/build-with-the-api) explains the rest.
 
 ## 6. See what it cost, and clean up
 
@@ -633,8 +692,8 @@ orca billing wallet        # your balance and plan
 
 `orca sessions get session_...` shows one session's cost, tokens, and machine time. Do it before you delete the session.
 
-- **Model tokens** are paid from your Orca credit, since Cram Coach's model starts with `orca/`. The run in the example above cost $0.02 in tokens, for 198.5K tokens. A longer chapter costs more.
-- **Machine time** comes from your plan, since every run has a sandbox. It counts from the sandbox's start until it pauses or you delete the session, not only while Cram Coach works: the run above replied after 1 minute 19 seconds and used 3 minutes of machine time. Sandboxes also need a small balance of credit, your plan's [minimum balance](/plans#paid-work-needs-a-minimum-balance). Delete each session when you have your files.
+- **Model tokens** are paid from your Orca credit, since Cram Coach's model starts with `orca/`. The run in the example above cost $0.01 in tokens. A longer chapter costs more.
+- **Machine time** comes from your plan, since every run has a sandbox. It counts from the sandbox's start until it pauses or you delete the session, not only while Cram Coach works. Runs on the sample chapter, with the session deleted as soon as the files were saved, used one minute each. Sandboxes also need a small balance of credit, your plan's [minimum balance](/plans#paid-work-needs-a-minimum-balance). Delete each session when you have your files.
 
 The numbers for each plan are on the [pricing page](https://orcapods.ai/pricing). See [usage and wallet](/wallet#read-the-wallet-and-your-usage) for the rest.
 

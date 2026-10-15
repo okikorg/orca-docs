@@ -64,7 +64,7 @@ def main():
             target = (link[0] or link[1]).split("#")[0].split("?")[0].lstrip("/")
             if target and target not in pages and not (SITE / target).is_file():
                 errors.append(f"{name}: broken local link /{target}")
-        for index, code in enumerate(re.findall(r"```python[^\n]*\n(.*?)```", text, re.S), 1):
+        for index, code in enumerate(re.findall(r"^```python[^\n]*\n(.*?)^```", text, re.S | re.M), 1):
             try:
                 ast.parse(code)
             except SyntaxError as error:
