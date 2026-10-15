@@ -26,7 +26,7 @@ Every subagent call builds a fresh agent with a fresh context and tool set. It r
 
 ## Route work across providers
 
-In `/subagents`, select the local, fast, mid, or frontier model row, choose a provider, then search its catalog and select a model. Each tier saves one provider/model assignment. Every provider in `/provider` is selectable: local compatible endpoints, OpenAI, the OpenAI Codex subscription, Anthropic, OpenRouter, Vercel AI Gateway, and CheaperInference. Configure credentials first using `/provider`. The routing policy below controls which saved assignments the orchestrator may use.
+In `/subagents`, select the local, fast, mid, or frontier model row, choose a provider, then search its catalog and select a model. Each tier saves one provider/model assignment. Every provider in `/provider` is selectable: local compatible endpoints, OpenAI, the OpenAI Codex subscription, Anthropic, OpenRouter, Vercel AI Gateway, and CheaperInference. Configure credentials first using `/provider`. The routing policy below controls which saved assignments the orchestrator may use. [Plan and delegate](/orcacode/plan-and-delegate) walks one setup across two providers with a real run.
 
 <Frame>
   <img src="/orcacode/images/subagents-2.png" alt="06 / PROVIDER ROUTING Parent providers can differ from worker providers. Each tier uses your selected provider and model; choosing a worker never changes the parent model." />
