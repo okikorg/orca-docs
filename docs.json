@@ -130,6 +130,18 @@
             ]
           },
           {
+            "tab": "Kits",
+            "groups": [
+              {
+                "group": "Kits",
+                "pages": [
+                  "kits/scout",
+                  "kits/cram-coach"
+                ]
+              }
+            ]
+          },
+          {
             "tab": "API reference",
             "groups": [
               {
