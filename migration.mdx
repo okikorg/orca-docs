@@ -27,7 +27,7 @@ Your own agents, skills, memory, and files were **not** carried over. Rebuild th
 | Agent profile with a runtime (`pi`, `claude`, `codex`, `vercel`, `marlin`) | An [agent](/concepts#agent-what-the-ai-is) with a model name. One harness runs every agent. |
 | A bare model name, such as `claude-sonnet-5` | A name that says who pays: `orca/openrouter/anthropic/claude-sonnet-5` on Orca credit, or `<provider>/<id>` on your own key. See [models and provider keys](/providers). |
 | System prompt | The agent's `instructions` |
-| Tools and MCP servers on the profile | The agent's `tools`. Remote MCP servers are currently blocked on hosted Orca; see [MCP tools](/guides/mcp). |
+| Tools and MCP servers on the profile | The agent's `tools`. Hosted Orca reaches only the remote MCP servers on its [allowed list](/guides/mcp#allowed-servers). |
 | Pod (a lead and members) | One lead agent with [subagents](/guides/subagents). Subagents run on the lead's model. |
 | Runs | [Turns](/turn-lifecycle) in a [session](/guides/sessions) |
 | Secrets (`secret://`) | [Vault credentials](/guides/credentials), added again by an admin |
@@ -74,7 +74,7 @@ Map each field to the new agent:
 | `systemPrompt` | `instructions` |
 | `model` | `model`, with who pays in front: `orca/openrouter/<OpenRouter id>` or `<provider>/<id>`. [List every name you can use](/providers#discover-orca-credit-models). |
 | `runtime` | Nothing. Leave it out. |
-| `mcpServers` | An `mcp` entry in `tools` per server. Remote MCP servers are currently blocked on hosted Orca. |
+| `mcpServers` | An `mcp` entry in `tools` per server. Hosted Orca reaches only the remote MCP servers on its [allowed list](/guides/mcp#allowed-servers). |
 | `skills` | Skills you upload again and install in the session's sandbox. See [rebuild a skill](#rebuild-a-skill). |
 | `sandbox`, `workerMode`, `fs` | Nothing on the agent. Choose a managed sandbox when you create a session (`--sandbox` in the CLI). |
 | `tools` such as `"@orchestration"` | Nothing. To let the agent delegate, set `multi_agent`. |

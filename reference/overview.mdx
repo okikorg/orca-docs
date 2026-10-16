@@ -66,7 +66,7 @@ Orca implements the OpenAI Agents API. The [OpenAI Agent API quickstart](https:/
 
 - **Supported routes** are exactly those listed in this reference. They were checked against the official clients at **Python `openai` 3.13.0** and **TypeScript `openai` 7.15.0**.
 - **Other client versions** may add or rename methods that Orca does not support.
-- **On hosted Orca**, `self_hosted` environments are coming soon, `network.access: "restricted"` is not available, and remote MCP servers are currently blocked.
+- **On hosted Orca**, `self_hosted` environments are coming soon, `network.access: "restricted"` is not available, and remote MCP servers are limited to an [allowed list](/guides/mcp#allowed-servers).
 - **Event payloads**: Orca sends the event types listed in [events](/reference/events). Handle unknown event types gracefully.
 
 ## Rate limits

@@ -86,7 +86,7 @@ The turn keeps running. Read its status, then reconnect if needed. See [streamin
 
 <AccordionGroup>
 <Accordion title="Session creation fails with an MCP error">
-"Destination is not enabled in the server egress policy" means the server was refused: remote MCP servers are currently blocked on hosted Orca. Write to support@okik.io if you need one. Otherwise, the URL is not HTTPS, the server is unreachable, or no attached vault has a credential for that exact URL. See [MCP tools](/guides/mcp#troubleshooting).
+"Destination is not enabled in the server egress policy" means the server is not on hosted Orca's [allowed list](/guides/mcp#allowed-servers); to ask for another server, post in **#help** on [Orca's Discord](https://discord.gg/btTYzdzvqq). Otherwise, the URL is not HTTPS, the server is unreachable, or no attached vault has a credential for that exact URL. See [MCP tools](/guides/mcp#troubleshooting).
 </Accordion>
 <Accordion title="The agent says it cannot run code">
 The session has `environment: {"type": "none"}`. Create a new session with a sandbox. See [execution environments](/guides/environments).

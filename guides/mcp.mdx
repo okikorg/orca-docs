@@ -8,8 +8,19 @@ description: Connect your agent to remote tool servers that speak the Model Cont
 When you give an agent an MCP tool, Orca connects to that server, discovers its tools, and lets the model call them. Unlike [function tools](/guides/function-tools), your application does not need to be online to answer: Orca calls the MCP server directly.
 
 <Warning>
-Remote MCP servers are currently blocked on hosted Orca. A session whose agent has an `mcp` tool is refused with HTTP 400 on `server_url`: "Destination is not enabled in the server egress policy". If you need a remote MCP server, write to support@okik.io.
+Hosted Orca reaches only the remote MCP servers on its [allowed list](#allowed-servers). A session whose agent has an `mcp` tool for any other server is refused with HTTP 400 on `server_url`: "Destination is not enabled in the server egress policy".
 </Warning>
+
+## Allowed servers
+
+Hosted Orca connects only to these origins:
+
+| Origin | What it is |
+| --- | --- |
+| `https://docs.orcapods.ai` | The Orca docs' own MCP server |
+| `https://mcp.dataforseo.com` | DataForSEO's hosted MCP server. It takes your DataForSEO API login and password: add them as a [login and password credential](/guides/credentials#a-login-and-password). |
+
+An origin is a scheme, host, and port, so any path on that host is allowed, and nothing else: `https://mcp.dataforseo.com` does not open `api.dataforseo.com` or another port. To ask for another server, post in **#help** on [Orca's Discord](https://discord.gg/btTYzdzvqq).
 
 ## How it fits together
 
@@ -24,12 +35,12 @@ flowchart LR
 Two pieces work together:
 
 1. **The agent** lists the MCP server's URL and, optionally, which of its tools the model may use.
-2. **A vault credential** holds the server's access token, if it needs one. You attach the vault to the session. The token is never shown to the model.
+2. **A vault credential** holds the server's access token, or its login and password, if it needs one. You attach the vault to the session. The model never sees it.
 
 ## Before you start
 
-- Remote MCP servers are currently blocked on hosted Orca; see the note above.
-- Get a token for the MCP server if it requires authentication. An admin stores it in a vault.
+- Check that the server is on the [allowed list](#allowed-servers).
+- Get a token, or a login and password, for the MCP server if it requires authentication. An admin stores it in a vault; see [credentials and vaults](/guides/credentials).
 
 ## Example
 
@@ -107,9 +118,9 @@ Put tokens in a vault, never in the agent. Orca rejects agents whose MCP `header
 
 | Symptom | Check |
 | --- | --- |
-| Session creation fails with "Destination is not enabled in the server egress policy" | Remote MCP servers are currently blocked on hosted Orca. Write to support@okik.io if you need one. |
+| Session creation fails with "Destination is not enabled in the server egress policy" | The server is not on the [allowed list](#allowed-servers). Only unlisted servers are refused, so compare the URL's scheme, host, and port with the list. |
+| Session creation fails with "No credential in the attached vaults for https://..." | The server refused a request without credentials, and no attached vault holds a credential for that exact URL (watch for trailing slashes and paths). Add one (`orca vaults credentials add`, the dashboard's Vaults page, or the API), then pass its vault in `vault_ids`. |
 | Session creation fails mentioning the MCP URL | The URL is not HTTPS, or the server is unreachable. |
-| Session creation fails mentioning a credential | No credential in the attached vaults matches `server_url` exactly (watch for trailing slashes and paths). |
 | The model never calls the tool | The tool is missing from `allowed_tools`, or its description does not make clear when to use it. |
 
 See also: [credentials and vaults](/guides/credentials), [runnable MCP examples](/examples), and the [vault reference](/reference/resources#vaults-and-credentials).

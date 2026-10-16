@@ -66,7 +66,15 @@ args = ["mcp", "serve"]
 
 `chat` sends a message to an agent or session and waits for the reply, by default up to 120 seconds and at most 600. It returns the session ID, whether the turn finished, its status, and the reply, so the coding agent can continue the same session.
 
+For a new session, `chat` also takes `sandbox`, `template`, and `vaults`, as `create_session` does. `template` and `vaults` take IDs or names, so an agent that needs an environment template and a vault starts with one call, for example `chat({agent: "researcher", template: "research", vaults: ["orders"], message: "..."})`. A session you continue keeps its own sandbox and vaults, so these three are refused alongside `session`.
+
 `chat` and `create_session` take `files`, a list of `{path, dest}` on your machine, and put them in the session's sandbox as [`--file`](/cli/commands#files-in-and-out-of-a-sandbox) does. `list_artifacts` and `download_artifact` bring back what the agent saved under `/workspace/outputs`: one artifact by ID or path, or with `all` every file of the newest turn into a folder.
+
+`add_credential` takes `type`: `static_bearer` (the default) with `token`, or `static_basic` with `login` and `password`, which Orca sends to the server as HTTP Basic (see [a login and password](/guides/credentials#a-login-and-password)). Its `vault` is the vault's ID.
+
+<Warning>
+A password is better typed in a terminal than passed through a coding agent: anything sent in a tool call sits in the agent's context. Have the agent give you the command, `orca vaults credentials add <vault> --name <name> --server <url> --basic --login <login>`, and run it yourself; it reads the password at a hidden prompt.
+</Warning>
 
 `list_models` returns one row per model name, with who pays and, for Orca credit, OpenRouter's price. The list is long, so it pages with `limit` and `after`, and `query` (part of a name, such as `luna`) or `payer` narrows it.
 

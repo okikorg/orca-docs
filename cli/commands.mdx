@@ -3,7 +3,7 @@ title: "CLI commands"
 description: "Every command in the CLI, grouped by what it manages, with output and exit codes."
 ---
 
-Run `orca <command> --help` for every flag. Where a command takes `[agent]` or another positional in brackets, leaving it out in a terminal opens a picker; in a script it is required. An `<agent>` is an agent ID or the name of exactly one agent.
+Run `orca <command> --help` for every flag. Where a command takes `[agent]` or another positional in brackets, leaving it out in a terminal opens a picker; in a script it is required. An `<agent>` is an agent ID or the name of exactly one agent. `--template` and `--vault` likewise take an ID or the name of exactly one environment template or vault; a name two of them share is an error that lists their IDs.
 
 ## Sign-in and setup
 
@@ -22,12 +22,12 @@ See [install and sign in](/cli/install).
 ## Chat
 
 ```text
-orca chat [agent] [prompt...] [--session id] [--sandbox] [--template id] [--vault id]... [--file path[:dest]]...
+orca chat [agent] [prompt...] [--session id] [--sandbox] [--template t] [--vault v]... [--file path[:dest]]...
 ```
 
 - **With no prompt** in a terminal, `orca chat` opens a conversation. Ctrl-C cancels a running turn on the server, then exits and prints the command that resumes the session.
 - **With a prompt or piped input** it runs one turn and streams the answer to stdout. The session ID goes to stderr, so a script can continue with `--session`.
-- Without `--session` it creates a session first, with no sandbox. `--sandbox` gives it a managed sandbox, `--template` builds the sandbox from an environment template, and `--vault` lets its tools use a vault's credentials.
+- Without `--session` it creates a session first, with no sandbox. `--sandbox` gives it a managed sandbox, `--template` builds the sandbox from an environment template, and `--vault` lets its tools use a vault's credentials. Both take an ID or a name.
 - `--file` puts a file from your machine into the sandbox. See [files in and out of a sandbox](#files-in-and-out-of-a-sandbox).
 
 ```bash
@@ -51,7 +51,7 @@ orca models [--payer orca|<provider>]      # every model you can use, grouped by
 
 orca sessions list [--agent agent]
 orca sessions get <id>                     # includes the session's cost, tokens, and machine time
-orca sessions create --agent <agent> [--sandbox] [--template id] [--vault id]... [--file path[:dest]]...
+orca sessions create --agent <agent> [--sandbox] [--template t] [--vault v]... [--file path[:dest]]...
 orca sessions items <id> [--limit n]
 orca sessions artifacts <id>               # the files its turns saved under /workspace/outputs
 orca sessions artifacts download <id> [artifact] [-o path|-] [--all]
@@ -97,7 +97,7 @@ orca skills create <folder>                # a folder with SKILL.md
 
 orca vaults list | create <name> | delete <id> [--yes]
 orca vaults credentials list <vault>
-orca vaults credentials add <vault> --name n --server https://... [--token t]
+orca vaults credentials add <vault> --name n --server https://... [--token t | --basic --login l]
 orca vaults credentials delete <vault> <id> [--yes]
 
 orca files list
@@ -106,7 +106,16 @@ orca files download <id> [-o path|-]
 orca files delete <id> [--yes]
 ```
 
-Creating and deleting vaults and credentials needs the admin role. `credentials add` reads the token from `--token`, stdin, or a hidden prompt.
+Creating and deleting vaults and credentials needs the admin role. `credentials list` shows each credential's type. `credentials add` takes the vault's ID or name, and adds a bearer token by default, read from `--token`, stdin, or a hidden prompt.
+
+With `--basic --login <login>` it adds a [login and password](/guides/credentials#a-login-and-password) instead, which Orca sends to the server as HTTP Basic. The password comes from stdin or a hidden prompt. There is no password flag, by design: a flag stays in your shell history. Passing `--password` is refused, and its value is never printed.
+
+```bash
+orca vaults credentials add dataforseo --name dataforseo --server https://mcp.dataforseo.com/mcp --basic --login YOUR_API_LOGIN
+printenv DATAFORSEO_PASSWORD | orca vaults credentials add dataforseo --name dataforseo --server https://mcp.dataforseo.com/mcp --basic --login YOUR_API_LOGIN
+```
+
+The first asks for the password at a hidden prompt; the second reads it from an environment variable. There is no rotate command: delete the credential and add it again, or rotate it on the dashboard's Vaults page.
 
 ## Kits
 
