@@ -72,12 +72,16 @@ def main():
         # The token price reads "OpenRouter's price plus their fee", linked to
         # the pricing page, which states the percentage (orca-design plan-facts,
         # P2-d and P2-e).
-        for wrong in re.findall(r"\bplus its\b(?:[^.|\n]|\.\d)*?\bfee|\blist price\b|\b5\.5%", text, re.I):
+        # A kit page's code blocks hold the kit's own instructions and its
+        # agent's replies, whose prices are the kit's sample data, not Orca's:
+        # on kit pages these two checks read the prose only.
+        prose = re.sub(r"^```.*?^```", "", text, flags=re.S | re.M) if name.startswith("kits/") else text
+        for wrong in re.findall(r"\bplus its\b(?:[^.|\n]|\.\d)*?\bfee|\blist price\b|\b5\.5%", prose, re.I):
             errors.append(f"{name}: token price worded \"{wrong}\"; say OpenRouter's price plus their fee")
         # Plan numbers are the pricing page's, built from the server
         # (orca-design plan-facts, D3e): the docs state rules and link there.
         if not name.startswith(("orcacode/", "reference/")):
-            for number in re.findall(PLAN_NUMBER, text, re.I):
+            for number in re.findall(PLAN_NUMBER, prose, re.I):
                 errors.append(f"{name}: plan number \"{number}\"; link the pricing page instead")
     all_text = "\n".join(texts.values())
     for pin in (f"openai=={versions['python']}", f"openai@{versions['typescript']}"):

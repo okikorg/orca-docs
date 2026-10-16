@@ -136,7 +136,8 @@
                 "group": "Kits",
                 "pages": [
                   "kits/scout",
-                  "kits/cram-coach"
+                  "kits/cram-coach",
+                  "kits/margin-check"
                 ]
               }
             ]
