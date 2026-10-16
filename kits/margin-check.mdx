@@ -1,11 +1,11 @@
 ---
-title: "Deal Desk"
-description: "A pricing agent that answers what a deal does to margin, and who has to approve it. Create it, ask it from your terminal or your coding agent, put your own pricing in it, and run it from your own code."
+title: "Margin Check"
+description: "A pricing agent that answers what a deal does to margin, and who has to approve it. Copy it, ask it from your terminal or your coding agent, put your own pricing in it, and run it from your own code."
 ---
 
-This guide takes you from nothing to a pricing agent of your own. Deal Desk holds a company's price list, costs, discount policy and current contracts, and answers two questions about any deal: what it does to gross margin, and who has to approve it. You can ask it from your terminal, or from your coding agent while you work on the code that builds quotes, with nothing to attach.
+This guide takes you from nothing to a pricing agent of your own. Margin Check holds a company's price list, costs, discount policy and current contracts, and answers two questions about any deal: what it does to gross margin, and who has to approve it. You can ask it from your terminal, or from your coding agent while you work on the code that builds quotes, with nothing to attach.
 
-Orca is where it runs. Tokens cost [OpenRouter's price plus their fee](https://orcapods.ai/pricing), with no markup from us, and the harness underneath is built to spend fewer of them. A sandbox starts only when a session needs one (Deal Desk doesn't), a model call that hits a hiccup is retried for you, and every session shows exactly what it cost.
+Orca is where it runs. Tokens cost [OpenRouter's price plus their fee](https://orcapods.ai/pricing), with no markup from us, and the harness underneath is built to spend fewer of them. A sandbox starts only when a session needs one (Margin Check doesn't), a model call that hits a hiccup is retried for you, and every session shows exactly what it cost.
 
 Each step below builds on the one before, and you can stop after any of them.
 
@@ -15,34 +15,34 @@ Each step below builds on the one before, and you can stop after any of them.
 
 ## What it knows
 
-- **A made-up company's pricing.** Larkspur Analytics sells dashboards per seat on three plans, Starter, Team and Enterprise, with add-ons, premium support and an onboarding package. Deal Desk holds its prices, its cost to serve each item, nine discount rules numbered R1 to R9, and seven current contracts. All of it is sample data, and step 2 shows it in full.
+- **A made-up company's pricing.** Larkspur Analytics sells dashboards per seat on three plans, Starter, Team and Enterprise, with add-ons, premium support and an onboarding package. Margin Check holds its prices, its cost to serve each item, nine discount rules numbered R1 to R9, and seven current contracts. All of it is sample data, and step 2 shows it in full.
 - **All of it in the agent's instructions.** Nothing is stored in files, so every chat has the data, including one your coding agent starts through Orca's MCP server, where nothing can be attached. To use your own pricing, you edit the instructions: see [make it yours](#make-it-yours).
-- **Every figure with its working.** Without a sandbox, Deal Desk works out each figure step by step in a table, with the formula and the numbers in it, so you can check every one. Given a sandbox with `--sandbox`, it computes them with Python. Language models can slip on arithmetic, so read the working before you rely on a figure, or use `--sandbox` for the ones that matter.
-- **Today's date only when you give it.** For a question like "which contracts end in the next 60 days", put today's date in the question. Without a sandbox to read the clock, Deal Desk asks for the date rather than guess it.
+- **Every figure with its working.** Without a sandbox, Margin Check works out each figure step by step in a table, with the formula and the numbers in it, so you can check every one. Given a sandbox with `--sandbox`, it computes them with Python. Language models can slip on arithmetic, so read the working before you rely on a figure, or use `--sandbox` for the ones that matter.
+- **Today's date only when you give it.** For a question like "which contracts end in the next 60 days", put today's date in the question. Without a sandbox to read the clock, Margin Check asks for the date rather than guess it.
 
 ## What you'll do
 
 1. [Install the CLI and sign in](#1-install-the-cli-and-sign-in).
-2. [Create Deal Desk](#2-create-deal-desk) from a few lines of code.
+2. [Copy Margin Check](#2-copy-margin-check) with one command, or build it from code.
 3. [Use it](#3-use-it): ask about a deal, then make it yours.
 4. [Let your coding agent drive](#4-let-your-coding-agent-drive).
 5. [Run it from your own code](#5-run-it-from-your-own-code).
 6. [See what it cost, and clean up](#6-see-what-it-cost-and-clean-up).
 
-You need a terminal on macOS or Linux, and Python or Node to create Deal Desk (step 2) and in step 5. Deal Desk needs no sandbox, so it uses no machine time: you pay only for its model tokens, from your credit.
+You need a terminal on macOS or Linux. Python or Node is only needed to build Margin Check from code (step 2) and in step 5. Margin Check needs no sandbox, so it uses no machine time: you pay only for its model tokens, from your credit.
 
 ## Or hand this page to your coding agent
 
 If you work in Claude Code, Codex, or Cursor, it can do the typing while you watch. Paste this prompt:
 
 ```text
-Set me up with Deal Desk, a pricing agent on Orca (orcapods.ai), a platform that runs AI agents in the cloud. Follow https://docs.orcapods.ai/kits/deal-desk with me, and run its commands yourself.
+Set me up with Margin Check, a pricing agent on Orca (orcapods.ai), a platform that runs AI agents in the cloud. Follow https://docs.orcapods.ai/kits/margin-check with me, and run its commands yourself.
 
 1. Install the Orca CLI with `curl -fsSL https://orcapods.ai/install.sh | sh` and check it with `orca --version`.
 2. Sign me in with `orca login`. It prints a one-time code and a link: show me both, wait while I approve, then tell me my balance from `orca billing wallet`.
-3. Create Deal Desk from code, as in step 2 of that page: install the openai package, make a key named deal-desk without printing it, save the page's code as deal_desk_agent.py, and run it. Check it's there with `orca agents get deal-desk`.
-4. Run `orca chat deal-desk "Brightline wants to renew at 100 Team seats for 24 months at 25 percent off. What does that do to margin, and who approves it?"` and show me the answer.
-5. Give yourself Orca's tools, so that from now on I can ask you to run Deal Desk: add Orca's MCP server with the command for you in step 4 of that page, and tell me if you need a restart to load it.
+3. Copy Margin Check with `orca kits copy https://app.orcapods.ai/kits/kit-zK1zXb56TXYRZO94G --yes`, and check it's there with `orca agents get margin-check`.
+4. Run `orca chat margin-check "Brightline wants to renew at 100 Team seats for 24 months at 25 percent off. What does that do to margin, and who approves it?"` and show me the answer.
+5. Give yourself Orca's tools, so that from now on I can ask you to run Margin Check: add Orca's MCP server with the command for you in step 4 of that page, and tell me if you need a restart to load it.
 
 Never print or paste my API keys.
 ```
@@ -72,27 +72,27 @@ orca billing wallet
 
 `balance` is your Orca credit. The amount new accounts start with is on the [pricing page](https://orcapods.ai/pricing).
 
-## 2. Create Deal Desk
+## 2. Copy Margin Check
 
-Deal Desk is a model, a reasoning effort, and its instructions, which hold the whole sample company: prices, costs, rules and contracts, then how to compute and how to answer. It lists no tools. This is all of it:
+Margin Check is a model, a reasoning effort, and its instructions, which hold the whole sample company: prices, costs, rules and contracts, then how to compute and how to answer. It lists no tools. This is all of it:
 
 <CodeGroup>
-```python deal_desk_agent.py
+```python margin_check_agent.py
 import os
 
 from openai import OpenAI
 
 client = OpenAI(api_key=os.environ["ORCA_API_KEY"], base_url="https://api.orcapods.ai/v1")
 
-deal_desk = client.beta.agents.create(
-    name="deal-desk",
+margin_check = client.beta.agents.create(
+    name="margin-check",
     model="orca/openrouter/openai/gpt-5.6-luna",
     reasoning={"effort": "high"},
     instructions=(
-        "You are Deal Desk. You hold a company's pricing logic, all of it below, and you answer two questions "
-        "about a deal: what it does to gross margin, and who has to approve it. The data below is sample data "
-        "for Larkspur Analytics, a made-up company that sells dashboards to businesses. Whoever uses you "
-        "replaces it with their own by editing these instructions.\n"
+        "You are Margin Check. You hold a company's pricing logic, all of it below, and you answer two "
+        "questions about a deal: what it does to gross margin, and who has to approve it. The data below is "
+        "sample data for Larkspur Analytics, a made-up company that sells dashboards to businesses. Whoever "
+        "uses you replaces it with their own by editing these instructions.\n"
         "\n"
         "Use only the data below. Never invent a price, cost, customer, contract or rule (R9). If a question "
         "needs something that is not here, say what is missing.\n"
@@ -225,22 +225,22 @@ deal_desk = client.beta.agents.create(
         "ranges as \"1 to 10\", and never use em or en dashes."
     ),
 )
-print(deal_desk.id)
+print(margin_check.id)
 ```
-```typescript deal_desk_agent.ts
+```typescript margin_check_agent.ts
 import OpenAI from 'openai';
 
 const client = new OpenAI({ apiKey: process.env.ORCA_API_KEY, baseURL: 'https://api.orcapods.ai/v1' });
 
-const dealDesk = await client.beta.agents.create({
-  name: 'deal-desk',
+const marginCheck = await client.beta.agents.create({
+  name: 'margin-check',
   model: 'orca/openrouter/openai/gpt-5.6-luna',
   reasoning: { effort: 'high' },
   instructions:
-    'You are Deal Desk. You hold a company\'s pricing logic, all of it below, and you answer two questions ' +
-    'about a deal: what it does to gross margin, and who has to approve it. The data below is sample data ' +
-    'for Larkspur Analytics, a made-up company that sells dashboards to businesses. Whoever uses you ' +
-    'replaces it with their own by editing these instructions.\n' +
+    'You are Margin Check. You hold a company\'s pricing logic, all of it below, and you answer two ' +
+    'questions about a deal: what it does to gross margin, and who has to approve it. The data below is ' +
+    'sample data for Larkspur Analytics, a made-up company that sells dashboards to businesses. Whoever ' +
+    'uses you replaces it with their own by editing these instructions.\n' +
     '\n' +
     'Use only the data below. Never invent a price, cost, customer, contract or rule (R9). If a question ' +
     'needs something that is not here, say what is missing.\n' +
@@ -372,12 +372,36 @@ const dealDesk = await client.beta.agents.create({
     'Write plain text and keep it short: no headings and no bold; tables as simple pipe tables. Write ' +
     'ranges as "1 to 10", and never use em or en dashes.',
 });
-console.log(dealDesk.id);
+console.log(marginCheck.id);
 ```
 </CodeGroup>
 
 The instructions are the whole program: Orca runs each conversation and keeps every message, and the model follows the rules. `reasoning` gives the model room to work through every rule before it writes the verdict. The model name also says who pays: `orca/openrouter/<id>` runs on your Orca credit. See [models and provider keys](/providers).
 
+Get Margin Check into your account whichever way you like:
+
+<Tabs>
+<Tab title="Copy it (one command)">
+Margin Check is shared as a [kit](/kits), a link anyone can copy an agent from.
+
+<Steps>
+<Step title="Copy it into your account">
+```bash
+orca kits copy https://app.orcapods.ai/kits/kit-zK1zXb56TXYRZO94G --yes
+```
+
+Or open [Margin Check's kit page](https://app.orcapods.ai/kits/kit-zK1zXb56TXYRZO94G) and choose **Copy**.
+</Step>
+<Step title="See your agent">
+```bash
+orca agents get margin-check
+```
+
+It shows the same definition as the code above.
+</Step>
+</Steps>
+</Tab>
+<Tab title="Build it from code">
 <Steps>
 <Step title="Install the openai package">
 It needs Python 3.10 or later, or Node 22.18 or later. Check your version first, and update it if it's older:
@@ -400,47 +424,47 @@ In the terminal you'll run the code from, create a key and keep it there as `ORC
 
 <CodeGroup>
 ```bash bash / zsh
-export ORCA_API_KEY=$(orca keys create deal-desk </dev/null)
+export ORCA_API_KEY=$(orca keys create margin-check </dev/null)
 ```
 ```fish fish
-set -x ORCA_API_KEY (orca keys create deal-desk </dev/null)
+set -x ORCA_API_KEY (orca keys create margin-check </dev/null)
 ```
 </CodeGroup>
 </Step>
 <Step title="Save the code and run it">
-Save the code above as `deal_desk_agent.py` or `deal_desk_agent.ts`, then run it:
+Save the code above as `margin_check_agent.py` or `margin_check_agent.ts`, then run it:
 
 <CodeGroup>
 ```bash Python
-.venv/bin/python deal_desk_agent.py
+.venv/bin/python margin_check_agent.py
 ```
 ```bash TypeScript
-node --experimental-strip-types deal_desk_agent.ts
+node --experimental-strip-types margin_check_agent.ts
 ```
 </CodeGroup>
 
-It prints Deal Desk's new ID.
+It prints Margin Check's new ID.
 </Step>
 <Step title="See your agent">
 ```bash
-orca agents get deal-desk
+orca agents get margin-check
 ```
-
-It shows the same definition as the code above.
 </Step>
 </Steps>
+</Tab>
+</Tabs>
 
-Deal Desk is now in your account. Its code is in [orca-kits on GitHub](https://github.com/okikorg/orca-kits/tree/main/kits/deal-desk).
+Either way, Margin Check is now in your account. Its code is in [orca-kits on GitHub](https://github.com/okikorg/orca-kits/tree/main/kits/margin-check).
 
 ## 3. Use it
 
-Ask Deal Desk about a deal:
+Ask Margin Check about a deal:
 
 ```bash
-orca chat deal-desk "Brightline wants to renew at 100 Team seats for 24 months at 25 percent off. What does that do to margin, and who approves it?"
+orca chat margin-check "Brightline wants to renew at 100 Team seats for 24 months at 25 percent off. What does that do to margin, and who approves it?"
 ```
 
-Brightline Logistics is one of the sample contracts: 80 Team seats at 15 percent off for 12 months, with SSO and the audit log. Deal Desk keeps whatever the question doesn't change, works out the figures, and checks the deal against every rule. A real run on 2026-10-16 answered:
+Brightline Logistics is one of the sample contracts: 80 Team seats at 15 percent off for 12 months, with SSO and the audit log. Margin Check keeps whatever the question doesn't change, works out the figures, and checks the deal against every rule. A real run on 2026-10-16 answered:
 
 ```text
 Allowed, with CFO approval.
@@ -512,7 +536,7 @@ That answer cost less than a cent. It reads in four parts:
 Ask about the contracts, too. Give today's date with any question that depends on it:
 
 ```bash
-orca chat deal-desk "Which contracts end in the next 60 days? Today is 2026-10-16."
+orca chat margin-check "Which contracts end in the next 60 days? Today is 2026-10-16."
 ```
 
 ```text
@@ -526,15 +550,15 @@ Window: 2026-10-16 through 2026-12-15.
 Working: October 16 to October 31 = 15 days, November = 30 days, December 1 to December 15 = 15 days. Total = 60 days.
 ```
 
-To have a conversation, run `orca chat deal-desk` with no question, then ask follow-ups such as "And at 20 percent off?" in the same session. Ctrl-C leaves the chat and prints `session session_...`; `orca chat deal-desk --session session_...` picks it up again.
+To have a conversation, run `orca chat margin-check` with no question, then ask follow-ups such as "And at 20 percent off?" in the same session. Ctrl-C leaves the chat and prints `session session_...`; `orca chat margin-check --session session_...` picks it up again.
 
 <Tip>
-For figures you'll act on, add `--sandbox`: Deal Desk then writes a Python script for every figure, runs it, and copies the numbers from its output. A sandbox uses machine time, so delete the session when you're done with `orca sessions delete session_... --yes`. A real run with `--sandbox` on the question above used one minute of machine time.
+For figures you'll act on, add `--sandbox`: Margin Check then writes a Python script for every figure, runs it, and copies the numbers from its output. A sandbox uses machine time, so delete the session when you're done with `orca sessions delete session_... --yes`. A real run with `--sandbox` on the question above used one minute of machine time.
 </Tip>
 
 ### Make it yours
 
-Everything Deal Desk knows is in its instructions, so putting in your own pricing is an edit. Open it on the [Agents page](https://app.orcapods.ai/agents), choose **Edit agent**, and replace Larkspur's tables and rules with yours. Or edit `deal_desk_agent.py`, delete the old agent with `orca agents delete deal-desk --yes`, and run the file again.
+Everything Margin Check knows is in its instructions, so putting in your own pricing is an edit. Open it on the [Agents page](https://app.orcapods.ai/agents), choose **Edit agent**, and replace Larkspur's tables and rules with yours. Or edit `margin_check_agent.py`, delete the old agent with `orca agents delete margin-check --yes`, and run the file again.
 
 - Keep the shape: the price list, the cost to serve, how to compute, the numbered rules, and the contracts. Answers cite rules by their numbers.
 - Change "How to compute" with your pricing, such as how your add-ons are discounted.
@@ -543,7 +567,7 @@ Everything Deal Desk knows is in its instructions, so putting in your own pricin
 
 ## 4. Let your coding agent drive
 
-Give your coding agent Orca's tools, and you can ask Deal Desk without leaving your editor. `orca mcp serve` is an MCP server with one tool per CLI action, so your coding agent can create agents, chat with them, and read your usage and wallet. It uses the login you already have.
+Give your coding agent Orca's tools, and you can ask Margin Check without leaving your editor. `orca mcp serve` is an MCP server with one tool per CLI action, so your coding agent can copy kits, chat with agents, and read your usage and wallet. It uses the login you already have.
 
 <Tabs>
 <Tab title="Claude Code">
@@ -581,18 +605,18 @@ codex mcp add orca -- orca mcp serve
 </Tab>
 </Tabs>
 
-Start a new session of your coding agent so it loads the server. Its `chat` tool sends Deal Desk a message and returns the reply, with nothing to attach, since the pricing is in Deal Desk's instructions. Then ask it things like:
+Start a new session of your coding agent so it loads the server. Its `chat` tool sends Margin Check a message and returns the reply, with nothing to attach, since the pricing is in Margin Check's instructions. Then ask it things like:
 
-- "I'm changing the renewal logic in our quote builder. Ask Deal Desk what renewing Brightline at 100 Team seats for 24 months at 25 percent off does to margin, and who approves it, and check our code picks the same approver."
-- "Ask Deal Desk the largest discount a sales manager could approve on a 36-month Enterprise deal for 200 seats with the audit log."
-- "Ask Deal Desk which contracts end in the next 60 days. Today is 2026-10-16."
-- "How much Orca credit do I have left, and what did Deal Desk cost today?"
+- "I'm changing the renewal logic in our quote builder. Ask Margin Check what renewing Brightline at 100 Team seats for 24 months at 25 percent off does to margin, and who approves it, and check our code picks the same approver."
+- "Ask Margin Check the largest discount a sales manager could approve on a 36-month Enterprise deal for 200 seats with the audit log."
+- "Ask Margin Check which contracts end in the next 60 days. Today is 2026-10-16."
+- "How much Orca credit do I have left, and what did Margin Check cost today?"
 
 Your coding agent acts as you with these tools: it can create, delete, and spend. See [use Orca from coding agents](/cli/mcp) for every tool.
 
 ## 5. Run it from your own code
 
-Everything so far went through the CLI, which calls the same API your application will. Your code uses the official `openai` package with an Orca API key. If you created Deal Desk in step 2 in this terminal, you already have both: skip to the program.
+Everything so far went through the CLI, which calls the same API your application will. Your code uses the official `openai` package with an Orca API key. If you built Margin Check from code in step 2 in this terminal, you already have both: skip to the program.
 
 Install the `openai` package. It needs Python 3.10 or later, or Node 22.18 or later. Check your version first, and update it if it's older:
 
@@ -613,17 +637,17 @@ Then make a key, in the terminal you'll run the program from. This keeps it ther
 
 <CodeGroup>
 ```bash bash / zsh
-export ORCA_API_KEY=$(orca keys create deal-desk </dev/null)
+export ORCA_API_KEY=$(orca keys create margin-check </dev/null)
 ```
 ```fish fish
-set -x ORCA_API_KEY (orca keys create deal-desk </dev/null)
+set -x ORCA_API_KEY (orca keys create margin-check </dev/null)
 ```
 </CodeGroup>
 
-This program finds Deal Desk, opens a session with no sandbox, streams the answer to the question you give it, and deletes the session:
+This program finds Margin Check, opens a session with no sandbox, streams the answer to the question you give it, and deletes the session:
 
 <CodeGroup>
-```python deal_desk.py
+```python margin_check.py
 import os
 import sys
 
@@ -632,8 +656,8 @@ from openai import OpenAI
 client = OpenAI(api_key=os.environ["ORCA_API_KEY"], base_url="https://api.orcapods.ai/v1")
 agents = client.beta.agents
 
-deal_desk = next(agent for agent in agents.list() if agent.name == "deal-desk")
-session = agents.sessions.create(agent_id=deal_desk.id, environment={"type": "none"})
+margin_check = next(agent for agent in agents.list() if agent.name == "margin-check")
+session = agents.sessions.create(agent_id=margin_check.id, environment={"type": "none"})
 try:
     with agents.sessions.stream(session.id, input=sys.argv[1]) as stream:
         for event in stream:
@@ -645,17 +669,17 @@ try:
 finally:
     agents.sessions.delete(session.id)
 ```
-```typescript deal_desk.ts
+```typescript margin_check.ts
 import OpenAI from 'openai';
 
 const client = new OpenAI({ apiKey: process.env.ORCA_API_KEY, baseURL: 'https://api.orcapods.ai/v1' });
 const agents = client.beta.agents;
 
-let dealDesk;
-for await (const agent of agents.list()) if (agent.name === 'deal-desk') { dealDesk = agent; break; }
-if (!dealDesk) throw new Error('No agent called deal-desk. Create it first (step 2).');
+let marginCheck;
+for await (const agent of agents.list()) if (agent.name === 'margin-check') { marginCheck = agent; break; }
+if (!marginCheck) throw new Error('No agent called margin-check. Copy it first (step 2).');
 
-const session = await agents.sessions.create({ agent_id: dealDesk.id, environment: { type: 'none' } });
+const session = await agents.sessions.create({ agent_id: marginCheck.id, environment: { type: 'none' } });
 try {
   for await (const event of agents.sessions.stream(session.id, { input: process.argv[2] })) {
     if (event.type === 'agent.session.turn.output_text.delta') process.stdout.write(event.delta);
@@ -672,10 +696,10 @@ try {
 
 <CodeGroup>
 ```bash Python
-.venv/bin/python deal_desk.py "Harbor & Finch wants to renew at 12 Team seats for 12 months at 10 percent off, on net 60. Who approves it?"
+.venv/bin/python margin_check.py "Harbor & Finch wants to renew at 12 Team seats for 12 months at 10 percent off, on net 60. Who approves it?"
 ```
 ```bash TypeScript
-node --experimental-strip-types deal_desk.ts "Harbor & Finch wants to renew at 12 Team seats for 12 months at 10 percent off, on net 60. Who approves it?"
+node --experimental-strip-types margin_check.ts "Harbor & Finch wants to renew at 12 Team seats for 12 months at 10 percent off, on net 60. Who approves it?"
 ```
 </CodeGroup>
 
@@ -726,7 +750,7 @@ Rep: no valid counter-offer at net 60; margin not applicable.
 Sales manager: 10.0% discount at 78.2% gross margin.
 ```
 
-Net 60 needs a sales manager (R6), so the rep has no counter-offer at those terms. Deal Desk lives on Orca, so your code only asks the question and reads the answer. [Build with the API](/build-with-the-api) explains each call.
+Net 60 needs a sales manager (R6), so the rep has no counter-offer at those terms. Margin Check lives on Orca, so your code only asks the question and reads the answer. [Build with the API](/build-with-the-api) explains each call.
 
 ## 6. See what it cost, and clean up
 
@@ -739,20 +763,20 @@ orca billing wallet        # your balance and plan
 
 `orca sessions get session_...` shows one session's cost, tokens, and machine time.
 
-- **Model tokens** are paid from your Orca credit, since Deal Desk's model starts with `orca/`. Each answer on this page cost less than a cent.
-- **Deal Desk uses no machine time**, unless you give it a sandbox with `--sandbox`. Sandboxes use [machine time](/plans#machine-time) from your plan and need a small balance of credit, your plan's [minimum balance](/plans#paid-work-needs-a-minimum-balance).
+- **Model tokens** are paid from your Orca credit, since Margin Check's model starts with `orca/`. Each answer on this page cost less than a cent.
+- **Margin Check uses no machine time**, unless you give it a sandbox with `--sandbox`. Sandboxes use [machine time](/plans#machine-time) from your plan and need a small balance of credit, your plan's [minimum balance](/plans#paid-work-needs-a-minimum-balance).
 
 The numbers for each plan are on the [pricing page](https://orcapods.ai/pricing). See [usage and wallet](/wallet#read-the-wallet-and-your-usage) for the rest.
 
-Keep Deal Desk if you like it. To remove everything this page made instead, delete Deal Desk's sessions, then Deal Desk, then the key. Deleting an agent does not delete its sessions.
+Keep Margin Check if you like it. To remove everything this page made instead, delete Margin Check's sessions, then Margin Check, then the key. Deleting an agent does not delete its sessions.
 
 ```bash
-orca sessions list --agent deal-desk --all | cut -f1 | xargs -I{} orca sessions delete {} --yes
-orca agents delete deal-desk --yes
+orca sessions list --agent margin-check --all | cut -f1 | xargs -I{} orca sessions delete {} --yes
+orca agents delete margin-check --yes
 orca keys list
 ```
 
-Then revoke the key named `deal-desk` with `orca keys revoke <its id> --yes`, and close the terminal: its `ORCA_API_KEY` still holds the revoked key.
+Then revoke the key named `margin-check` with `orca keys revoke <its id> --yes`, and close the terminal: its `ORCA_API_KEY` still holds the revoked key.
 
 ## Where to go next
 
