@@ -113,7 +113,7 @@ This matters for security and debugging, because it tells you which machine make
 | --- | --- | --- |
 | The agent loop and model calls | Orca server | You never call the model directly. |
 | [Function tools](/guides/function-tools) | **Your application** | Orca pauses the turn and waits for your answer. |
-| [MCP tools](/guides/mcp) | Orca server, calling the remote MCP server | Remote MCP servers are currently blocked on hosted Orca. |
+| [MCP tools](/guides/mcp) | Orca server, calling the remote MCP server | Hosted Orca reaches only the remote MCP servers on its [allowed list](/guides/mcp#allowed-servers). |
 | Shell commands, file edits, code | The session's sandbox | Only if the session has an environment. |
 | [Subagents](/guides/subagents) | Same as the parent | Share the parent's sandbox, tools, and model. |
 
