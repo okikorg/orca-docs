@@ -40,7 +40,7 @@ Set me up with SEO Helper, a research agent on Orca (orcapods.ai), a platform th
 
 1. Install the Orca CLI with `curl -fsSL https://orcapods.ai/install.sh | sh` and check it with `orca --version` (1.3.1 or later; `orca update` updates an older one).
 2. Sign me in with `orca login`. It prints a one-time code and a link: show me both, wait while I approve, then tell me my balance from `orca billing wallet`.
-3. Show me what the kit holds with `orca kits copy https://app.orcapods.ai/kits/kit-utRCllawsrI2cqKdT --dry-run`, then copy it with `--yes` instead of `--dry-run`, and check it with `orca agents get seo-helper`.
+3. Show me what the kit holds with `orca kits copy https://app.orcapods.ai/kits/kit-utRCllawsrI2cqKdT --dry-run` and wait for my yes. Only then copy it with `--yes` instead of `--dry-run`, and check it with `orca agents get seo-helper`.
 4. Create the vault with `orca vaults create dataforseo`.
 5. Give me this command to run in my own terminal, and wait until I say it's done: `orca vaults credentials add dataforseo --name dataforseo --server https://mcp.dataforseo.com/mcp --basic --login YOUR_LOGIN`, with my DataForSEO API login for YOUR_LOGIN. It asks me for the API password at a hidden prompt. Never ask me for the password in this chat, and never add the credential yourself.
 6. Give yourself Orca's tools: add Orca's MCP server with the command for you in step 5 of that page, and tell me if you need a restart to load it.
@@ -500,9 +500,11 @@ SEO Helper is shared as a [kit](/kits), a link anyone can copy an agent from.
 orca kits copy https://app.orcapods.ai/kits/kit-utRCllawsrI2cqKdT --dry-run
 ```
 
-It lists what the kit would copy, one agent called `seo-helper`, and copies nothing.
+It lists what the kit would copy, one agent called `seo-helper`, and copies nothing. Read the list, and go on only if you want what it holds.
 </Step>
 <Step title="Copy it into your account">
+Once you've decided to copy it:
+
 ```bash
 orca kits copy https://app.orcapods.ai/kits/kit-utRCllawsrI2cqKdT --yes
 ```
