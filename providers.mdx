@@ -99,7 +99,7 @@ agent = client.beta.agents.create(
 )
 ```
 
-Every save checks the model: creating or updating an agent (HTTP 400 on `model`), creating a session with an inline agent (on `agent.model`), and publishing or copying a kit. A save is refused when:
+Every save checks the model: creating or updating an agent (HTTP 400 on `model`), creating a session with an inline agent (on `agent.model`), and copying a kit. A save is refused when:
 
 - the name has no provider part, or uses `orca/` with any provider but OpenRouter;
 - it names your own key for a provider where you have none: "Add your Anthropic key in Settings, Providers, or choose an Orca credit model". When OpenRouter offers the same name, the message gives its Orca credit name instead: "Add your Anthropic key in Settings, Providers, or use orca/openrouter/anthropic/claude-sonnet-4.5 for Orca credit";

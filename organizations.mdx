@@ -19,7 +19,7 @@ There are two roles. Every member has one.
 
 | Role | Can |
 | --- | --- |
-| **Member** | Create, run, and delete agents, sessions, files, skills, and environment templates. Make, publish, and copy kits. Attach vaults to sessions and read vault and credential names. Read the wallet, the plans, and usage. Create API keys and revoke their own. Switch a session's model. |
+| **Member** | Create, run, and delete agents, sessions, files, skills, and environment templates. Copy Orca's [kits](/kits). Attach vaults to sessions and read vault and credential names. Read the wallet, the plans, and usage. Create API keys and revoke their own. Switch a session's model. |
 | **Admin** | Everything a member can, plus: set and remove [provider keys](/providers); create, rotate, and delete [vaults and credentials](/guides/credentials); buy credit and change the plan; see and revoke every API key in the organization. |
 
 There is no owner role. An action that needs the admin role returns HTTP 403 `permission_denied`: "This action requires the admin role". The dashboard says "Ask an admin of this organization to do this".

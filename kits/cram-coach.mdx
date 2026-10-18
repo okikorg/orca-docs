@@ -41,9 +41,9 @@ If you work in Claude Code, Codex, or Cursor, it can do the typing while you wat
 ```text
 Set me up with Cram Coach, a study agent on Orca (orcapods.ai), a platform that runs AI agents in the cloud. Follow https://docs.orcapods.ai/kits/cram-coach with me, and run its commands yourself.
 
-1. Install the Orca CLI with `curl -fsSL https://orcapods.ai/install.sh | sh` and check it with `orca --version`.
+1. Install the Orca CLI with `curl -fsSL https://orcapods.ai/install.sh | sh` and check it with `orca --version` (1.4.0 or later; `orca update` updates an older one).
 2. Sign me in with `orca login`. It prints a one-time code and a link: show me both, wait while I approve, then tell me my balance from `orca billing wallet`.
-3. Copy Cram Coach with `orca kits copy https://app.orcapods.ai/kits/kit-KDdGOG9YTLrtpQs64 --yes`, and check it's there with `orca agents get cram-coach`.
+3. Run `orca kits show https://app.orcapods.ai/kits/kit-KDdGOG9YTLrtpQs64` and show me what it prints. Copy Cram Coach only after I say yes, with `orca kits copy https://app.orcapods.ai/kits/kit-KDdGOG9YTLrtpQs64 --yes`, and check it's there with `orca agents get cram-coach`.
 4. Ask me for my chapter's PDF and my exam date. If I have no chapter, download the sample with `curl -L -o chapter.pdf https://github.com/okikorg/orca-kits/raw/main/kits/cram-coach/chapter.pdf`. Check the PDF's size with `wc -c`: if it is 48000 bytes or more, tell me Cram Coach takes PDFs under 48 KB for now, and stop.
 5. Run `orca chat cram-coach --sandbox --file <my PDF> "My exam is on <my date>."`. The last line names the session. Download the four files here with `orca sessions artifacts download <session id> --all`, and show me the first days of cram-plan.md.
 6. Delete the session with `orca sessions delete <session id> --yes` so the sandbox stops, then tell me how to import flashcards.csv into Anki.
@@ -61,7 +61,7 @@ curl -fsSL https://orcapods.ai/install.sh | sh
 orca --version
 ```
 
-The script installs a single `orca` binary to `~/.local/bin`. If your shell then says `orca: command not found`, add that folder to your `PATH` as the script suggests, and open a new terminal. On Windows, download the binary from the [releases page](https://github.com/okikorg/orca-cli/releases). An older CLI updates itself with `orca update`.
+The script installs a single `orca` binary to `~/.local/bin`. If your shell then says `orca: command not found`, add that folder to your `PATH` as the script suggests, and open a new terminal. On Windows, download the binary from the [releases page](https://github.com/okikorg/orca-cli/releases). Copying a kit needs CLI 1.4.0 or later: an older CLI updates itself with `orca update`.
 
 ```bash
 orca login
@@ -263,6 +263,8 @@ Cram Coach is shared as a [kit](/kits), a link anyone can copy an agent from.
 
 <Steps>
 <Step title="Copy it into your account">
+`orca kits show https://app.orcapods.ai/kits/kit-KDdGOG9YTLrtpQs64` prints what the kit holds before you copy it: Cram Coach's instructions and tools in full, and what it runs, reaches, and spends.
+
 ```bash
 orca kits copy https://app.orcapods.ai/kits/kit-KDdGOG9YTLrtpQs64 --yes
 ```
@@ -726,7 +728,7 @@ Then revoke the key named `cram-coach` with `orca keys revoke <its id> --yes`, a
   <Card title="Agent recipes" icon="book-open" href="/recipes/overview">
     Complete agents to copy: a support agent, a data analyst, a code reviewer, and more.
   </Card>
-  <Card title="Share your own agent" icon="share-nodes" href="/kits">
-    Publish an agent as a kit, the way Cram Coach is shared, and send the link to anyone.
+  <Card title="How kits work" icon="box" href="/kits">
+    What a kit holds, and how to read one before you copy it.
   </Card>
 </CardGroup>

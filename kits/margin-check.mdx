@@ -38,9 +38,9 @@ If you work in Claude Code, Codex, or Cursor, it can do the typing while you wat
 ```text
 Set me up with Margin Check, a pricing agent on Orca (orcapods.ai), a platform that runs AI agents in the cloud. Follow https://docs.orcapods.ai/kits/margin-check with me, and run its commands yourself.
 
-1. Install the Orca CLI with `curl -fsSL https://orcapods.ai/install.sh | sh` and check it with `orca --version`.
+1. Install the Orca CLI with `curl -fsSL https://orcapods.ai/install.sh | sh` and check it with `orca --version` (1.4.0 or later; `orca update` updates an older one).
 2. Sign me in with `orca login`. It prints a one-time code and a link: show me both, wait while I approve, then tell me my balance from `orca billing wallet`.
-3. Copy Margin Check with `orca kits copy https://app.orcapods.ai/kits/kit-zK1zXb56TXYRZO94G --yes`, and check it's there with `orca agents get margin-check`.
+3. Run `orca kits show https://app.orcapods.ai/kits/kit-zK1zXb56TXYRZO94G` and show me what it prints. Copy Margin Check only after I say yes, with `orca kits copy https://app.orcapods.ai/kits/kit-zK1zXb56TXYRZO94G --yes`, and check it's there with `orca agents get margin-check`.
 4. Run `orca chat margin-check "Brightline wants to renew at 100 Team seats for 24 months at 25 percent off. What does that do to margin, and who approves it?"` and show me the answer.
 5. Give yourself Orca's tools, so that from now on I can ask you to run Margin Check: add Orca's MCP server with the command for you in step 4 of that page, and tell me if you need a restart to load it.
 
@@ -56,7 +56,7 @@ curl -fsSL https://orcapods.ai/install.sh | sh
 orca --version
 ```
 
-The script installs a single `orca` binary to `~/.local/bin`. If your shell then says `orca: command not found`, add that folder to your `PATH` as the script suggests, and open a new terminal. On Windows, download the binary from the [releases page](https://github.com/okikorg/orca-cli/releases). An older CLI updates itself with `orca update`.
+The script installs a single `orca` binary to `~/.local/bin`. If your shell then says `orca: command not found`, add that folder to your `PATH` as the script suggests, and open a new terminal. On Windows, download the binary from the [releases page](https://github.com/okikorg/orca-cli/releases). Copying a kit needs CLI 1.4.0 or later: an older CLI updates itself with `orca update`.
 
 ```bash
 orca login
@@ -386,6 +386,8 @@ Margin Check is shared as a [kit](/kits), a link anyone can copy an agent from.
 
 <Steps>
 <Step title="Copy it into your account">
+`orca kits show https://app.orcapods.ai/kits/kit-zK1zXb56TXYRZO94G` prints what the kit holds before you copy it: Margin Check's instructions and tools in full, and what it runs, reaches, and spends.
+
 ```bash
 orca kits copy https://app.orcapods.ai/kits/kit-zK1zXb56TXYRZO94G --yes
 ```
@@ -563,7 +565,7 @@ Everything Margin Check knows is in its instructions, so putting in your own pri
 - Keep the shape: the price list, the cost to serve, how to compute, the numbered rules, and the contracts. Answers cite rules by their numbers.
 - Change "How to compute" with your pricing, such as how your add-ons are discounted.
 - The counter-offer's formula uses 0.22, which is 1 minus the 75 percent margin floor of R3 minus the 3 percent payment processing. If you change either, change 0.22 to match.
-- Anyone who can read the agent can read your pricing. If you publish your own version as a [kit](/kits), its instructions go with it.
+- Anyone who can read the agent can read your pricing.
 
 ## 4. Let your coding agent drive
 
@@ -790,7 +792,7 @@ Then revoke the key named `margin-check` with `orca keys revoke <its id> --yes`,
   <Card title="Build your own agent" icon="code" href="/build-with-the-api">
     Every call explained, from creating an agent to streaming its answers.
   </Card>
-  <Card title="Share your own agent" icon="share-nodes" href="/kits">
-    Publish an agent as a kit and send the link to anyone.
+  <Card title="How kits work" icon="box" href="/kits">
+    What a kit holds, and how to read one before you copy it.
   </Card>
 </CardGroup>
