@@ -120,15 +120,11 @@ The first asks for the password at a hidden prompt; the second reads it from an 
 ## Kits
 
 ```text
-orca kits list
-orca kits make --name n [--description d] [--author who] [--readme file] [--agent a]... [--skill id]... [--template id]...
-orca kits edit <kit-id> [same flags]       # a selection flag replaces the whole selection
-orca kits publish | withdraw <kit-id>
-orca kits show <link|public-id>            # no login needed
+orca kits show <link|public-id> [--json]   # the review, no login needed
 orca kits copy <link|public-id> [--name key=name]... [--skip key]... [--dry-run] [--yes]
 ```
 
-See [kits](/kits).
+Only Orca publishes kits, so these two are the only kit commands (1.4.0 or later). `show` prints the kit's review: what it runs, reaches, and spends, then each agent, skill, and template in full. `copy` prints the same review, asks, and copies the version it printed. `--yes` skips the question, for a coding agent after you have said yes. See [kits](/kits).
 
 ## API keys
 
@@ -181,3 +177,5 @@ See [use Orca from coding agents](/cli/mcp).
 ## Commands that ended
 
 CLI 1.0 removed the commands for features that ended with Orca 1.x: `run` and `runs`, `pools`, `workflows`, `memory`, `storage`, `stats`, `topology`, `bundles`, `apps`, `secrets` (now `vaults`), `credit`, `billing cap`, `agents publish` and `agents keys`, and the MCP server catalog (`mcp list`, `mcp add`, and the rest). `kit add` is now `kits copy`. Running one of them gives `unknown command`. See [bring your agents to the new Orca](/migration).
+
+CLI 1.4.0 removed `kits list`, `kits make`, `kits edit`, `kits publish`, and `kits withdraw`, since only Orca publishes kits. In an older CLI they print "Kits are published by Orca. You can copy Orca's kits from their pages." and exit 3.

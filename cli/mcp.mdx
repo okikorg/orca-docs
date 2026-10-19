@@ -3,7 +3,7 @@ title: "Use Orca from coding agents"
 description: "Run orca mcp serve so Claude Code, Cursor, and Codex can manage and talk to your Orca agents."
 ---
 
-`orca mcp serve` runs an MCP server on stdio with one tool per CLI action. A coding agent can then list models and create agents, start sessions and chat with them, put files in a session's sandbox and download what it made, manage skills, vaults, files, and kits, and read usage and your wallet, all as you.
+`orca mcp serve` runs an MCP server on stdio with one tool per CLI action. A coding agent can then list models and create agents, start sessions and chat with them, put files in a session's sandbox and download what it made, manage skills, vaults, and files, read and copy Orca's kits, and read usage and your wallet, all as you.
 
 It uses the CLI's own login, read again on every call, so you can add it before you sign in. Sign in first with [`orca login`](/cli/install#sign-in). Without a key, each tool answers "not logged in to Orca." and how to log in.
 
@@ -62,13 +62,15 @@ args = ["mcp", "serve"]
 | Vaults | `list_vaults`, `create_vault`, `delete_vault`, `list_credentials`, `add_credential`, `delete_credential` |
 | Files | `list_files`, `upload_file`, `download_file`, `delete_file` |
 | Usage and billing | `get_usage`, `list_usage_events`, `get_wallet`, `billing_checkout`, `billing_portal` |
-| Kits | `list_kits`, `make_kit`, `edit_kit`, `publish_kit`, `withdraw_kit`, `show_kit`, `copy_kit` |
+| Kits | `show_kit`, `copy_kit` |
 
 `chat` sends a message to an agent or session and waits for the reply, by default up to 120 seconds and at most 600. It returns the session ID, whether the turn finished, its status, and the reply, so the coding agent can continue the same session.
 
 For a new session, `chat` also takes `sandbox`, `template`, and `vaults`, as `create_session` does. `template` and `vaults` take IDs or names, so an agent that needs an environment template and a vault starts with one call, for example `chat({agent: "researcher", template: "research", vaults: ["orders"], message: "..."})`. A session you continue keeps its own sandbox and vaults, so these three are refused alongside `session`.
 
 `chat` and `create_session` take `files`, a list of `{path, dest}` on your machine, and put them in the session's sandbox as [`--file`](/cli/commands#files-in-and-out-of-a-sandbox) does. `list_artifacts` and `download_artifact` bring back what the agent saved under `/workspace/outputs`: one artifact by ID or path, or with `all` every file of the newest turn into a folder.
+
+`show_kit` returns a kit's review: what it runs, reaches, and spends, then each agent, skill, and template in full, and the `version` it describes. `copy_kit` takes `publicId`, that `version`, and `assets`, and copies nothing if the kit has changed since. Have the coding agent show you the review first, and copy only after you say yes. These two need CLI 1.4.0 or later; see [kits](/kits).
 
 `add_credential` takes `type`: `static_bearer` (the default) with `token`, or `static_basic` with `login` and `password`, which Orca sends to the server as HTTP Basic (see [a login and password](/guides/credentials#a-login-and-password)). Its `vault` is the vault's ID.
 
