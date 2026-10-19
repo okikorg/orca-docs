@@ -43,7 +43,7 @@ Set me up with Cram Coach, a study agent on Orca (orcapods.ai), a platform that 
 
 1. Install the Orca CLI with `curl -fsSL https://orcapods.ai/install.sh | sh` and check it with `orca --version` (1.4.0 or later; `orca update` updates an older one).
 2. Sign me in with `orca login`. It prints a one-time code and a link: show me both, wait while I approve, then tell me my balance from `orca billing wallet`.
-3. Run `orca kits show https://app.orcapods.ai/kits/kit-KDdGOG9YTLrtpQs64` and show me what it prints. Copy Cram Coach only after I say yes, with `orca kits copy https://app.orcapods.ai/kits/kit-KDdGOG9YTLrtpQs64 --yes`, and check it's there with `orca agents get cram-coach`.
+3. Run `orca kits show https://app.orcapods.ai/kits/kit-KDdGOG9YTLrtpQs64`, show me what it prints, and wait for my yes. Only then copy Cram Coach with `orca kits copy https://app.orcapods.ai/kits/kit-KDdGOG9YTLrtpQs64 --yes`, and check it's there with `orca agents get cram-coach`.
 4. Ask me for my chapter's PDF and my exam date. If I have no chapter, download the sample with `curl -L -o chapter.pdf https://github.com/okikorg/orca-kits/raw/main/kits/cram-coach/chapter.pdf`. Check the PDF's size with `wc -c`: if it is 48000 bytes or more, tell me Cram Coach takes PDFs under 48 KB for now, and stop.
 5. Run `orca chat cram-coach --sandbox --file <my PDF> "My exam is on <my date>."`. The last line names the session. Download the four files here with `orca sessions artifacts download <session id> --all`, and show me the first days of cram-plan.md.
 6. Delete the session with `orca sessions delete <session id> --yes` so the sandbox stops, then tell me how to import flashcards.csv into Anki.
@@ -263,10 +263,10 @@ Cram Coach is shared as a [kit](/kits), a link anyone can copy an agent from.
 
 <Steps>
 <Step title="Copy it into your account">
-`orca kits show https://app.orcapods.ai/kits/kit-KDdGOG9YTLrtpQs64` prints what the kit holds before you copy it: Cram Coach's instructions and tools in full, and what it runs, reaches, and spends.
+`orca kits show https://app.orcapods.ai/kits/kit-KDdGOG9YTLrtpQs64` prints what the kit holds before you copy it: Cram Coach's instructions and tools in full, and what it runs, reaches, and spends. `orca kits copy` prints the same, then asks y/N before it copies anything.
 
 ```bash
-orca kits copy https://app.orcapods.ai/kits/kit-KDdGOG9YTLrtpQs64 --yes
+orca kits copy https://app.orcapods.ai/kits/kit-KDdGOG9YTLrtpQs64
 ```
 
 Or open [Cram Coach's kit page](https://app.orcapods.ai/kits/kit-KDdGOG9YTLrtpQs64) and choose **Copy**.
