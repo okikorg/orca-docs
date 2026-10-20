@@ -57,6 +57,8 @@ Orca pauses **paid work** when your balance is below your plan's **minimum balan
 - **A running turn** that reaches the minimum ends `failed` with `usage_limit_exceeded` and `param: "orca_credit"`. The conversation is saved. A managed sandbox is paused with its files kept.
 - **Turns on your own provider key** in a session without a sandbox keep working.
 
+A call on Orca credit whose cost OpenRouter did not report when it ended, such as a call you cancel, a session deleted mid-reply, a stream cut short or a restart on Orca's side, is charged later from OpenRouter's own record of that call, usually within minutes and at most an hour after it, never from an estimate. Its charge is dated by the call and shows in your usage as **Charged later**. Until it arrives, the call still counts among the paid calls your organization can have running at once, so with several calls cancelled in a row a new call may wait a moment for its turn. Because the charge arrives after the call, it can take your balance below the minimum or below zero; paid work is then paused until credit brings the balance back to the minimum, and a top-up pays what is below zero first.
+
 Nothing switches who pays on its own. To continue, add credit and send the message again (the dashboard's **Continue** button sends "Continue"), or [switch that session to your own key](/providers#switch-who-pays-for-one-session).
 
 The dashboard shows this as **Out of Orca credit** on the turn, with **Add credit**, **Switch who pays**, and **Continue**. `GET /api/billing/wallet` returns `paid_work_paused: true` while paid work is paused.
