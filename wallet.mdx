@@ -117,7 +117,7 @@ For free credit, `GET /api/billing/wallet` also returns:
 
 | Field | Meaning |
 | --- | --- |
-| `signup_credit` | `status`: `needs_card` (add a card to unlock it), `granted`, `withheld` (Orca did not give it to this organization), or `not_eligible` (the person already had one). `amount_micro_usd`; `locked_micro_usd`, the signup credit left that is locked until a card is added (0 otherwise); and `card`, `{funding, country}` of the card that unlocked it, or `null`. Nothing else about the card is ever returned. |
+| `signup_credit` | `status`: `needs_card` (add a card to unlock it), `card_added` (the card was added while signup credit was off; the credit is added once it is back on), `granted`, `withheld` (Orca did not give it to this organization), or `not_eligible` (the person already had one). `available`: whether signup credit is on now. `amount_micro_usd`; `locked_micro_usd`, the signup credit left that is locked until a card is added (0 otherwise). Nothing about the card is ever returned. |
 | `free_credit_today_micro_usd` | Free credit spent today (UTC), with costs charged later counted on their call's day |
 | `free_credit_daily_micro_usd` | The [daily limit](#daily-limit), or `null` when there is none |
 | `free_credit_paused` | `true` while free credit is paused for the organization |
