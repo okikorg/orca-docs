@@ -45,7 +45,7 @@ for model in client.models.list().data:
 }
 ```
 
-Prices are in micro-USD (millionths of a dollar) per million tokens, as OpenRouter publishes them, and `null` where OpenRouter has no fixed price. They are shown for choosing a model; the charge is always what OpenRouter reports for the call. Orca reads each list at most every 10 minutes and keeps the last good copy; a group whose list cannot be read has `available: false` and no models.
+Prices are in micro-USD (millionths of a dollar) per million tokens, as OpenRouter publishes them, and `null` where OpenRouter has no fixed price. They are shown for choosing a model; the charge is always what OpenRouter reports for the call. When a call ends without OpenRouter reporting its cost, such as a stream cut short, Orca charges it later from OpenRouter's own record of that call, usually within minutes, never from an estimate. Orca reads each list at most every 10 minutes and keeps the last good copy; a group whose list cannot be read has `available: false` and no models.
 
 ## What Orca credit costs
 
