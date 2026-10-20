@@ -31,7 +31,7 @@ curl -X POST "$BASE_URL/agents/sessions/$SESSION_ID/events" \
 
 ## Behavior
 
- A submitted message can start a turn; do not infer completion from the `204`. Follow status events or retrieve turns. Closing a GET subscription does **not** cancel the turn. For SSE reconnection, send `Last-Event-ID` with a previously received event ID; the stream emits `id`, `event`, and JSON `data` fields. Treat IDs as opaque. Invalid cursors can return `400`.
+ A submitted message can start a turn; do not infer completion from the `204`. Follow status events or retrieve turns. Closing a GET subscription does **not** cancel the turn. For SSE reconnection, send `Last-Event-ID` with a previously received event ID; the stream emits `id`, `event`, and JSON `data` fields. Treat IDs as opaque. Invalid cursors can return `400`. A stream closes after 60 minutes, between events; reconnect with `Last-Event-ID`. A key or person can have 32 streams open at once and an organization 64; past that, opening one returns `429` `rate_limit_exceeded`. See [streaming](/guides/streaming#how-many-streams).
 
 ## Output event names
 
