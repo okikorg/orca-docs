@@ -76,6 +76,12 @@ Every event carries an ID. If you consume the raw SSE stream yourself, send the 
 
 Do **not** resend the message just because the stream dropped. The agent is probably still working on it.
 
+A stream also ends on its own after 60 minutes, always between two events, so a long turn needs a reconnect even on a steady network. Recover the same way. Raw SSE consumers that send `Last-Event-ID` lose nothing. A stream also ends soon after its key is revoked or its session is deleted.
+
+## How many streams
+
+Each key or signed-in person can have 32 event streams open at once, and each organization 64. One more is refused with HTTP 429 `rate_limit_exceeded`, "Too many event streams open: 32 at once per key or person. Close one and retry." (or "64 at once per organization"), with a `Retry-After` header. Close a stream when you stop reading it, for example by leaving the `with` block, and it frees its place.
+
 ## Cancel a turn
 
 To stop the agent, send a cancel event. Closing the stream does not cancel anything.
@@ -91,6 +97,8 @@ The turn ends with status `cancelled`. The conversation and everything the agent
 - **Stopping at the first text.** Deltas are fragments. Keep reading until a terminal turn event.
 - **Using a stream close as a cancel.** It is not one. Send `agent.session.input.cancel`.
 - **Resending after a disconnect.** Check the turn's status first.
+- **Treating a stream end as a turn end.** A stream closes after 60 minutes, or when the network drops. Check the turn's status, then reconnect.
+- **Leaving streams open.** Each open stream counts toward [how many you can have](#how-many-streams).
 - **Treating any event as the final answer.** Only `agent.session.turn.completed` means the agent finished. Even then, check the result.
 
 See also: [turns and statuses](/turn-lifecycle), [reliable session workflows](/guides/reliability), [runnable streaming examples](/examples), and the [events reference](/reference/events).

@@ -27,9 +27,20 @@ Check that the URL is `https://api.orcapods.ai/v1`, spelled exactly, with `https
 </Accordion>
 <Accordion title="429 rate_limit_exceeded">
 "Your plan runs N sessions at once": your organization already has as many sessions with a running turn as your plan allows. Send the message again when one ends, or [upgrade](/plans#sessions-at-once). "Rate limit reached. Retry after N seconds." means too many requests in a minute; wait that long, as the `Retry-After` header says.
+
+"Too many event streams open: 32 at once per key or person. Close one and retry." (or "64 at once per organization"): close streams you no longer read. See [how many streams](/guides/streaming#how-many-streams). "Too many uploads at once: 2 per organization. Retry when one finishes.": wait for an upload to finish, then send the next.
 </Accordion>
 <Accordion title="429 insufficient_quota">
 "Out of Orca credit: add credit, then continue the session". Your balance is under your plan's minimum balance, so Orca credit models and managed sandboxes are paused. [Add credit](/wallet#buy-credit), or use a model on your own key in a session without a sandbox.
+</Accordion>
+<Accordion title="503 server_busy">
+"The server is receiving too many uploads right now. Retry in a few seconds." Orca is receiving many uploads at once, from all organizations. Nothing is wrong with your file: retry after the `Retry-After` seconds.
+</Accordion>
+<Accordion title="503 device_login_unavailable">
+"Too many sign-ins are waiting for approval. Try again in a minute." Run `orca login` again after a minute.
+</Accordion>
+<Accordion title="413 File exceeds 512 MiB">
+An uploaded file can be at most 512 MiB. Split it, or compress it. Remember that a session stages files of at most 16 MiB; see [size limits](/guides/files-and-artifacts#size-limits).
 </Accordion>
 <Accordion title="503 balance_unavailable">
 "Orca could not read your credit balance. Try again in a moment." Orca could not read your balance for a moment, so it did not start paid work. Your credit is not the problem: retry after the `Retry-After` seconds. A turn already running ends with `internal_error` and the same message, and a web search fails with `balance_unavailable`; send the message again.

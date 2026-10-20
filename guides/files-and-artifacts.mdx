@@ -53,6 +53,8 @@ You can also add files to a running sandbox later; see [execution environments](
 | Everything staged into one sandbox at session start: files plus the unpacked contents of skills and plugins | 64 MiB |
 | A JSON request body, which carries `inline` data as base64 | 2 MiB |
 
+An upload over 512 MiB is refused with HTTP 413 `invalid_request`, "File exceeds 512 MiB". An organization can send 2 uploads at once; a third is refused with HTTP 429 `rate_limit_exceeded`, "Too many uploads at once: 2 per organization. Retry when one finishes." When Orca is receiving many uploads from everyone at once, an upload can be refused with HTTP 503 `server_busy`. Both carry a `Retry-After` header; send the file again after it.
+
 The 16 MiB limit applies to every staged file, whichever way you send it. You can upload a file of up to 512 MiB, but a session refuses to stage it if it is over 16 MiB. Split a bigger input, or stage only the part the agent needs.
 
 Base64 makes `inline` data about a third larger, and it travels in the request that creates the session. In practice, inline files together must stay well under 2 MiB. For anything bigger, upload the file and stage it by `file_id`.
@@ -123,5 +125,7 @@ It assumes an `agent` created as in [Build with the API](/build-with-the-api). I
 | Staging fails at session creation | The path is outside `/workspace`, or the file ID does not exist or belongs to another account. |
 | Staging fails with "Stored file exceeds staging size limit" | The uploaded file is over the 16 MiB staging limit. See [size limits](#size-limits). |
 | Session creation fails with HTTP 413 | The `inline` data makes the request body larger than 2 MiB. Upload the file and stage it by `file_id`. |
+| An upload fails with HTTP 413 "File exceeds 512 MiB" | The file is over the 512 MiB upload limit. Split or compress it. |
+| An upload fails with HTTP 429 or 503 | Two uploads of your organization are already running, or Orca is receiving many uploads. Retry after `Retry-After`. |
 
 See also: [execution environments](/guides/environments), [skills and templates](/guides/skills) for reusable bundles, [runnable examples](/examples), and the [files reference](/reference/resources#files).

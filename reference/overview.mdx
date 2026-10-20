@@ -73,6 +73,15 @@ Orca implements the OpenAI Agents API. The [OpenAI Agent API quickstart](https:/
 
 Each key can make 300 requests a minute, and each organization 600. Past that, requests return HTTP 429 `rate_limit_exceeded`, "Rate limit reached. Retry after N seconds.", with a `Retry-After` header. Your plan also limits how many [sessions run at once](/plans#sessions-at-once).
 
+Routes that need no key, such as the public plans and kits pages and `orca login`, allow 120 requests a minute from one IP address. An IPv6 address counts with the rest of its `/64`.
+
+A few things are also limited by how many are open at once. Each refusal is retryable and carries a `Retry-After` header.
+
+| What | At once | Past that |
+| --- | --- | --- |
+| [Event streams](/guides/streaming#how-many-streams) | 32 per key or signed-in person, 64 per organization | HTTP 429 `rate_limit_exceeded` |
+| [File uploads](/guides/files-and-artifacts#size-limits) | 2 per organization | HTTP 429 `rate_limit_exceeded` |
+
 ## Orca extensions
 
 These routes are Orca's own, outside the OpenAI Agents API. They live at `https://api.orcapods.ai`, without `/v1`. Call them with plain HTTP and the same bearer key; the `openai` clients have no methods for them.
