@@ -25,6 +25,7 @@ PLAN_NUMBER = (
     r"|\$\d[\d,.]* (?:of (?:Orca )?credit|minimum|pack)|(?:below|under|at least) \**\$\d"
     r"|\d+(?:\.\d+)?% of the price|(?:paused after|used for) \d+ minutes"
     r"|\d[\d,]* hours of machine time|runs \d+ sessions? at once"
+    r"|(?:valid for|expires? after|lasts?) \d+ (?:months?|days?)"
 )
 
 

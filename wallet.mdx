@@ -3,7 +3,7 @@ title: "Wallet and credit"
 description: "What Orca credit pays for, how to buy it, what happens when it runs low, and how to read your usage."
 ---
 
-Each organization has one **wallet** of Orca credit. Your balance is everything credited minus everything charged. Credit never expires.
+Each organization has one **wallet** of Orca credit. Your balance is everything credited minus everything charged. Credit you buy never expires. Free credit (the signup credit and credit Orca grants) expires a set time after it is given: the [pricing page](https://orcapods.ai/pricing) says how long, and the Wallet shows the date. See [when free credit expires](#when-free-credit-expires).
 
 ## What credit pays for
 
@@ -17,10 +17,22 @@ Tokens on your own provider key (`<provider>/<id>`) are billed by that provider.
 
 ## Where credit comes from
 
-- **Signup credit.** A new account starts with the signup credit on the [pricing page](https://orcapods.ai/pricing). It is given once per person: a second organization you create starts with none.
+- **Signup credit.** A new account starts with the signup credit on the [pricing page](https://orcapods.ai/pricing). It is given once per person: a second organization you create starts with none. It is free credit, so it expires; see [when free credit expires](#when-free-credit-expires).
+- **Credit from Orca.** Credit Orca grants your organization, such as porting help. It is free credit too, and the email that tells you about it gives its expiry date.
 - **Credit packs.** An admin buys a pack. Each pack's processing fee is taken from the pack; the [pricing page](https://orcapods.ai/pricing) gives the fee and what a pack adds after it. The packs on sale, with the credit each adds and its fee, are listed on the dashboard's **Wallet** page and by `orca billing wallet`.
 
 Plans do not add credit. A plan's included machine time is not a second balance.
+
+## When free credit expires
+
+Free credit is usable through the end of the day (UTC) a set number of calendar months after it is given; the [pricing page](https://orcapods.ai/pricing) says how many. When that day does not exist in the month, it is the month's last day: free credit given on 31 December lasts through the end of February. Credit you buy never expires, and neither do balances carried over from Orca 1.x.
+
+- **Free credit is spent first.** Every charge takes free credit before credit you bought, the free credit expiring soonest first. Your paid credit is never spent while free credit sits unused.
+- **At the date,** whatever is left of that free credit leaves your balance, as one entry. Nothing already spent is taken back.
+- **A reminder** goes to your organization's admins a week before, when at least a dollar of it is left.
+- **A session running at that moment** keeps going. A charge written after the date is paid from your paid credit; if you have none, the balance can end a little below zero, and paid work pauses as in [when credit runs low](#when-credit-runs-low) until you add credit.
+
+The dashboard's **Wallet** shows **Free credit** with its expiry date and **Paid credit** beside your balance; `orca billing wallet` prints the same. In the API, `GET /api/billing/wallet` returns `free_credit_micro_usd`, `paid_credit_micro_usd`, `free_credit` (each live grant with `left_micro_usd` and `expires_at`, soonest first) and `expired_micro_usd`.
 
 ## Buy credit
 
@@ -65,8 +77,8 @@ The dashboard shows this as **Out of Orca credit** on the turn, with **Add credi
 
 | Route | Returns |
 | --- | --- |
-| `GET /api/billing/wallet` | Balance, total credited and charged, the minimum balance, `paid_work_paused`, your plan and period, included and used machine time, and every field of `GET /api/public/plans` |
-| `GET /api/public/plans` | Every plan fact, with no key needed: each plan's price, included machine time, extra machine time rate, sessions at once and minimum balance; the signup credit; OpenRouter's fee (`openrouter_fee_bps`); the processing fee and the packs on sale; the machine; and `idle_seconds`, how long a sandbox idles before it is paused. The pricing page is built from it. |
+| `GET /api/billing/wallet` | Balance, total credited and charged, free and paid credit with each free grant's expiry, what has expired, the minimum balance, `paid_work_paused`, your plan and period, included and used machine time, and every field of `GET /api/public/plans` |
+| `GET /api/public/plans` | Every plan fact, with no key needed: each plan's price, included machine time, extra machine time rate, sessions at once and minimum balance; the signup credit; how many months free credit lasts (`granted_credit_months`, `null` when it never expires); OpenRouter's fee (`openrouter_fee_bps`); the processing fee and the packs on sale; the machine; and `idle_seconds`, how long a sandbox idles before it is paused. The pricing page is built from it. |
 | `GET /api/usage` | Totals per meter for a period (30 days by default, or `start` and `end` in Unix seconds), a `series` over time (below), and totals grouped by `model`, `provider`, `credential`, `session`, or `agent` with `group_by`. With `group_by`, `group_costs` gives each key's cost across every meter; they add up to the period's `cost_micro_usd`. `session=<id>` narrows it to one session. |
 | `GET /api/usage/events` | The newest usage rows, each with its cost. Filter with `meter`, or `charged=true` for only the rows that cost something; page with `limit` and `after`. A row at cost 0 whose money is on another row of the same operation has `charged_on`: `call` when its call's row carries the money (a token row), `search` when the search's row does (the search's tool call, or its call when the whole cost is on the search). Any other row has none, and its own cost is what it was charged. |
 
