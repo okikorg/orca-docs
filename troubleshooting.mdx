@@ -31,7 +31,7 @@ Check that the URL is `https://api.orcapods.ai/v1`, spelled exactly, with `https
 "Too many event streams open: 32 at once per key or person. Close one and retry." (or "64 at once per organization"): close streams you no longer read. See [how many streams](/guides/streaming#how-many-streams). "Too many uploads at once: 2 per organization. Retry when one finishes.": wait for an upload to finish, then send the next.
 </Accordion>
 <Accordion title="429 insufficient_quota">
-"Out of Orca credit: add credit, then continue the session". Your balance is under your plan's minimum balance, so Orca credit models and managed sandboxes are paused. [Add credit](/wallet#buy-credit), or use a model on your own key in a session without a sandbox.
+"Out of Orca credit: add credit, then continue the session". Your balance is under your plan's minimum balance, so paid work is paused: turns on Orca credit models or with a managed sandbox are refused, and a running sandbox goes to sleep with its files kept. [Add credit](/wallet#buy-credit), or use a model on your own key in a session without a sandbox.
 </Accordion>
 <Accordion title="503 server_busy">
 "The server is receiving too many uploads right now. Retry in a few seconds." Orca is receiving many uploads at once, from all organizations. Nothing is wrong with your file: retry after the `Retry-After` seconds.
@@ -109,7 +109,7 @@ On hosted Orca, `self_hosted` environments are coming soon, and `network.access:
 Only with an Orca server you run yourself. `workspace_directory` must be an absolute path with no symbolic links in it. On macOS `/tmp` is a symlink; use the real path.
 </Accordion>
 <Accordion title="Creating a session with a sandbox is refused">
-HTTP 429 `insufficient_quota` means the sandbox could not run a minute: your balance is below the [minimum](/plans#paid-work-needs-a-minimum-balance), or on Free the included machine time is used up. HTTP 429 `rate_limit_exceeded` means your plan's [sandboxes at once](/plans#sandboxes-at-once) are running: wait for an idle one to pause, or delete a session you no longer need. HTTP 403 `storage_quota_exceeded` means your organization is at its [storage limit](/plans#storage): delete files, skills or sessions.
+HTTP 429 `insufficient_quota` means the sandbox could not run a minute: your balance is below the [minimum](/plans#paid-work-needs-a-minimum-balance), or on Free the included machine time is used up. HTTP 429 `rate_limit_exceeded` means your plan's [sandboxes at once](/plans#sandboxes-at-once) are running: wait for an idle one to go to sleep, put one to sleep now with `orca sessions sleep <id>`, or delete a session you no longer need. HTTP 403 `storage_quota_exceeded` means your organization is at its [storage limit](/plans#storage): delete files, skills or sessions.
 </Accordion>
 <Accordion title="A turn fails with usage_limit_exceeded and no param">
 "This plan's included machine hours for this period are used up": a Free plan has used its included machine time (on the [pricing page](https://orcapods.ai/pricing)). Upgrade to Pro or Max, or wait for the next month. See [plans](/plans#machine-time).

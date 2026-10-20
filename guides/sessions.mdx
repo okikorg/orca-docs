@@ -145,6 +145,8 @@ print(session.status, session.required_actions)
 
 Check `status` before you send anything. If it is `requires_action`, the agent is waiting for you; see [`required_actions`](/turn-lifecycle#when-the-session-needs-you).
 
+A session with a managed sandbox does not need to keep it awake while you are away. The sandbox goes to sleep on its own after the idle time, or you can [put it to sleep](/guides/environments#put-a-sandbox-to-sleep-now) at once. The conversation stays, everything in `/workspace` is saved, and the next message wakes it. Running programs do not come back. See [when a sandbox sleeps](/guides/environments#when-a-sandbox-sleeps).
+
 ## Delete when finished
 
 `sessions.delete(session_id)` deletes the conversation, its artifacts, and its sandbox. Download anything you need first. Deleting a session does not delete its agent, and deleting an agent is a separate call.

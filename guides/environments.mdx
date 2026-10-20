@@ -118,9 +118,27 @@ print(agents.environments.files.list(env_id, path="/workspace").data)
 
 If many sessions need the same setup, save it once as an **environment template** and pass `environment_template_id` when creating a session. A template accepts the same fields as above. Fields you also set on the session override the template's, with one exception: a session can tighten the template's network policy but not loosen it. See [skills and templates](/guides/skills).
 
-### Idle sandboxes are paused
+### When a sandbox sleeps
 
-A sandbox that has not been used for the idle time the [pricing page](https://orcapods.ai/pricing) shows is paused to free resources. Until then it counts as machine time; while paused, it does not. Its status becomes `disconnected`. The next time the session needs it, Orca restores it automatically, with all files in `/workspace` intact. Programs that were running inside it, such as a server the agent started, do not survive the pause. Declared packages, environment variables, and network policy come back, and `setup_commands` run again during the restore, so keep setup commands safe to repeat.
+A sandbox that has not been used for the idle time the [pricing page](https://orcapods.ai/pricing) shows goes to sleep on its own. You can also put it to sleep yourself, at once ([below](#put-a-sandbox-to-sleep-now)). Awake, it counts as machine time; asleep, it does not. The session keeps its conversation, and its environment's status becomes `disconnected`.
+
+The next message, or a request for one of its files, wakes it. Waking takes a few seconds, longer for a large workspace, and the message waits for it.
+
+**What comes back:** everything in `/workspace`, declared packages, environment variables and network rules. Setup commands (`setup_commands`) run again while it wakes, so keep them safe to repeat.
+
+**What does not:** running programs and their memory, such as a server the agent started. Start them again after it wakes.
+
+### Put a sandbox to sleep now
+
+When you are done for now, put the session's sandbox to sleep instead of waiting for the idle time. From the CLI, `orca sessions sleep <session-id>`; in the dashboard, **Put sandbox to sleep** in the session's ⋯ menu; from an agent, the `sleep_session` tool; over HTTP, `POST /api/sessions/{session_id}/sandbox/sleep` (see [session sandbox](/reference/overview#session-sandbox)).
+
+- It is refused while a turn is running. Wait for the turn to end, or stop it, then try again.
+- Saving the files can take a few seconds to a few minutes for a large workspace. The CLI waits and tells you when it is asleep.
+- Running programs stop first, so they are stopped even if the sandbox then stays awake.
+- A sandbox whose files are too large to save stays awake, and you are told. Delete files in `/workspace` and try again.
+- Opening the session does not wake a sandbox you put to sleep. Sending a message does.
+- Nothing extra is charged: machine time stops, and the saved files count as storage, as with idle sleep.
+- Deleting the session is different: it deletes the conversation, the artifacts and the sandbox's files.
 
 ## Self-hosted environment
 

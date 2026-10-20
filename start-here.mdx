@@ -18,7 +18,7 @@ In about ten minutes you'll have a research agent of your own that looks things 
     Point the official `openai` package at Orca and keep your code standard. No new SDK.
   </Card>
   <Card title="A sandbox for every session" icon="server" href="/guides/environments">
-    A session can have its own sandbox to run commands and write files. Idle sandboxes pause with their files kept.
+    A session can have its own sandbox to run commands and write files. Idle sandboxes go to sleep with their files kept.
   </Card>
   <Card title="Any model, and you choose who pays" icon="shuffle" href="/providers">
     Any model on OpenRouter on your Orca credit, or your own provider key. The model name says which, and Orca never switches it.
@@ -253,7 +253,7 @@ orca sessions artifacts download session_... --all
 orca sessions delete session_... --yes
 ```
 
-`--all` saves every file from Scout's last turn here, so you now have `python-releases.csv`. To keep working in the same sandbox first, with the files where Scout left them, run `orca chat scout --session session_...` before you delete it. A sandbox that sits idle pauses itself and stops using machine time, with its files kept for when the session needs it again.
+`--all` saves every file from Scout's last turn here, so you now have `python-releases.csv`. To keep working in the same sandbox first, with the files where Scout left them, run `orca chat scout --session session_...` before you delete it. A sandbox that sits idle goes to sleep and stops using machine time, with its files kept for when the session needs it again.
 
 To hand Scout a file of yours, add `--file data.csv` to `orca chat`: it lands in the sandbox at `/workspace/data.csv`.
 

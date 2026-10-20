@@ -91,6 +91,8 @@ These routes are Orca's own, outside the OpenAI Agents API. They live at `https:
 | GET | `/v1/models` | Orca credit models, as `orca/openrouter/<id>` | [Models](/providers#discover-orca-credit-models) |
 | GET | `/api/models` | Every model you can pick, grouped by who pays, with Orca credit prices | [Models](/providers#discover-orca-credit-models) |
 | GET, POST | `/api/sessions/{session_id}/model` | Read or switch the model one session's next turn uses | [Switch who pays](/providers#switch-who-pays-for-one-session) |
+| GET | `/api/sessions/{session_id}/sandbox` | Whether a session's sandbox is awake, going to sleep, asleep or waking up, and how its last sleep went | [Put a sandbox to sleep now](/guides/environments#put-a-sandbox-to-sleep-now) |
+| POST | `/api/sessions/{session_id}/sandbox/sleep` | Put a session's sandbox to sleep now | [Put a sandbox to sleep now](/guides/environments#put-a-sandbox-to-sleep-now) |
 | GET | `/api/providers`, `/api/providers/{provider}` | Supported providers and whether you have a key | [Provider keys](/providers#connect-a-provider) |
 | PUT, DELETE | `/api/providers/{provider}/key` | Set or remove a provider key (admin) | [Provider keys](/providers#connect-a-provider) |
 | GET | `/api/providers/{provider}/models` | That provider's model list | [Provider keys](/providers#connect-a-provider) |
@@ -104,3 +106,55 @@ These routes are Orca's own, outside the OpenAI Agents API. They live at `https:
 | POST | `/api/billing/portal` | A link to Polar's billing portal (admin) | [Plans](/plans#change-your-plan) |
 | GET | `/api/usage`, `/api/usage/events` | Usage totals and rows, with their cost | [Wallet](/wallet#read-the-wallet-and-your-usage) |
 | | `/api/public/kits/...`, `/api/kits/{public_id}/copy` | Read Orca's kits and copy one | [Kits](/kits#routes) |
+
+### Session sandbox
+
+`GET /api/sessions/{session_id}/sandbox` reads a session's sandbox, and `POST /api/sessions/{session_id}/sandbox/sleep` puts it to sleep now (see [put a sandbox to sleep now](/guides/environments#put-a-sandbox-to-sleep-now)). Both need the member role and return the same object:
+
+```json
+{
+  "object": "session.sandbox",
+  "session_id": "session_…",
+  "environment_id": "env_…",
+  "state": "asleep",
+  "last_sleep": {
+    "reason": "requested",
+    "started_at": 1792483200,
+    "finished_at": 1792483209,
+    "outcome": "asleep",
+    "message": null
+  }
+}
+```
+
+| Field | Meaning |
+| --- | --- |
+| `state` | `awake`, `going_to_sleep`, `asleep`, `waking`, or `none` when the session has no managed sandbox (no environment, a self-hosted one, or one that failed to start). |
+| `environment_id` | The session's environment, `null` when `state` is `none`. On `/v1` its `status` reads `disconnected` while asleep and `pending` while waking. |
+| `last_sleep` | The last time the sandbox went to sleep, or tried to, since it last woke; `null` if it has not. |
+| `last_sleep.reason` | Why it went to sleep: `requested` (someone put it to sleep), `idle` (the idle time passed), or `out_of_credit`, `hours_used_up` or `unpriced` (Orca stopped its machine time; see [when credit runs low](/wallet#when-credit-runs-low)). More reasons may be added; show one you do not know as asleep. |
+| `last_sleep.outcome` | `null` while going to sleep, then `asleep`, or why it stayed awake: `too_large` (its files are too large to save), `failed` or `interrupted` (a message or a file request reached it first, or the server restarted). |
+| `last_sleep.message` | For an outcome other than `asleep`, a message to show the user. |
+
+The POST takes an empty body or `{}`. It returns as soon as the sandbox starts going to sleep; poll the GET to see it finish.
+
+| Case | Status | Body |
+| --- | --- | --- |
+| Awake, sleep started | 202 | The object, `state: "going_to_sleep"`, `last_sleep.outcome: null` |
+| Already going to sleep | 202 | The object |
+| Already asleep | 200 | The object |
+| No managed sandbox | 200 | The object, `state: "none"` |
+| A turn is running | 409 `conflict` | "A turn is running; put the sandbox to sleep once it ends." |
+| Starting up or waking up | 409 `conflict` | "The sandbox is waking up; put it to sleep once it is awake." |
+| Unknown session | 404 | |
+
+```bash
+export ORCA_ORIGIN="https://api.orcapods.ai"
+curl --fail-with-body -X POST "$ORCA_ORIGIN/api/sessions/$SESSION_ID/sandbox/sleep" \
+  -H "Authorization: Bearer $ORCA_API_KEY"
+```
+
+```json
+{"object": "session.sandbox", "session_id": "session_…", "environment_id": "env_…", "state": "going_to_sleep",
+ "last_sleep": {"reason": "requested", "started_at": 1792483200, "finished_at": null, "outcome": null, "message": null}}
+```
