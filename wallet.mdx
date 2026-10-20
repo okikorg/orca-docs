@@ -17,7 +17,7 @@ Tokens on your own provider key (`<provider>/<id>`) are billed by that provider.
 
 ## Where credit comes from
 
-- **Signup credit.** A new account starts with the signup credit on the [pricing page](https://orcapods.ai/pricing). It is given once per person: a second organization you create starts with none.
+- **Signup credit.** A new account gets the signup credit on the [pricing page](https://orcapods.ai/pricing) once the person who created the organization adds a card, which is never charged; see [the signup credit needs a card](#the-signup-credit-needs-a-card). It is given once per person: a second organization you create gets none. It is free credit; see [what free credit pays for](#what-free-credit-pays-for).
 - **Credit packs.** An admin buys a pack. Each pack's processing fee is taken from the pack; the [pricing page](https://orcapods.ai/pricing) gives the fee and what a pack adds after it. The packs on sale, with the credit each adds and its fee, are listed on the dashboard's **Wallet** page and by `orca billing wallet`.
 
 Plans do not add credit. A plan's included machine time is not a second balance.
@@ -49,6 +49,47 @@ curl --fail-with-body -X POST "$ORCA_ORIGIN/api/billing/checkout" \
 
 `ORCA_ORIGIN` is `https://api.orcapods.ai`, without `/v1`. The `offer` is `pack:<cents>` for a pack, or `plan:pro` or `plan:max` for a plan.
 
+## The signup credit needs a card
+
+The signup credit is held until the person who created the organization adds a valid payment card in their own name, in the dashboard's **Wallet**. Orca never charges the card for it: the card only confirms a real person and prevents abuse. Your bank may show a temporary authorization, which is released and never collected. Adding a card starts no plan and no purchase. See [add a card for free credit](/dashboard/wallet-and-usage#add-a-card-for-free-credit) for the steps.
+
+- **One signup credit per card, ever.** A card that already unlocked a signup credit, for any organization, unlocks none again. A card that belongs to a banned or suspended user never unlocks one.
+- **A credit or debit card, typed in.** Prepaid cards cannot unlock it, and neither can wallet payments (Apple Pay, Google Pay, Link). If your bank does not verify the card, nothing is charged and you can add another card. After too many attempts in one organization, ask on [Discord](https://discord.gg/btTYzdzvqq).
+- **Only in the dashboard,** by the organization's creator, signed in. Other members, API keys and the CLI cannot add the card.
+- **Skipping it is fine.** Without a card your organization works as before on your own provider keys and on credit you buy. It just has no free credit.
+- **Organizations that already had the signup credit:** what is left of it is locked until the creator adds a card. It stays in your balance and keeps its expiry date, but pays for nothing until then. Adding a card runs the same checks and unlocks it.
+- **When Orca does not give it,** the Wallet says "Free credit isn't available for this organization". Buy credit to start, or ask on [Discord](https://discord.gg/btTYzdzvqq).
+
+Credit Orca grants your organization, such as porting help, needs no card.
+
+## What free credit pays for
+
+Free credit is the signup credit and credit Orca grants. Credit you buy is paid credit.
+
+Free credit pays only for Orca credit models priced at or under a **price ceiling** on input and output tokens. The [pricing page](https://orcapods.ai/pricing) gives the ceiling. A model is judged on its highest listed price, including its long-prompt tiers: a model whose base price is under the ceiling but whose long-prompt price is over it needs paid credit.
+
+- **Models above the ceiling,** and models with no fixed price (OpenRouter's auto router and other routers), need credit you buy. A card on file does not change this.
+- **Web search follows the session's model:** free credit pays for a search when it pays for the model, and the search counts toward the [daily limit](#daily-limit).
+- **It is decided when a turn starts,** with the model the turn runs; a price change on OpenRouter applies from the next turn. Subagents follow their lead.
+- **Free credit pays first** on a model it covers. On a model above the ceiling, only paid credit pays, and your free credit is left as it is.
+- **Credit you buy** pays for any model and is never limited.
+- **Machine time** is not affected by any of this.
+
+To see which models free credit covers: the dashboard's model picker marks the others **Paid credit only**, `orca models` marks them `paid credit only`, and `GET /api/models` returns `free_credit: true` or `false` for each Orca credit model. See [models and provider keys](/providers#which-models-free-credit-pays-for).
+
+## Daily limit
+
+Free credit pays for up to a **daily limit** per organization per UTC day. The [pricing page](https://orcapods.ai/pricing) gives the limit.
+
+- **It counts what calls really cost,** including costs charged later, which count on the day of their call.
+- **A call admitted under the limit finishes** and is charged in full, so a day can end a little over the limit.
+- **Once the limit is reached,** the next call is paid from credit you bought. With no paid credit to pay for it, it is refused with `free_credit_daily_limit`.
+- **It resets at 00:00 UTC.**
+- **One model call on free credit runs at a time** per organization. Subagents on free credit wait their turn. Calls on credit you buy never wait for it.
+- **Credit you buy is never limited,** and machine time does not count toward the limit.
+
+The dashboard's **Wallet** shows today's free credit spend against the limit, and so does `orca billing wallet`.
+
 ## When credit runs low
 
 Orca pauses **paid work** when your balance is below your plan's **minimum balance**, on the [pricing page](https://orcapods.ai/pricing) and in the wallet as `min_balance_micro_usd`. Paid work is model calls and web searches on Orca credit, and managed sandboxes, including their included machine time.
@@ -61,6 +102,8 @@ Nothing switches who pays on its own. To continue, add credit and send the messa
 
 The dashboard shows this as **Out of Orca credit** on the turn, with **Add credit**, **Switch who pays**, and **Continue**. `GET /api/billing/wallet` returns `paid_work_paused: true` while paid work is paused.
 
+Free credit has refusals of its own. They come only when credit you bought cannot pay either, and each has a `param` that says why: the signup credit is locked until a card is added (`free_credit_locked`), the model needs paid credit (`paid_credit_required`), today's free credit is used (`free_credit_daily_limit`), or free credit is paused for the organization (`free_credit_paused`). On a model free credit does not pay for, only credit you bought counts toward the minimum balance, and locked signup credit never counts. When paid work for an organization is suspended, a new message is refused with HTTP 403 `organization_suspended`. See [free credit errors](/reference/errors#free-credit-errors) for what to do about each.
+
 ## Read the wallet and your usage
 
 | Route | Returns |
@@ -69,6 +112,18 @@ The dashboard shows this as **Out of Orca credit** on the turn, with **Add credi
 | `GET /api/public/plans` | Every plan fact, with no key needed: each plan's price, included machine time, extra machine time rate, sessions at once and minimum balance; the signup credit; OpenRouter's fee (`openrouter_fee_bps`); the processing fee and the packs on sale; the machine; and `idle_seconds`, how long a sandbox idles before it is paused. The pricing page is built from it. |
 | `GET /api/usage` | Totals per meter for a period (30 days by default, or `start` and `end` in Unix seconds), a `series` over time (below), and totals grouped by `model`, `provider`, `credential`, `session`, or `agent` with `group_by`. With `group_by`, `group_costs` gives each key's cost across every meter; they add up to the period's `cost_micro_usd`. `session=<id>` narrows it to one session. |
 | `GET /api/usage/events` | The newest usage rows, each with its cost. Filter with `meter`, or `charged=true` for only the rows that cost something; page with `limit` and `after`. A row at cost 0 whose money is on another row of the same operation has `charged_on`: `call` when its call's row carries the money (a token row), `search` when the search's row does (the search's tool call, or its call when the whole cost is on the search). Any other row has none, and its own cost is what it was charged. |
+
+For free credit, `GET /api/billing/wallet` also returns:
+
+| Field | Meaning |
+| --- | --- |
+| `signup_credit` | `status`: `needs_card` (add a card to unlock it), `granted`, `withheld` (Orca did not give it to this organization), or `not_eligible` (the person already had one). `amount_micro_usd`; `locked_micro_usd`, the signup credit left that is locked until a card is added (0 otherwise); and `card`, `{funding, country}` of the card that unlocked it, or `null`. Nothing else about the card is ever returned. |
+| `free_credit_today_micro_usd` | Free credit spent today (UTC), with costs charged later counted on their call's day |
+| `free_credit_daily_micro_usd` | The [daily limit](#daily-limit), or `null` when there is none |
+| `free_credit_paused` | `true` while free credit is paused for the organization |
+| `suspended` | `true` while paid work for the organization is suspended |
+
+`GET /api/public/plans`, and so the wallet, has a `free_credit` object: `max_input_micro_usd_per_million` and `max_output_micro_usd_per_million` (the price ceiling), `daily_micro_usd` (the daily limit), `in_flight` (how many free credit calls run at once), and `requires_card`, each `null` when off.
 
 Money is in micro-USD (millionths of a dollar). Every member can read the wallet and usage.
 

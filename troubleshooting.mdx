@@ -30,6 +30,11 @@ Check that the URL is `https://api.orcapods.ai/v1`, spelled exactly, with `https
 </Accordion>
 <Accordion title="429 insufficient_quota">
 "Out of Orca credit: add credit, then continue the session". Your balance is under your plan's minimum balance, so Orca credit models and managed sandboxes are paused. [Add credit](/wallet#buy-credit), or use a model on your own key in a session without a sandbox.
+
+With a `param`, free credit could not pay: see [free credit](#free-credit) below.
+</Accordion>
+<Accordion title="403 organization_suspended">
+"Paid work for this organization is suspended." Turns that can cost money are refused, and a running turn ends with `usage_limit_exceeded` and `param` `orca_suspended`. Ask on [Discord](https://discord.gg/btTYzdzvqq). Turns on your own provider key in a session without a sandbox keep working.
 </Accordion>
 <Accordion title="503 balance_unavailable">
 "Orca could not read your credit balance. Try again in a moment." Orca could not read your balance for a moment, so it did not start paid work. Your credit is not the problem: retry after the `Retry-After` seconds. A turn already running ends with `internal_error` and the same message, and a web search fails with `balance_unavailable`; send the message again.
@@ -53,6 +58,34 @@ A turn is running, or waiting for your function results. Switch once it ends.
 </Accordion>
 <Accordion title="400 on an agent setting">
 Some settings are not available with every provider. `GET /api/providers` lists each provider's `unsupported_agent_fields`. The `param` field of the error names the setting.
+</Accordion>
+</AccordionGroup>
+
+## Free credit
+
+Each of these comes as HTTP 429 `insufficient_quota` with this `param` when you send a message, as `usage_limit_exceeded` with this `param` when a running turn's next call is refused, or as a web search's `error.code`. Credit you buy clears all of them. See [free credit errors](/reference/errors#free-credit-errors).
+
+<AccordionGroup>
+<Accordion title="free_credit_locked">
+"Add a card to get your free credit." The signup credit is held until the person who created the organization adds a card in the dashboard's **Wallet**. The card is never charged, and adding it starts no plan or purchase. The CLI cannot add a card. Until then, buy credit or use a model on your own provider key. See [the signup credit needs a card](/wallet#the-signup-credit-needs-a-card).
+</Accordion>
+<Accordion title="The card is refused">
+"Your bank didn't verify this card", "Prepaid cards can't unlock free credit", or "Type your card in rather than using a wallet". Nothing was charged. Add a credit or debit card in your name, typed in; Apple Pay, Google Pay and Link cannot unlock free credit. "Orca could not check your card right now" means try again in a minute. After "Too many card attempts for this organization", ask on [Discord](https://discord.gg/btTYzdzvqq).
+</Accordion>
+<Accordion title="Free credit isn't available for this organization">
+The Wallet says this when Orca did not give the signup credit to this organization. The organization works on credit you buy and on your own provider keys. If you think it is a mistake, ask on [Discord](https://discord.gg/btTYzdzvqq).
+</Accordion>
+<Accordion title="paid_credit_required">
+"This model needs paid credit." Free credit pays only for models at or under a price ceiling, judged on the model's highest listed price, including long-prompt tiers; routers such as OpenRouter's auto router always need paid credit. [Buy credit](/wallet#buy-credit), or [switch the session](/providers#switch-who-pays-for-one-session) to a model without the **Paid credit only** mark (`free_credit: true` in `GET /api/models`). A card on file does not change which models free credit pays for.
+</Accordion>
+<Accordion title="free_credit_daily_limit">
+"Today's free credit is used." Free credit pays for up to a daily limit per organization, and more is available at 00:00 UTC. Continue then, or buy credit to keep going now. See [daily limit](/wallet#daily-limit).
+</Accordion>
+<Accordion title="free_credit_paused">
+"Free credit is paused for this organization." Credit you buy still works. Buy credit to keep going, or ask on [Discord](https://discord.gg/btTYzdzvqq).
+</Accordion>
+<Accordion title="Subagents wait for each other">
+On free credit, one model call runs at a time per organization, so subagents take turns. Calls on credit you buy run side by side as before.
 </Accordion>
 </AccordionGroup>
 

@@ -38,7 +38,8 @@ for model in client.models.list().data:
     {"payer": "orca_credit", "provider": "openrouter", "label": "Orca credit", "available": true,
      "models": [{"id": "orca/openrouter/openai/gpt-5.6-luna", "name": "OpenAI: GPT-5.6 Luna",
                  "context_length": 400000,
-                 "input_micro_usd_per_million": 200000, "output_micro_usd_per_million": 1200000}]},
+                 "input_micro_usd_per_million": 200000, "output_micro_usd_per_million": 1200000,
+                 "free_credit": true}]},
     {"payer": "own_key", "provider": "openai", "label": "OpenAI", "available": true,
      "models": [{"id": "openai/gpt-5.6-luna"}]}
   ]
@@ -52,6 +53,14 @@ Prices are in micro-USD (millionths of a dollar) per million tokens, as OpenRout
 Each call on Orca credit is charged what OpenRouter charges for it, including its cache and reasoning tokens, plus [their fee](https://orcapods.ai/pricing), with no Orca markup. Orca keeps no price list: the price is OpenRouter's at the time of the call. Your usage shows each call's cost, the provider's cost and the fee.
 
 A web search on an Orca credit model is charged too; see [what a search costs](#what-a-search-costs).
+
+### Which models free credit pays for
+
+[Free credit](/wallet#what-free-credit-pays-for) (the signup credit and credit Orca grants) pays only for Orca credit models at or under a price ceiling on input and output tokens, given on the [pricing page](https://orcapods.ai/pricing). A model is judged on its highest listed price, including long-prompt tiers. Models above the ceiling, and models with no fixed price (OpenRouter's auto router and other routers), need credit you buy. Credit you buy pays for any model.
+
+In `GET /api/models`, each Orca credit model has `free_credit`: `true` when free credit pays for it, `false` when it needs credit you buy. The dashboard's model picker marks `false` models **Paid credit only**, and `orca models` marks them `paid credit only`. `/v1/models` does not carry it. The model names elsewhere on this page are examples of names, not of what free credit covers: check `free_credit` for any model you pick.
+
+Whether free credit pays is decided when a turn starts, so a price change applies from the next turn, and subagents follow their lead. A turn on a model free credit does not cover, with no paid credit to pay for it, is refused with `paid_credit_required`; see [free credit errors](/reference/errors#free-credit-errors).
 
 ## Connect a provider
 
@@ -121,7 +130,7 @@ A turn checks your key again when it starts. Nothing ever falls back from your k
 
 ## Web search
 
-`web_search` runs on your agent's own model, through the same route and key as its calls, and whoever pays for that model pays for the search. Subagents search on their lead's model. A search never falls back to Orca credit or to another model.
+`web_search` runs on your agent's own model, through the same route and key as its calls, and whoever pays for that model pays for the search. On Orca credit, free credit pays for a search only when it pays for the session's model, and the search counts toward free credit's [daily limit](/wallet#daily-limit). Subagents search on their lead's model. A search never falls back to Orca credit or to another model.
 
 | Model | How it searches | Who pays |
 | --- | --- | --- |
@@ -150,6 +159,11 @@ The turn goes on. The search's `web_search_call` item has `status` `incomplete`,
 | --- | --- | --- |
 | `out_of_credit` | Out of Orca credit: add credit, then continue the session | [Add credit](/wallet#buy-credit), then continue the session. |
 | `balance_unavailable` | Orca could not read your credit balance. Try again in a moment. | Try again in a moment. Your credit is not the problem. |
+| `free_credit_locked` | Add a card to get your free credit. We won't charge it: it's only to confirm you're a real person. Add it in the Wallet: https://app.orcapods.ai/wallet | The organization's creator adds a card in the dashboard's **Wallet**; it is never charged. Or buy credit. |
+| `paid_credit_required` | This model needs paid credit. Free credit covers models up to the price ceiling. Add credit, or choose a model free credit covers. | [Buy credit](/wallet#buy-credit), or switch the session to a model with `free_credit: true`. |
+| `free_credit_daily_limit` | Today's free credit is used: free credit pays for up to the daily limit, and more is available at 00:00 UTC. Add credit to keep going now. | Wait for 00:00 UTC, or buy credit. |
+| `free_credit_paused` | Free credit is paused for this organization. Add credit to keep going, or ask on Discord. | Buy credit, or ask on [Discord](https://discord.gg/btTYzdzvqq). |
+| `suspended` | Paid work for this organization is suspended. Ask on Discord. | Ask on [Discord](https://discord.gg/btTYzdzvqq). |
 | `missing_key` | Add your `<provider>` key in Settings, Providers, or switch this session to Orca credit | Add the key, or [switch the session](#switch-who-pays-for-one-session) to Orca credit. |
 | `unavailable` | Web search is not available with your `<provider>` key. Use an Orca credit model or an OpenRouter, OpenAI or Anthropic key, or turn web search off. | Switch the session to a model that searches, or set `mode: disabled`. |
 | `no_search` | `<model>` answered without searching the web. Use a model with built-in web search: docs.orcapods.ai/providers#web-search | Use a model with built-in web search, as above. |
@@ -163,7 +177,7 @@ The turn goes on. The search's `web_search_call` item has `status` `incomplete`,
 On Orca credit, a search costs the provider's search fee ($0.01 a search) plus your model's tokens for reading the results, each at OpenRouter's price plus [their fee](https://orcapods.ai/pricing). So it depends on the model: for example about $0.011 on `orca/openrouter/openai/gpt-5.6-luna` and about $0.13 on `orca/openrouter/anthropic/claude-sonnet-4.6`.
 
 - The tokens are charged on the search's **Model calls** row, and the search fee on its **Web searches** row.
-- A search is charged what the provider reported, whatever the outcome, including a search whose answer Orca could not use. A search refused at the credit check (`out_of_credit` or `balance_unavailable`) never runs and costs nothing.
+- A search is charged what the provider reported, whatever the outcome, including a search whose answer Orca could not use. A search refused at the credit check (`out_of_credit`, `balance_unavailable`, or one of the free credit codes above) never runs and costs nothing.
 - On your own key, the provider bills the search and Orca charges nothing.
 
 ### What is counted
@@ -176,7 +190,7 @@ Who pays is fixed when a turn starts: Orca reads your keys then, and every call 
 
 Removing a key makes the next turn of sessions using it fail with HTTP 400 on `agent.model`; it never moves them to Orca credit. Restore a valid key before continuing affected sessions.
 
-When credit runs out on either side, the turn ends with `usage_limit_exceeded` and a `param` that says whose: `orca_credit` for your Orca credit, `provider_quota` for your own key's provider account. See [errors](/reference/errors#turn-errors).
+When credit runs out on either side, the turn ends with `usage_limit_exceeded` and a `param` that says whose: `orca_credit` for your Orca credit, `provider_quota` for your own key's provider account. When free credit cannot pay the next call and credit you bought cannot either, the `param` says why, such as `paid_credit_required` or `free_credit_daily_limit`. See [errors](/reference/errors#turn-errors).
 
 ## Switch who pays for one session
 

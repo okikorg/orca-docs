@@ -21,6 +21,8 @@ SERVER = Path(os.environ.get("ORCA_SERVER_DIR", ROOT.parent / "orca-agent-server
 # hours or session count typed as a number.
 PLAN_NUMBER = (
     r"\d+ vCPU|\d+ GiB of (?:memory|disk)"
+    # Free credit's price ceiling and daily limit (orca-design #122).
+    r"|\$\d[\d,.]* ?/ ?M\b|\$\d[\d,.]* (?:a|per|each) (?:UTC )?day|\$\d[\d,.]* (?:a|per) million"
     r"|\$\d[\d,.]* (?:a|an|per) (?:month|hour)|\| \$\d"
     r"|\$\d[\d,.]* (?:of (?:Orca )?credit|minimum|pack)|(?:below|under|at least) \**\$\d"
     r"|\d+(?:\.\d+)?% of the price|(?:paused after|used for) \d+ minutes"

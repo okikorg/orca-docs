@@ -13,12 +13,12 @@ When a request fails, Orca returns an HTTP error status and a JSON body in the s
 | --- | --- | --- |
 | `400 Bad Request` | Invalid field, unsupported configuration, malformed event input or cursor | `invalid_request` |
 | `401 Unauthorized` | Missing, invalid, or revoked bearer key | `invalid_api_key` |
-| `403 Forbidden` | Your role does not allow this ("This action requires the admin role"), or a dashboard request has no organization | `permission_denied`, `organization_required` |
+| `403 Forbidden` | Your role does not allow this ("This action requires the admin role"), or a dashboard request has no organization; paid work for your organization is suspended | `permission_denied`, `organization_required`, `organization_suspended` |
 | `404 Not Found` | Missing resource (including resources outside the caller's scope) | `not_found` |
 | `409 Conflict` | Conflicting state or incompatible environment use; a kit copy whose name is taken, or whose kit changed since its review | `conflict`, `name_taken`, `kit_changed` |
 | `410 Gone` | A withdrawn kit, or a route from Orca 1.x ("This CLI is too old for Orca. Run orca update.") | `kit_withdrawn`, `cli_outdated` |
 | `413 Payload Too Large` | Request exceeds a supported size limit | `invalid_request` |
-| `429 Too Many Requests` | Too many requests a minute, or your plan's [sessions at once](/plans#sessions-at-once) are all running; out of Orca credit | `rate_limit_exceeded`, `insufficient_quota` |
+| `429 Too Many Requests` | Too many requests a minute, or your plan's [sessions at once](/plans#sessions-at-once) are all running; out of Orca credit, or free credit cannot pay (`param` says why, see [free credit errors](#free-credit-errors)) | `rate_limit_exceeded`, `insufficient_quota` |
 | `500 Internal Server Error` | Operation could not be completed | `server_error` |
 | `502 Bad Gateway` | Downstream failure | `server_error` |
 | `503 Service Unavailable` | Sandbox capacity is full, or your balance could not be read ("Orca could not read your credit balance. Try again in a moment."). Retry after `Retry-After`. | `sandbox_capacity`, `balance_unavailable` |
@@ -35,12 +35,28 @@ A turn that fails carries `error.code` and `error.message`, and, when credit ran
 | --- | --- | --- |
 | `usage_limit_exceeded` | `orca_credit` | Your Orca credit ran out. Add credit, then continue the session. |
 | `usage_limit_exceeded` | `provider_quota` | Your own provider account is out of credits or over its billing limit. |
+| `usage_limit_exceeded` | `free_credit_locked`, `paid_credit_required`, `free_credit_daily_limit`, `free_credit_paused`, `orca_suspended` | Free credit could not pay for the next call, and credit you bought could not either, or paid work is suspended. See [free credit errors](#free-credit-errors). |
 | `usage_limit_exceeded` | none | "This plan's included machine hours for this period are used up" (Free plan). See [plans](/plans#machine-time). |
 | `server_error` | none | "Orca credit is temporarily unavailable": Orca's own OpenRouter account refused the call. Retry later. |
 | `internal_error` | none | "Orca could not read your credit balance. Try again in a moment." Orca could not check your balance before a call on Orca credit. Send the message again in a moment; your credit is not the problem. |
 | `request_timeout` | none | "Model request failed: no response from the provider for 10 minutes". Send the message again. |
 
-Nothing switches who pays on its own. A message refused at admission for lack of credit is HTTP 429 `insufficient_quota`: "Out of Orca credit: add credit, then continue the session". See [when credit runs low](/wallet#when-credit-runs-low).
+Nothing switches who pays on its own. A message refused at admission for lack of credit is HTTP 429 `insufficient_quota` with no `param`: "Out of Orca credit: add credit, then continue the session". See [when credit runs low](/wallet#when-credit-runs-low).
+
+## Free credit errors
+
+[Free credit](/wallet#what-free-credit-pays-for) (the signup credit and credit Orca grants) pays only for models at or under a price ceiling, up to a daily limit, and the signup credit needs a card. When free credit cannot pay and credit you bought cannot either, Orca refuses in three places: a new message at admission (HTTP 429 `insufficient_quota` with a `param`), a running turn's next call (`usage_limit_exceeded` with a `param`; the conversation is saved), and a web search (the `web_search_call` item's `error.code`, see [when a search fails](/providers#when-a-search-fails)). Credit you buy is never limited, so buying credit clears every one of these except a suspension.
+
+| Admission and turn `param` | Search `code` | Message | What to do |
+| --- | --- | --- | --- |
+| `free_credit_locked` | `free_credit_locked` | "Add a card to get your free credit. We won't charge it: it's only to confirm you're a real person. Add it in the Wallet: https://app.orcapods.ai/wallet" | The person who created the organization adds a card in the dashboard's **Wallet**; it is never charged. See [the signup credit needs a card](/wallet#the-signup-credit-needs-a-card). Until then, buy credit or use a model on your own provider key. |
+| `paid_credit_required` | `paid_credit_required` | "This model needs paid credit. Free credit covers models up to the price ceiling on input and output tokens. Add credit, or choose a model free credit covers." | [Buy credit](/wallet#buy-credit), or [switch the session](/providers#switch-who-pays-for-one-session) to a model with `free_credit: true` in `GET /api/models` (no **Paid credit only** mark in the dashboard). |
+| `free_credit_daily_limit` | `free_credit_daily_limit` | "Today's free credit is used: free credit pays for up to the daily limit, and more is available at 00:00 UTC. Add credit to keep going now." | Continue after 00:00 UTC, or buy credit to keep going now. See [daily limit](/wallet#daily-limit). |
+| `free_credit_paused` | `free_credit_paused` | "Free credit is paused for this organization. Add credit to keep going, or ask on Discord: https://discord.gg/btTYzdzvqq" | Buy credit to keep going, or ask on [Discord](https://discord.gg/btTYzdzvqq). |
+
+The messages give the amounts in dollars; on this page they read "your free credit", "the price ceiling" and "the daily limit", which the [pricing page](https://orcapods.ai/pricing) gives.
+
+**A suspended organization.** When paid work for an organization is suspended, a new message that can cost money is refused with HTTP 403 `organization_suspended`, a running turn's next paid call ends it with `usage_limit_exceeded` and `param` `orca_suspended`, and a web search fails with `suspended`. The message is "Paid work for this organization is suspended. Ask on Discord: https://discord.gg/btTYzdzvqq". Ask on [Discord](https://discord.gg/btTYzdzvqq). Turns on your own provider key in a session without a sandbox keep working.
 
 ## Uncertain mutation outcomes
 

@@ -70,7 +70,7 @@ reasoning: { effort: medium }
 
 In a terminal, a file with no `model` opens a picker of every model you can use, grouped by who pays. The server checks every field and the CLI prints its message. See [models and provider keys](/providers).
 
-`orca models` lists the same names anywhere, including in scripts and coding agents: one line per model with its name, who pays (`orca`, or the provider whose key you saved), and OpenRouter's price for Orca credit models. `--payer orca` or `--payer anthropic` keeps one group, and `--json` prints the server's list.
+`orca models` lists the same names anywhere, including in scripts and coding agents: one line per model with its name, who pays (`orca`, or the provider whose key you saved), and OpenRouter's price for Orca credit models. An Orca credit model that [free credit](/wallet#what-free-credit-pays-for) does not pay for is marked `paid credit only`. `--payer orca` or `--payer anthropic` keeps one group, and `--json` prints the server's list.
 
 ```bash
 orca models --payer orca | grep luna
@@ -150,6 +150,8 @@ orca billing manage [--no-open]              # the billing portal
 `orca usage` charts one meter (`--meter`, `model_tokens` by default) from the server's series: by the hour for `--days 1` or `2`, by the day up to 366 days, captioned **Hourly (UTC)** or **Daily (UTC)** as on the dashboard. A longer window has no chart. `orca usage --group-by` shows each key's tokens and its cost across every meter. In `orca usage events`, a row whose money is on another row says where: a token row reads `on its call` (its call's row carries it), and a web search's tool call reads `on its search`. Web searches are counted in `searches`, the searches the provider ran, not tool calls; see [what is counted](/providers#what-is-counted).
 
 `billing buy` and `billing manage` need the admin role. They print the Polar link and open it in a browser. See [wallet and credit](/wallet) and [plans](/plans).
+
+`orca billing wallet` also shows whether free credit is locked until a card is added, today's free credit spend against the [daily limit](/wallet#daily-limit), and whether paid work is suspended; `--json` prints the server's fields. The CLI cannot add a card: the person who created the organization adds it in the dashboard's **Wallet**. See [the signup credit needs a card](/wallet#the-signup-credit-needs-a-card).
 
 ## MCP server
 
