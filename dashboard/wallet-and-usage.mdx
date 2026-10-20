@@ -9,12 +9,12 @@ Open **Wallet**. It shows your plan and the current period, and four figures:
 
 | Figure | Meaning |
 | --- | --- |
-| **Balance** | Everything credited minus everything charged. It says "Paid work paused" when the balance is under your plan's minimum. |
+| **Balance** | Everything credited minus everything charged. It says "Paid work paused" when the balance is under your plan's minimum. It can be below zero, for example `-$1.50`, after a call [charged later](/wallet#calls-charged-later). |
 | **Credited** | Purchases, grants, and signup credit |
 | **Charged** | Platform usage, all time |
 | **Machine time** | Time used this period, out of what your plan includes |
 
-When the balance is under your plan's minimum balance, the page says "Paid work is paused" and asks you to add credit. See [when credit runs low](/wallet#when-credit-runs-low).
+When the balance is under your plan's minimum balance, the page says "Paid work is paused" and asks you to add credit. When it is below zero, the page adds "Your balance is below zero. Paid work resumes when credit brings it to `<minimum>`.", with your plan's minimum balance as the amount. See [when credit runs low](/wallet#when-credit-runs-low).
 
 ## Buy credit
 
@@ -38,7 +38,7 @@ On a paid plan, **Manage plan** on the Wallet opens the same billing portal. See
 
 ## See what you spent
 
-Open **Usage** and pick a period: **24h**, **7d**, or **30d**. The header shows what the period cost. The top row totals model tokens, model calls, compute time, storage, tool calls, and web searches, each with its cost when it has one. **Web searches** counts the searches the provider ran, not tool calls: one tool call can run more than one search. **Tool calls** still counts tool calls. Usage recorded before this change counted one search per tool call. See [web search](/providers#what-is-counted). Three tabs break it down:
+Open **Usage** and pick a period: **24h**, **7d**, or **30d**. The header shows what the period cost. The top row totals model tokens, model calls, compute time, storage, tool calls, and web searches, each with its cost when it has one, and **Charged later**, the calls [charged after they ended](/wallet#calls-charged-later), with their count and cost, when the period has any. **Web searches** counts the searches the provider ran, not tool calls: one tool call can run more than one search. **Tool calls** still counts tool calls. Usage recorded before this change counted one search per tool call. See [web search](/providers#what-is-counted). Three tabs break it down:
 
 - **Over time**: one meter's usage as bars, by the hour on **24h** and by the day on **7d** and **30d**. The label beside the meter says which: **Hourly (UTC)** or **Daily (UTC)**. Bars are UTC hours and UTC days, as are billing periods and every other day Orca counts, so in India a daily bar runs from 05:30 to 05:30 local time. Hover a bar to read its bucket and quantity, for example `11 Oct, 14:00: 2.1K`. The first and last bars are cut by the period, so 24h shows 25 hourly bars unless it starts on the hour.
 - **Breakdown**: tokens and cost grouped by model, provider, credential, session, or agent. Each row's cost is everything charged under it, so the Cost column adds up to the header.
@@ -48,6 +48,7 @@ A call on Orca credit is charged on its **Model calls** row, not on its token ro
 
 - A token row reads **On its call**: its money is on its call's row.
 - A web search's **Tool calls** row reads **On its search**: the search it started carries the money. So does a search's call row when the whole cost is on the search.
+- Every row of a call or search [charged later](/wallet#calls-charged-later) reads **Charged later**: its **Charged later** row carries the money and shows when the charge was written. A **Charged later** row whose call left no rows of its own is shown on its own, with its model and session.
 
 A row with no such note shows its own cost, and `$0.00` means nothing was charged for it.
 

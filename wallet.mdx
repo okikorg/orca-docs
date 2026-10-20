@@ -68,9 +68,9 @@ The dashboard shows this as **Out of Orca credit** on the turn, with **Add credi
 | `GET /api/billing/wallet` | Balance, total credited and charged, the minimum balance, `paid_work_paused`, your plan and period, included and used machine time, and every field of `GET /api/public/plans` |
 | `GET /api/public/plans` | Every plan fact, with no key needed: each plan's price, included machine time, extra machine time rate, sessions at once and minimum balance; the signup credit; OpenRouter's fee (`openrouter_fee_bps`); the processing fee and the packs on sale; the machine; and `idle_seconds`, how long a sandbox idles before it is paused. The pricing page is built from it. |
 | `GET /api/usage` | Totals per meter for a period (30 days by default, or `start` and `end` in Unix seconds), a `series` over time (below), and totals grouped by `model`, `provider`, `credential`, `session`, or `agent` with `group_by`. With `group_by`, `group_costs` gives each key's cost across every meter; they add up to the period's `cost_micro_usd`. `session=<id>` narrows it to one session. |
-| `GET /api/usage/events` | The newest usage rows, each with its cost. Filter with `meter`, or `charged=true` for only the rows that cost something; page with `limit` and `after`. A row at cost 0 whose money is on another row of the same operation has `charged_on`: `call` when its call's row carries the money (a token row), `search` when the search's row does (the search's tool call, or its call when the whole cost is on the search). Any other row has none, and its own cost is what it was charged. |
+| `GET /api/usage/events` | The newest usage rows, each with its cost. Filter with `meter`, or `charged=true` for only the rows that cost something; page with `limit` and `after`. A row at cost 0 whose money is on another row of the same operation has `charged_on`: `call` when its call's row carries the money (a token row), `search` when the search's row does (the search's tool call, or its call when the whole cost is on the search), `late` when the operation was [charged later](#calls-charged-later) and its `late_charges` row does (every row of that call or search, its call or search row included). Any other row has none, and its own cost is what it was charged. Each row also has `charge_for`: on a `late_charges` row, the id of the row it charges; `null` on every other row. |
 
-Money is in micro-USD (millionths of a dollar). Every member can read the wallet and usage.
+Money is in micro-USD (millionths of a dollar). Every member can read the wallet and usage. `balance_micro_usd` can be negative after a [late charge](#calls-charged-later); paid work stays paused until credit brings it back to `min_balance_micro_usd`.
 
 `series` is the period's usage over time: `{"interval": "hour" | "day", "points": [{"start", "meter", "quantity", "cost_micro_usd"}]}`. The server picks the interval from the period: `hour` for up to 2 days, `day` for up to 366 days, and `series` is `null` for a longer period. Each point's `start` is its bucket's start in Unix seconds, a UTC hour or a UTC day; a row is in the bucket that holds its `window_start`. Every bucket of the period is there for every meter, at zero when nothing was used, so each meter's points add up to its totals. The first and last buckets are cut by the period.
 
@@ -78,13 +78,37 @@ Money is in micro-USD (millionths of a dollar). Every member can read the wallet
 
 The `web_searches` meter counts the searches the provider ran (unit `searches`), not tool calls: one tool call can run more than one search. Usage recorded before this change counted one per tool call. See [what is counted](/providers#what-is-counted).
 
-A call's money is on its `model_calls` row and its token rows are at cost 0, so read a model's, a session's or an agent's cost from `group_costs`, not from the `model_tokens` totals. The charged rows, the period's `cost_micro_usd`, and the wallet's `charged_micro_usd` over the same rows all agree.
+A call's money is on its `model_calls` row (or its `late_charges` row, below) and its token rows are at cost 0, so read a model's, a session's or an agent's cost from `group_costs`, not from the `model_tokens` totals. The charged rows, the period's `cost_micro_usd`, and the wallet's `charged_micro_usd` over the same rows all agree.
 
 ```bash
 curl --fail-with-body "$ORCA_ORIGIN/api/usage?group_by=model" -H "Authorization: Bearer $ORCA_API_KEY"
 ```
 
 In the dashboard, **Usage** shows the same figures by day, broken down by model, session or agent, and as a list of events. From the CLI, `orca usage --group-by <field>` and `orca usage events --charged`.
+
+### Calls charged later
+
+The `late_charges` meter (unit `charges`) counts the calls on Orca credit that ended without their cost and were charged afterwards from OpenRouter's record of the call ([when credit runs low](#when-credit-runs-low)). `GET /api/usage` lists it with its quantity and cost like any meter, and `group_costs` includes it, since the row carries the call's session, provider, model and actor.
+
+Each late charge is one row in `GET /api/usage/events`:
+
+| Field | Value |
+| --- | --- |
+| `id` | `<attempt>:late`, in the call's attempt |
+| `meter`, `quantity` | `late_charges`, 1 |
+| `cost_micro_usd`, `provider_cost_micro_usd`, `fee_micro_usd` | The call's cost, OpenRouter's part of it, and their fee. A web search's whole cost is on its late row. A record of 0 writes a row at 0. |
+| `generation_id` | The call's OpenRouter generation |
+| `session_id`, `provider`, `model`, `actor` | The call's |
+| `credential` | `platform` |
+| `window_start` | The call's start, so the charge counts on the call's day, in `series` and in every total |
+| `recorded_at` | When the charge was written |
+| `charge_for` | The id of the row it charges: `<attempt>:call` for a model call, `<attempt>:search` for a web search |
+
+The call's own rows stay at cost 0 with `charged_on: "late"`. A call that left no rows of its own (a restart on Orca's side, for example) has only its late row, and `charge_for` still names the row its call would have had.
+
+```bash
+curl --fail-with-body "$ORCA_ORIGIN/api/usage/events?meter=late_charges" -H "Authorization: Bearer $ORCA_API_KEY"
+```
 
 ## Moving from Orca 1.x
 
