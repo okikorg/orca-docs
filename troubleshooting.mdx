@@ -108,6 +108,9 @@ On hosted Orca, `self_hosted` environments are coming soon, and `network.access:
 <Accordion title="A self-hosted turn fails immediately">
 Only with an Orca server you run yourself. `workspace_directory` must be an absolute path with no symbolic links in it. On macOS `/tmp` is a symlink; use the real path.
 </Accordion>
+<Accordion title="Creating a session with a sandbox is refused">
+HTTP 429 `insufficient_quota` means the sandbox could not run a minute: your balance is below the [minimum](/plans#paid-work-needs-a-minimum-balance), or on Free the included machine time is used up. HTTP 429 `rate_limit_exceeded` means your plan's [sandboxes at once](/plans#sandboxes-at-once) are running: wait for an idle one to pause, or delete a session you no longer need. HTTP 403 `storage_quota_exceeded` means your organization is at its [storage limit](/plans#storage): delete files, skills or sessions.
+</Accordion>
 <Accordion title="A turn fails with usage_limit_exceeded and no param">
 "This plan's included machine hours for this period are used up": a Free plan has used its included machine time (on the [pricing page](https://orcapods.ai/pricing)). Upgrade to Pro or Max, or wait for the next month. See [plans](/plans#machine-time).
 </Accordion>

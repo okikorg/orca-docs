@@ -55,6 +55,8 @@ You can also add files to a running sandbox later; see [execution environments](
 
 An upload over 512 MiB is refused with HTTP 413 `invalid_request`, "File exceeds 512 MiB". An organization can send 2 uploads at once; a third is refused with HTTP 429 `rate_limit_exceeded`, "Too many uploads at once: 2 per organization. Retry when one finishes." When Orca is receiving many uploads from everyone at once, an upload can be refused with HTTP 503 `server_busy`. Both carry a `Retry-After` header; send the file again after it.
 
+Uploaded files count toward your plan's [storage limit](/plans#storage), and an organization keeps at most 1,000 files. An upload also needs Orca credit: while paid work is paused, it is refused with HTTP 429 `insufficient_quota`, "Out of Orca credit: add credit to upload files".
+
 The 16 MiB limit applies to every staged file, whichever way you send it. You can upload a file of up to 512 MiB, but a session refuses to stage it if it is over 16 MiB. Split a bigger input, or stage only the part the agent needs.
 
 Base64 makes `inline` data about a third larger, and it travels in the request that creates the session. In practice, inline files together must stay well under 2 MiB. For anything bigger, upload the file and stage it by `file_id`.

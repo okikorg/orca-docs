@@ -45,7 +45,7 @@ When you reference a skill, you can pin a specific `version`. Pinning makes runs
 
 Examples on this page assume `client` is an `OpenAI` client configured as in [Build with the API](/build-with-the-api).
 
-The upload is a zip file containing the skill folder. The zip can be at most 32 MiB, with at most 2,048 entries, each at most 32 MiB, and at most 128 MiB once unpacked.
+The upload is a zip file containing the skill folder. The zip can be at most 32 MiB, with at most 2,048 entries, each at most 32 MiB, and at most 128 MiB once unpacked. Skills count toward your plan's [storage limit](/plans#storage); an organization keeps at most 50 skills and 20 versions of each, and an upload needs Orca credit, as a [file upload](/guides/files-and-artifacts#size-limits) does.
 
 ```python
 import io
