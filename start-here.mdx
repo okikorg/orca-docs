@@ -8,7 +8,7 @@ Orca runs AI agents for you in the cloud. You describe an agent once: a model, i
 In about ten minutes you'll have a research agent of your own that looks things up and cites its sources, give it a sandbox to work in, and then hand the controls to your coding agent and your own code.
 
 <Tip>
-**No account yet?** [Sign up](https://app.orcapods.ai/sign-up) first. New accounts start with free credit and no card, and every step on this page runs on it.
+**No account yet?** [Sign up](https://app.orcapods.ai/sign-up) first. New accounts start on the [Free plan](/plans#the-free-plan), with no card and no credit. Scout runs on `orca/openrouter/openai/gpt-5.6-luna` and searches the web, both paid from Orca credit, so [add credit](/wallet#buy-credit) before step 3, or run Scout on your own provider key ([models and provider keys](/providers)). On Free, the dashboard starts new agents on the [free model](/plans#the-free-model), which costs nothing.
 </Tip>
 
 ## Why Orca
@@ -85,7 +85,7 @@ Check your credit:
 orca billing wallet
 ```
 
-`balance` is your Orca credit. The amount new accounts start with is on the [pricing page](https://orcapods.ai/pricing).
+`balance` is your Orca credit. A new account starts at 0 on the [Free plan](/plans#the-free-plan): [add credit](/wallet#buy-credit) before step 3, or use your own provider key.
 
 ## 2. Get your first agent
 
@@ -409,9 +409,9 @@ orca billing wallet        # your balance and plan
 
 - **Model tokens and web searches** on an Orca credit model are paid from your credit. On your own provider key, that provider bills you.
 - **Sessions without a sandbox use no machine time.** On this page, only step 4 used any.
-- **Sandboxes use [machine time](/plans#machine-time)** from your plan. They also need a small balance of Orca credit, your plan's [minimum balance](/plans#paid-work-needs-a-minimum-balance), since the agent's model calls in the sandbox run on credit too. Delete a sandbox session when you are done with it.
+- **Sandboxes use [machine time](/plans#machine-time)** from your plan. On Pro and Max they need your plan's [minimum balance](/plans#paid-work-needs-a-minimum-balance); on Free, the included time runs at any balance, and time past it needs the minimum. Delete a sandbox session when you are done with it.
 
-The numbers for each plan, the signup credit, and the minimum balance are on the [pricing page](https://orcapods.ai/pricing). See [usage and wallet](/wallet#read-the-wallet-and-your-usage) for the rest.
+The numbers for each plan, the Free plan's free model and price ceiling, and the minimum balance are on the [pricing page](https://orcapods.ai/pricing). See [usage and wallet](/wallet#read-the-wallet-and-your-usage) for the rest.
 
 Keep Scout if you like it. To remove everything this page made instead, delete Scout's sessions, then Scout, then the key. Deleting an agent does not delete its sessions.
 

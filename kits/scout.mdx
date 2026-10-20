@@ -10,7 +10,7 @@ Orca is where it runs. An idea becomes a working agent in minutes, and that agen
 Each step below builds on the one before, and you can stop after any of them.
 
 <Tip>
-**No account yet?** [Sign up](https://app.orcapods.ai/sign-up) first. New accounts start with free credit and no card, and every step on this page runs on it.
+**No account yet?** [Sign up](https://app.orcapods.ai/sign-up) first. New accounts start on the [Free plan](/plans#the-free-plan), with no card and no credit. Scout runs on `orca/openrouter/openai/gpt-5.6-luna` and searches the web, both paid from Orca credit, so [add credit](/wallet#buy-credit) before you chat with it, or run it on your own provider key ([models and provider keys](/providers)).
 </Tip>
 
 ## What you'll do
@@ -63,7 +63,7 @@ Check your credit:
 orca billing wallet
 ```
 
-`balance` is your Orca credit. The amount new accounts start with is on the [pricing page](https://orcapods.ai/pricing).
+`balance` is your Orca credit. A new account starts at 0 on the [Free plan](/plans#the-free-plan): [add credit](/wallet#buy-credit) before you chat with Scout, or use your own provider key.
 
 ## 2. Copy Scout
 
@@ -391,7 +391,7 @@ orca billing wallet        # your balance and plan
 `orca sessions get session_...` shows one session's cost, tokens, and machine time.
 
 - **Model tokens and web searches** are paid from your Orca credit, since Scout's model starts with `orca/`.
-- **Scout uses no machine time**, unless you give it a sandbox with `--sandbox`. Sandboxes use [machine time](/plans#machine-time) from your plan and need a small balance of credit, your plan's [minimum balance](/plans#paid-work-needs-a-minimum-balance).
+- **Scout uses no machine time**, unless you give it a sandbox with `--sandbox`. Sandboxes use [machine time](/plans#machine-time) from your plan. On Pro and Max they need your plan's [minimum balance](/plans#paid-work-needs-a-minimum-balance); on Free, the included time runs at any balance.
 
 The numbers for each plan are on the [pricing page](https://orcapods.ai/pricing). See [usage and wallet](/wallet#read-the-wallet-and-your-usage) for the rest.
 

@@ -1,20 +1,99 @@
 ---
 title: "Plans and machine time"
-description: "What Free, Pro, and Max include, how machine time is counted, and what happens at a limit."
+description: "What Free, Pro, and Max include, the Free plan's free model, the limits on each plan, how machine time is counted, and what happens at a limit."
 ---
 
-Every organization is on one plan. The plan sets how much sandbox time is included each period, how many sessions can run at once, and how much your organization can store. Model tokens are not part of the plan: they are paid from your [Orca credit or your own provider key](/providers).
+Every organization is on one plan. The plan sets how much sandbox time is included each period, which models Orca credit can pay for, and the limits on requests, turns, sessions, keys and storage. Model tokens are not part of the plan: they are paid from your [Orca credit or your own provider key](/providers).
 
 Each plan sets:
 
 - **A price.** Free costs nothing; Pro and Max are billed monthly through Polar.
 - **Machine time included** in each period.
-- **Extra machine time**, past the included time, at an hourly rate. Pro and Max have one; Free has none.
+- **Extra machine time**, past the included time, at an hourly rate, charged to the second from your Orca credit.
+- **Which models Orca credit pays for.** Any model on Pro and Max; on Free, the free model and models up to the [Free price ceiling](#the-free-price-ceiling).
 - **Sessions at once**, which is also how many sandboxes can run at once.
-- **Storage** for your files, skills, artifacts and sandboxes that are asleep.
+- **Limits** on requests, turns, sessions, API keys and storage. See [limits per plan](#limits-per-plan).
 - **A minimum balance** for paid work.
 
-The numbers for each plan are on the [pricing page](https://orcapods.ai/pricing), which is built from the numbers Orca charges with. Every new account starts with a [signup credit](/wallet#where-credit-comes-from). Credit is bought separately; see [wallet and credit](/wallet).
+The numbers for each plan are on the [pricing page](https://orcapods.ai/pricing), which is built from the numbers Orca charges with. No account starts with credit: credit is bought separately; see [wallet and credit](/wallet).
+
+A plan's terms hold for a whole period. When Orca changes a plan's numbers, the change applies to your organization from its next period, never in the middle of one.
+
+## The Free plan
+
+Free needs no card. It runs agents three ways:
+
+| Way | What it runs | Who pays |
+| --- | --- | --- |
+| **The free model** | Orca's free model, `orca/openrouter/cohere/north-mini-code:free` | Nobody. It runs on Orca credit at no charge, at any balance, within a daily share. |
+| **Your own provider key** | Any model your OpenAI, Anthropic, OpenRouter, Vercel AI Gateway or CheaperInference key can run, at any price | You, at that provider. Orca charges nothing for the tokens. |
+| **Credit you add** | Orca credit models up to the [Free price ceiling](#the-free-price-ceiling) | Your Orca credit, as on any plan |
+
+The most expensive models, such as Claude Fable, every Claude Opus and models priced like them, run on Orca credit on Pro and Max only, even when a Free organization has credit. On Free they run on your own key.
+
+On Free, the dashboard's new agent form picks the free model for you, and `orca agents create` with no model offers it first.
+
+### The free model
+
+The free model is Orca's choice: currently North Mini Code from Cohere, served through OpenRouter. Its name is in `GET /api/public/plans` under `free_model.models`, and `orca models` marks it **free model**. Orca may change it, and the pricing page always names the current one.
+
+- **It costs nothing.** Its calls are recorded in your usage at cost 0, whatever OpenRouter reports, and need no balance.
+- **A daily share.** Each organization can make a set number of free-model calls a day, and so can each person, counted across every organization they create or work in.
+- **A shared daily capacity.** All Free organizations together share one daily capacity, which can run out before the reset.
+- **Both reset at 00:00 UTC.** The share and the capacity are on the [pricing page](https://orcapods.ai/pricing). The wallet shows your organization's calls today.
+- **A set number of calls a turn.** A turn on the free model, its subagents included, makes at most the number of calls on the pricing page. A turn starts only when that many calls are left in your share and in the day's capacity, so the daily limits never cut a turn off halfway. A turn that reaches its last call ends `completed` with the event `orca.free_model.turn_limit`, its work kept; send a message to continue.
+- **A few turns at once, across Orca.** When the free model is already running as many turns as Orca allows for all organizations together, a new turn is refused for a minute. See [troubleshooting](/troubleshooting#free-plan-and-limits).
+- **Web search is not free.** A web search on the free model is charged to your Orca credit like any search, so it needs your plan's minimum balance. See [what a search costs](/providers#what-a-search-costs).
+- **Free only.** Pro and Max run any model on credit and do not run the free model.
+- **Your content.** The free model's calls go through OpenRouter to its provider, currently Cohere, which does not train on them and keeps them for up to 30 days.
+
+Other free models on OpenRouter, with ids ending in `:free`, run on your own OpenRouter key, not on Orca credit, on every plan.
+
+### The Free price ceiling
+
+On Free, Orca credit pays for a model only when its highest input price and its highest output price per million tokens are both at or under the Free price ceiling on the [pricing page](https://orcapods.ai/pricing). Highest means over every price OpenRouter lists for the model, such as a higher price for long prompts; reasoning tokens count as output, and cache prices are not compared. A model with no fixed price, such as the router `openrouter/auto`, is above the ceiling. Most mid-priced models are within it; the most expensive class is not.
+
+`GET /api/models` marks each Orca credit model with `plan`, and `orca models` and the dashboard's model picker show it. See [which models Free can use](/providers#which-models-free-can-use). The ceiling is checked when a turn starts, and a model above it is refused with HTTP 403 `model_not_in_plan`.
+
+Your own provider keys are not limited by the ceiling.
+
+### Machine time on Free
+
+- **Included time needs no balance.** While the included time lasts, a sandbox starts and runs at any balance, zero included.
+- **Then paid time.** Past the included time, a sandbox keeps running while your balance is at or above the minimum, charged to the second from your credit at Free's hourly rate. Otherwise it stops: the running turn ends, the workspace is saved, and the session picks up with its files once you add credit or the next month starts.
+- **A warning first.** When about 5 minutes of included time are left and your balance is under the minimum, the session gets the event `orca.compute.warning`, and the dashboard shows it. When the included time runs out, the organization's creator gets an email, once a month.
+- **Network is off until you add credit.** A Free organization's sandboxes have no network access until it has bought credit once. The agent can still write and run code with what the sandbox has, but cannot install packages or reach the web from the sandbox. After the first purchase, new sandboxes follow the session's environment. The wallet shows `network_off: true` until then.
+- **Free sandboxes share capacity.** Only a few Free sandboxes run at once across all of Orca, so a start can be refused for a minute when they are busy.
+- **Free saves workspaces up to 100 MiB.** When a sandbox stops at the end of the included time or of your credit, a larger workspace is not saved, and the session says so.
+
+### A Free turn's bounds
+
+On Free, every turn, on any model and on your own key too, runs for at most the turn time on the [pricing page](https://orcapods.ai/pricing), and starts at most the subagents a turn the pricing page shows, fewer of them at once. A turn that reaches its time ends `completed` with the event `orca.turn.time_limit`, its work kept; send a message to continue.
+
+### Storage on Free
+
+A Free organization that has no credit can upload files and skills up to a smaller storage quota. Once it adds credit, it has Free's full storage. Both are on the [pricing page](https://orcapods.ai/pricing).
+
+### Free use can be withheld
+
+Orca can withhold the free model and the included machine time from an organization, for example when it suspects abuse. Credit you add and your own provider keys still work, and the wallet shows `included_hours_withheld: true`. If you think this is a mistake, ask in **#help** on [Orca's Discord](https://discord.gg/btTYzdzvqq).
+
+## Limits per plan
+
+Every plan has these limits. The numbers for each plan are on the [pricing page](https://orcapods.ai/pricing) and in `GET /api/public/plans`.
+
+| Limit | What it counts | Past it |
+| --- | --- | --- |
+| Requests a minute, per organization | Every request made with the organization's keys or by its signed-in people | HTTP 429 `rate_limit_exceeded`, with a `Retry-After` header |
+| Requests a minute, per key or person | Each API key and each signed-in person, on its own | The same |
+| Turns a day | Turns your organization starts in a UTC day | HTTP 429 `rate_limit_exceeded` until 00:00 UTC |
+| Sessions at once | Sessions with a running turn | HTTP 429 `rate_limit_exceeded`; see [sessions at once](#sessions-at-once) |
+| API keys | Active API keys in the organization, device logins included | HTTP 403 `object_limit_exceeded`; revoke one to make another |
+| Stored sessions | Sessions the organization keeps | HTTP 403 `object_limit_exceeded` on a new session; delete one to start another |
+| Storage | Files, skills and saved sandbox workspaces | HTTP 403 `storage_quota_exceeded`; delete files, skills or sessions to free space |
+| Free-model calls a day | Free only, per organization and per person; see [the free model](#the-free-model) | HTTP 429 `insufficient_quota` until 00:00 UTC |
+
+An organization already over a count when its plan's limit changes keeps what it has, and cannot add more until it is under the limit. Routes that need no key have their own limits per IP address; see [rate limits](/reference/overview#rate-limits). Every refusal and its way forward is in [troubleshooting](/troubleshooting#free-plan-and-limits).
 
 ## Change your plan
 
@@ -30,7 +109,7 @@ Members see the plans but cannot change them.
 Machine time is the time your sessions' managed sandboxes run. Sessions with `environment: {"type": "none"}` use none.
 
 - **Every sandbox is the same machine,** the size the [pricing page](https://orcapods.ai/pricing) shows.
-- **It is counted in whole minutes** while a sandbox is connected, whether the agent is working or waiting. Each minute a sandbox is running counts as one minute.
+- **It is counted to the second** while a sandbox is connected, whether the agent is working or waiting.
 - **An idle sandbox goes to sleep** after the idle time the [pricing page](https://orcapods.ai/pricing) shows, and you can [put it to sleep](/guides/environments#put-a-sandbox-to-sleep-now) sooner. Time asleep is not counted. The sandbox wakes, with its files, the next time the session needs it. See [when a sandbox sleeps](/guides/environments#when-a-sandbox-sleeps).
 - **The period** is your subscription's billing period on Pro and Max, and the calendar month (UTC) on Free. Included time is counted per period and does not carry over.
 
@@ -38,14 +117,16 @@ When the included time is used up:
 
 | Plan | What happens |
 | --- | --- |
-| Pro, Max | Sandboxes keep running. Each extra minute is charged from your Orca credit at the plan's hourly rate. |
-| Free | Sandboxes stop. A running turn ends `failed` with `usage_limit_exceeded`: "This plan's included machine hours for this period are used up". A new sandbox does not start: creating a session with one is refused with HTTP 429 `insufficient_quota` and the same message. Upgrade to keep going. |
+| Pro, Max | Sandboxes keep running. Each extra second is charged from your Orca credit at the plan's hourly rate. |
+| Free | Sandboxes keep running on credit while your balance is at or above the minimum, at Free's hourly rate. Otherwise they stop with the workspace saved, and a running turn ends `failed` with `usage_limit_exceeded` and `param: "included_hours"`. Add credit to continue now, or wait for the next month. See [machine time on Free](#machine-time-on-free). |
+
+Orca checks once a minute, so a sandbox can run up to a minute past the line before it stops; those seconds are charged at the plan's rate.
 
 The dashboard's **Wallet** page shows the time used in this period next to what the plan includes.
 
 ## Sessions at once
 
-**Sessions at once** is how many of your organization's sessions can have a turn running at the same time. Idle sessions do not count, so you can keep as many conversations open as you like.
+**Sessions at once** is how many of your organization's sessions can have a turn running at the same time. Idle sessions do not count, so you can keep as many conversations open as your plan's stored sessions allow.
 
 Orca checks it when a turn starts. If the limit is already reached, the message is refused with HTTP 429 `rate_limit_exceeded`: "Your plan runs N sessions at once", with your plan's number. Nothing is lost: send the message again when another session's turn ends, or upgrade.
 
@@ -61,7 +142,7 @@ Each plan has a storage limit, on the [pricing page](https://orcapods.ai/pricing
 
 - **At the limit,** an upload, a new skill or skill version, a kit copy with skills, and a new sandbox are refused with HTTP 403 `storage_quota_exceeded`: "Your organization stores X of its Y. Delete files, skills or sessions to free space."
 - **Your sessions keep working.** A sandbox's workspace is always saved when it goes to sleep, and a sandbox that is asleep still wakes, even past the limit. Delete files, skills or sessions you no longer need to make room.
-- **Uploads need credit.** While paid work is paused, a file or skill upload is refused with HTTP 429 `insufficient_quota`: "Out of Orca credit: add credit to upload files". Copying a kit needs no credit.
+- **Uploads need credit.** While paid work is paused, a file or skill upload is refused with HTTP 429 `insufficient_quota`: "Out of Orca credit: add credit to upload files". On Free, uploads within a [smaller quota](#storage-on-free) need no credit. Copying a kit needs no credit.
 
 When Orca's own storage is nearly full, uploads, skill uploads, kit copies and new sandboxes are refused for a while with HTTP 503 `storage_unavailable` and `Retry-After: 300`: "Orca's storage is nearly full. Try again later." Sandboxes that are asleep still wake.
 
@@ -78,15 +159,14 @@ These are the same on every plan:
 | Skills | 50 |
 | Skill versions | 20 for each skill |
 | Files | 1,000 |
-| Active API keys | 100 |
 
-One more is refused with HTTP 403 `object_limit_exceeded`, such as "Your organization has 100 agents, the most it can keep. Delete one to make another." For keys, revoke one. A [kit](/kits) copy that would pass a limit copies nothing.
+One more is refused with HTTP 403 `object_limit_exceeded`, such as "Your organization has 100 agents, the most it can keep. Delete one to make another." Active API keys and stored sessions differ by plan; see [limits per plan](#limits-per-plan). A [kit](/kits) copy that would pass a limit copies nothing.
 
 An agent's `instructions` can be at most 256 KiB, and its `tools` at most 256 KiB as JSON. More is refused with HTTP 400 `invalid_request`, with `param` naming the field: "Instructions can be at most 256 KiB". This applies when you create or update an agent, and to an inline agent in a new session.
 
 ## Paid work needs a minimum balance
 
-Even included machine time needs Orca credit in the wallet. When your balance is below your plan's **minimum balance** (on the [pricing page](https://orcapods.ai/pricing), and in the wallet as `min_balance_micro_usd`), Orca pauses paid work: model calls and web searches on Orca credit, and managed sandboxes. A turn on an Orca credit model, or in a session with a managed sandbox, is then refused. A managed sandbox does not start or wake, and file and skill uploads are refused. Turns on your own provider key in a session without a sandbox keep working, their web searches included. See [wallet and credit](/wallet#when-credit-runs-low).
+When your balance is below your plan's **minimum balance** (on the [pricing page](https://orcapods.ai/pricing), and in the wallet as `min_balance_micro_usd`), Orca pauses paid work: model calls and web searches on Orca credit, and managed sandboxes. On Pro and Max that includes the plan's included machine time. On Free it does not: the free model and Free's included machine time run at any balance, and only the time past it is paid work. A turn that needs paid work is then refused, and a managed sandbox that needs it does not start or wake. File and skill uploads are refused too, except on Free within its [smaller storage quota](#storage-on-free). Turns on your own provider key in a session without a sandbox keep working, their web searches included. See [wallet and credit](/wallet#when-credit-runs-low).
 
 ## Schedules
 

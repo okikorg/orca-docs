@@ -69,9 +69,9 @@ instructions: |
 reasoning: { effort: medium }
 ```
 
-In a terminal, a file with no `model` opens a picker of every model you can use, grouped by who pays. The server checks every field and the CLI prints its message. See [models and provider keys](/providers).
+In a terminal, a file with no `model` opens a picker of every model you can use, grouped by who pays. On Free, the [free model](/plans#the-free-model) comes first. The server checks every field and the CLI prints its message. See [models and provider keys](/providers).
 
-`orca models` lists the same names anywhere, including in scripts and coding agents: one line per model with its name, who pays (`orca`, or the provider whose key you saved), and OpenRouter's price for Orca credit models. `--payer orca` or `--payer anthropic` keeps one group, and `--json` prints the server's list.
+`orca models` lists the same names anywhere, including in scripts and coding agents: one line per model with its name, who pays (`orca`, or the provider whose key you saved), and OpenRouter's price for Orca credit models. A `plan` column marks the free model as **free model** and, on Free, the models above the [Free price ceiling](/plans#the-free-price-ceiling) as **Pro and Max**. `--payer orca` or `--payer anthropic` keeps one group, and `--json` prints the server's list.
 
 ```bash
 orca models --payer orca | grep luna
