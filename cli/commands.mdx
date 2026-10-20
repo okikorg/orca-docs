@@ -50,11 +50,12 @@ orca agents delete [agent] [--yes]
 orca models [--payer orca|<provider>]      # every model you can use, grouped by who pays
 
 orca sessions list [--agent agent]
-orca sessions get <id>                     # includes the session's cost, tokens, and machine time
+orca sessions get <id>                     # includes the session's cost, tokens, machine time, and sandbox
 orca sessions create --agent <agent> [--sandbox] [--template t] [--vault v]... [--file path[:dest]]...
 orca sessions items <id> [--limit n]
 orca sessions artifacts <id>               # the files its turns saved under /workspace/outputs
 orca sessions artifacts download <id> [artifact] [-o path|-] [--all]
+orca sessions sleep <id> [--no-wait] [--json]  # put its sandbox to sleep now
 orca sessions delete <id> [--yes]
 ```
 
@@ -88,6 +89,19 @@ orca sessions artifacts download sess_123 --all -o results
 ```
 
 Deleting the session stops its sandbox and deletes its artifacts.
+
+### Put a sandbox to sleep
+
+`orca sessions sleep <id>` puts a session's sandbox to sleep now, instead of waiting for the idle time the [pricing page](https://orcapods.ai/pricing) shows. Everything in `/workspace` is saved and machine time stops; the conversation stays, and the session's next message wakes it. Running programs stop and do not come back. See [when a sandbox sleeps](/guides/environments#when-a-sandbox-sleeps).
+
+It waits until the sandbox is asleep and prints "Asleep. Session session_... keeps its conversation and the files in /workspace; machine time has stopped. Its next message wakes it." It checks every second for up to 10 minutes; past that it exits 0 and the sandbox still goes to sleep. `--no-wait` returns once the sandbox starts going to sleep, and `--json` prints the server's `session.sandbox` object. When the request is refused, such as while a turn is running, or the sandbox stays awake, such as when its files are too large to save, it prints the server's message and exits 1. It needs CLI 1.5.0 or later.
+
+`orca sessions get <id>` shows the sandbox as awake, going to sleep, asleep, waking up, or none.
+
+```bash
+orca sessions sleep sess_123
+orca sessions sleep sess_123 --no-wait
+```
 
 ## Skills, vaults, and files
 

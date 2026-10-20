@@ -23,7 +23,7 @@ PLAN_NUMBER = (
     r"\d+ vCPU|\d+ GiB of (?:memory|disk)"
     r"|\$\d[\d,.]* (?:a|an|per) (?:month|hour)|\| \$\d"
     r"|\$\d[\d,.]* (?:of (?:Orca )?credit|minimum|pack)|(?:below|under|at least) \**\$\d"
-    r"|\d+(?:\.\d+)?% of the price|(?:paused after|used for) \d+ minutes"
+    r"|\d+(?:\.\d+)?% of the price|(?:(?:paused|sleeps?) after|used for) \d+ minutes"
     r"|\d[\d,]* hours of machine time|runs \d+ sessions? at once"
 )
 

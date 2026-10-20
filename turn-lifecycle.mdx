@@ -116,13 +116,13 @@ Sessions with a sandbox also have an environment. Read its current status with `
 
 | Status | Meaning |
 | --- | --- |
-| `pending` | Being created, restored, or (for self-hosted) waiting for your executor to connect. |
+| `pending` | Being created, waking up, or (for self-hosted) waiting for your executor to connect. |
 | `connected` | Ready. Turns can use it. |
 | `failed` | The sandbox could not be created, or a self-hosted executor failed to register. Create a new session. |
-| `disconnected` | Not currently reachable. A managed sandbox that has been idle for a while is paused to save resources and shows this status; it resumes automatically the next time it is used. A self-hosted executor that dropped its connection shows this until it reconnects. |
+| `disconnected` | Not currently reachable. A managed sandbox is asleep: it fell asleep after the idle time, or someone put it to sleep. It wakes the next time the session needs it. A self-hosted executor that dropped its connection shows this until it reconnects. |
 
 <Note>
-When a paused managed sandbox resumes, files in the workspace are restored, but running processes (such as a dev server the agent started) are not. Ask the agent to start them again if needed.
+When a managed sandbox wakes up, everything in `/workspace` comes back, but running programs (such as a dev server the agent started) do not. Ask the agent to start them again if needed. See [when a sandbox sleeps](/guides/environments#when-a-sandbox-sleeps).
 </Note>
 
 ## A complete wait loop

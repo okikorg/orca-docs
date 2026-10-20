@@ -57,7 +57,7 @@ args = ["mcp", "serve"]
 | --- | --- |
 | Identity and keys | `whoami`, `list_keys`, `create_key`, `revoke_key` |
 | Agents and models | `list_agents`, `get_agent`, `create_agent`, `update_agent`, `delete_agent`, `list_models` |
-| Sessions | `list_sessions`, `get_session`, `create_session`, `list_session_items`, `delete_session`, `chat`, `list_artifacts`, `download_artifact` |
+| Sessions | `list_sessions`, `get_session`, `create_session`, `list_session_items`, `delete_session`, `sleep_session`, `chat`, `list_artifacts`, `download_artifact` |
 | Skills | `list_skills`, `get_skill`, `create_skill`, `delete_skill` |
 | Vaults | `list_vaults`, `create_vault`, `delete_vault`, `list_credentials`, `add_credential`, `delete_credential` |
 | Files | `list_files`, `upload_file`, `download_file`, `delete_file` |
@@ -69,6 +69,8 @@ args = ["mcp", "serve"]
 For a new session, `chat` also takes `sandbox`, `template`, and `vaults`, as `create_session` does. `template` and `vaults` take IDs or names, so an agent that needs an environment template and a vault starts with one call, for example `chat({agent: "researcher", template: "research", vaults: ["orders"], message: "..."})`. A session you continue keeps its own sandbox and vaults, so these three are refused alongside `session`.
 
 `chat` and `create_session` take `files`, a list of `{path, dest}` on your machine, and put them in the session's sandbox as [`--file`](/cli/commands#files-in-and-out-of-a-sandbox) does. `list_artifacts` and `download_artifact` bring back what the agent saved under `/workspace/outputs`: one artifact by ID or path, or with `all` every file of the newest turn into a folder.
+
+`sleep_session` puts a session's sandbox to sleep now. Files in `/workspace` are saved and machine time stops; the conversation stays, and the next message wakes it. Running programs stop and do not come back. It is refused while a turn runs. It waits up to 60 seconds and returns `state` and `last_sleep`; `get_session` includes `sandbox`, the sandbox's state. These need CLI 1.5.0 or later; see [put a sandbox to sleep now](/guides/environments#put-a-sandbox-to-sleep-now).
 
 `show_kit` returns a kit's review: what it runs, reaches, and spends, then each agent, skill, and template in full, and the `version` it describes. `copy_kit` takes `publicId`, that `version`, and `assets`, and copies nothing if the kit has changed since. Have the coding agent show you the review first, and copy only after you say yes. These two need CLI 1.4.0 or later; see [kits](/kits).
 

@@ -64,6 +64,10 @@ Nothing switches on its own.
 
 The switch applies from the session's next turn, and to this session only. The agent and its other sessions keep their model. The session details then show the new model, the agent's own model beneath it, and who pays. To run a session on your own key you need a saved key; see [providers and API keys](/dashboard/providers-and-keys). The same switch is `POST /api/sessions/{session_id}/model` in the [API](/providers#switch-who-pays-for-one-session).
 
+## Put a sandbox to sleep
+
+A session's ⋯ menu has **Put sandbox to sleep** while its sandbox is awake. The sandbox saves its files and stops using machine time; the conversation stays, and the next message wakes it. Running programs do not come back. The header shows **Sandbox asleep** until it wakes. See [put a sandbox to sleep now](/guides/environments#put-a-sandbox-to-sleep-now).
+
 ## Delete
 
 An agent's or session's row menu has **Delete agent** or **Delete session**. Deleting a session deletes its conversation, its artifacts, and its sandbox. Deleting an agent does not delete its sessions.
