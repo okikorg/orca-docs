@@ -3,14 +3,15 @@ title: "Plans and machine time"
 description: "What Free, Pro, and Max include, how machine time is counted, and what happens at a limit."
 ---
 
-Every organization is on one plan. The plan sets how much sandbox time is included each period and how many sessions can run at once. Model tokens are not part of the plan: they are paid from your [Orca credit or your own provider key](/providers).
+Every organization is on one plan. The plan sets how much sandbox time is included each period, how many sessions can run at once, and how much your organization can store. Model tokens are not part of the plan: they are paid from your [Orca credit or your own provider key](/providers).
 
 Each plan sets:
 
 - **A price.** Free costs nothing; Pro and Max are billed monthly through Polar.
 - **Machine time included** in each period.
 - **Extra machine time**, past the included time, at an hourly rate. Pro and Max have one; Free has none.
-- **Sessions at once.**
+- **Sessions at once**, which is also how many sandboxes can run at once.
+- **Storage** for your files, skills, artifacts and paused sandboxes.
 - **A minimum balance** for paid work.
 
 The numbers for each plan are on the [pricing page](https://orcapods.ai/pricing), which is built from the numbers Orca charges with. Every new account starts with a [signup credit](/wallet#where-credit-comes-from). Credit is bought separately; see [wallet and credit](/wallet).
@@ -38,7 +39,7 @@ When the included time is used up:
 | Plan | What happens |
 | --- | --- |
 | Pro, Max | Sandboxes keep running. Each extra minute is charged from your Orca credit at the plan's hourly rate. |
-| Free | Sandboxes stop. A running turn ends `failed` with `usage_limit_exceeded`: "This plan's included machine hours for this period are used up". Upgrade to keep going. |
+| Free | Sandboxes stop. A running turn ends `failed` with `usage_limit_exceeded`: "This plan's included machine hours for this period are used up". A new sandbox does not start: creating a session with one is refused with HTTP 429 `insufficient_quota` and the same message. Upgrade to keep going. |
 
 The dashboard's **Wallet** page shows the time used in this period next to what the plan includes.
 
@@ -48,9 +49,44 @@ The dashboard's **Wallet** page shows the time used in this period next to what 
 
 Orca checks it when a turn starts. If the limit is already reached, the message is refused with HTTP 429 `rate_limit_exceeded`: "Your plan runs N sessions at once", with your plan's number. Nothing is lost: send the message again when another session's turn ends, or upgrade.
 
+## Sandboxes at once
+
+Your organization can have as many managed sandboxes running as its plan runs sessions at once. A sandbox counts while it starts and while it runs, working or idle; a paused sandbox does not. Orca checks before it starts a sandbox or resumes a paused one. Past the limit, the request is refused with HTTP 429 `rate_limit_exceeded` and `Retry-After: 60`: "Your plan runs 1 sandbox at once. A session's sandbox goes to sleep after 10 minutes idle; delete a session you no longer need, or wait.", with your plan's number and idle time.
+
+Before a sandbox starts or resumes, Orca also checks what it checks each minute a sandbox runs: the [minimum balance](#paid-work-needs-a-minimum-balance), and on Free the [included machine time](#machine-time). If either would stop the sandbox, it does not start.
+
+## Storage
+
+Each plan has a storage limit, on the [pricing page](https://orcapods.ai/pricing) and in `GET /api/public/plans` as `stored_bytes`. It counts your uploaded files, skill versions, artifacts, and the saved workspaces of paused sandboxes.
+
+- **At the limit,** an upload, a new skill or skill version, a kit copy with skills, and a new sandbox are refused with HTTP 403 `storage_quota_exceeded`: "Your organization stores X of its Y. Delete files, skills or sessions to free space."
+- **Your sessions keep working.** A sandbox's workspace is always saved when it pauses, and a paused sandbox still resumes, even past the limit. Delete files, skills or sessions you no longer need to make room.
+- **Uploads need credit.** While paid work is paused, a file or skill upload is refused with HTTP 429 `insufficient_quota`: "Out of Orca credit: add credit to upload files". Copying a kit needs no credit.
+
+When Orca's own storage is nearly full, uploads, skill uploads, kit copies and new sandboxes are refused for a while with HTTP 503 `storage_unavailable` and `Retry-After: 300`: "Orca's storage is nearly full. Try again later." Paused sandboxes still resume.
+
+## How many you can keep
+
+These are the same on every plan:
+
+| What | Most per organization |
+| --- | --- |
+| Agents | 100 |
+| Environment templates | 50 |
+| Vaults | 20 |
+| Credentials | 50 in each vault |
+| Skills | 50 |
+| Skill versions | 20 for each skill |
+| Files | 1,000 |
+| Active API keys | 100 |
+
+One more is refused with HTTP 403 `object_limit_exceeded`, such as "Your organization has 100 agents, the most it can keep. Delete one to make another." For keys, revoke one. A [kit](/kits) copy that would pass a limit copies nothing.
+
+An agent's `instructions` can be at most 256 KiB, and its `tools` at most 256 KiB as JSON. More is refused with HTTP 400 `invalid_request`, with `param` naming the field: "Instructions can be at most 256 KiB". This applies when you create or update an agent, and to an inline agent in a new session.
+
 ## Paid work needs a minimum balance
 
-Even included machine time needs Orca credit in the wallet. When your balance is below your plan's **minimum balance** (on the [pricing page](https://orcapods.ai/pricing), and in the wallet as `min_balance_micro_usd`), Orca pauses paid work: model calls and web searches on Orca credit, and managed sandboxes. A turn on an Orca credit model, or in a session with a managed sandbox, is then refused. Turns on your own provider key in a session without a sandbox keep working, their web searches included. See [wallet and credit](/wallet#when-credit-runs-low).
+Even included machine time needs Orca credit in the wallet. When your balance is below your plan's **minimum balance** (on the [pricing page](https://orcapods.ai/pricing), and in the wallet as `min_balance_micro_usd`), Orca pauses paid work: model calls and web searches on Orca credit, and managed sandboxes. A turn on an Orca credit model, or in a session with a managed sandbox, is then refused. A managed sandbox does not start or resume, and file and skill uploads are refused. Turns on your own provider key in a session without a sandbox keep working, their web searches included. See [wallet and credit](/wallet#when-credit-runs-low).
 
 ## Schedules
 

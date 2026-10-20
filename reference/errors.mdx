@@ -11,17 +11,17 @@ When a request fails, Orca returns an HTTP error status and a JSON body in the s
 
 | HTTP status | Common meaning | Typical code |
 | --- | --- | --- |
-| `400 Bad Request` | Invalid field, unsupported configuration, malformed event input or cursor | `invalid_request` |
+| `400 Bad Request` | Invalid field, unsupported configuration, malformed event input or cursor; agent `instructions` or `tools` over [256 KiB](/plans#how-many-you-can-keep) | `invalid_request` |
 | `401 Unauthorized` | Missing, invalid, or revoked bearer key | `invalid_api_key` |
-| `403 Forbidden` | Your role does not allow this ("This action requires the admin role"), or a dashboard request has no organization | `permission_denied`, `organization_required` |
+| `403 Forbidden` | Your role does not allow this ("This action requires the admin role"), or a dashboard request has no organization; your organization is at its plan's [storage limit](/plans#storage), or keeps [the most it can](/plans#how-many-you-can-keep) of a kind | `permission_denied`, `organization_required`, `storage_quota_exceeded`, `object_limit_exceeded` |
 | `404 Not Found` | Missing resource (including resources outside the caller's scope) | `not_found` |
 | `409 Conflict` | Conflicting state or incompatible environment use; a kit copy whose name is taken, or whose kit changed since its review | `conflict`, `name_taken`, `kit_changed` |
 | `410 Gone` | A withdrawn kit, or a route from Orca 1.x ("This CLI is too old for Orca. Run orca update.") | `kit_withdrawn`, `cli_outdated` |
 | `413 Payload Too Large` | Request exceeds a supported size limit, such as an upload over 512 MiB ("File exceeds 512 MiB") | `invalid_request` |
-| `429 Too Many Requests` | Too many requests a minute, too many [event streams or uploads open at once](/reference/overview#rate-limits), or your plan's [sessions at once](/plans#sessions-at-once) are all running; out of Orca credit | `rate_limit_exceeded`, `insufficient_quota` |
+| `429 Too Many Requests` | Too many requests a minute, too many [event streams or uploads open at once](/reference/overview#rate-limits), or your plan's [sessions](/plans#sessions-at-once) or [sandboxes at once](/plans#sandboxes-at-once) are all running; out of Orca credit, which also stops new sandboxes and uploads | `rate_limit_exceeded`, `insufficient_quota` |
 | `500 Internal Server Error` | Operation could not be completed | `server_error` |
 | `502 Bad Gateway` | Downstream failure | `server_error` |
-| `503 Service Unavailable` | Sandbox capacity is full, your balance could not be read ("Orca could not read your credit balance. Try again in a moment."), Orca is receiving too many uploads, or too many CLI sign-ins are waiting. Retry after `Retry-After`. | `sandbox_capacity`, `balance_unavailable`, `server_busy`, `device_login_unavailable` |
+| `503 Service Unavailable` | Sandbox capacity is full, your balance could not be read ("Orca could not read your credit balance. Try again in a moment."), Orca is receiving too many uploads, Orca's storage is nearly full ("Orca's storage is nearly full. Try again later."), or too many CLI sign-ins are waiting. Retry after `Retry-After`. | `sandbox_capacity`, `balance_unavailable`, `server_busy`, `storage_unavailable`, `device_login_unavailable` |
 
 The envelope uses `type: "server_error"` for 5xx and `type: "invalid_request_error"` for client errors. `param` can identify an invalid request field; do not parse English messages as stable machine codes. Framework-level errors are normalized to the same envelope but may use generic codes. Other HTTP failures can occur; inspect the actual status and body. Do not automatically retry a validation error. For uncertain mutation outcomes, use an `Idempotency-Key` (one nonempty value, at most 512 bytes) and retry with the same request; the server supports idempotency on mutations, including session event submission. A mismatched replay can conflict.
 
