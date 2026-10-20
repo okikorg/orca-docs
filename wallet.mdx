@@ -21,6 +21,8 @@ The [free model](/plans#the-free-model) on Free costs nothing and needs no credi
 
 - **Credit packs.** An admin buys a pack. Each pack's processing fee is taken from the pack; the [pricing page](https://orcapods.ai/pricing) gives the fee and what a pack adds after it. The packs on sale, with the credit each adds and its fee, are listed on the dashboard's **Wallet** page and by `orca billing wallet`.
 
+On Free: "Need more to try Orca? Write to us on Discord (https://discord.gg/btTYzdzvqq)." Whether Orca grants credit, how much and for how long is at its discretion, under section 6 of the [Terms of Service](https://orcapods.ai/terms).
+
 No account starts with credit, and plans do not add credit. A plan's included machine time is not a second balance. Signup credit that earlier accounts were given is ordinary credit in their wallet and pays under the same rules, including the Free price ceiling.
 
 ## Buy credit
@@ -81,7 +83,8 @@ The wallet's Free plan fields:
 | --- | --- |
 | `free_model` | On Free, `{calls_today, calls_per_day, available}`: your organization's free-model calls today, its share, and whether the free model can start a turn now. `null` on Pro and Max. |
 | `included_hours_withheld` | `true` when Orca has withheld Free's included machine time and the free model from this organization. Credit you add and your own keys still work. See [free use can be withheld](/plans#free-use-can-be-withheld). |
-| `network_off` | `true` while a Free organization's sandboxes have no network, until it buys credit for the first time. See [machine time on Free](/plans#machine-time-on-free). |
+| `network` | `{"off": true, "message": "Network is off on Free sandboxes until your organization has credit. Add credit, or write to us on Discord (https://discord.gg/btTYzdzvqq)."}` while a Free organization's sandboxes have no network, and `{"off": false}` once it has credit, bought or granted. `orca billing wallet` prints the same line. See [machine time on Free](/plans#machine-time-on-free). |
+| `credit_request` | On Free, `{message, url}`: "Need more to try Orca? Write to us on Discord (https://discord.gg/btTYzdzvqq)." and the Discord link. |
 
 `signup_credit_micro_usd` in `GET /api/public/plans` is always 0 and will be removed. Do not read it.
 
