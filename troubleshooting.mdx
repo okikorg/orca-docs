@@ -106,9 +106,9 @@ Wait for 00:00 UTC, add your own OpenRouter key, or [add credit](/wallet#buy-cre
 On any plan: [switch the session](/providers#switch-who-pays-for-one-session) to another model, add your own OpenRouter key, or [add credit](/wallet#buy-credit) to use another model.
 </Accordion>
 <Accordion title="429 rate_limit_exceeded: the free model is busy">
-"The free model is busy. Try again in a minute, or add your own OpenRouter key." The free model is running as many turns at once as Orca allows for all organizations together. Send the message again after the `Retry-After` seconds, or run the model on your own OpenRouter key.
+"The free model is busy. Try again in a minute, or add your own OpenRouter key." On every plan, it means one of two things: your organization already has a free-model turn running, since an organization runs one at a time, or the free model is running as many turns at once as Orca allows for all organizations together. Send the message again after the `Retry-After` seconds, or run the model on your own OpenRouter key.
 
-A second turn from your own organization while one runs gets "Your plan runs N sessions at once" instead; see [sessions at once](/plans#sessions-at-once).
+On Free, a turn in a second session while one runs is refused first by the plan's sessions at once, with "Your plan runs N sessions at once"; see [sessions at once](/plans#sessions-at-once).
 </Accordion>
 <Accordion title="A free-model turn ended after its calls">
 The turn ends `completed` with the event `orca.free_model.turn_limit`: "This turn reached the free model's N calls. Send a message to continue." A turn on the free model, its subagents included, makes at most that many model calls. Its work is kept.
