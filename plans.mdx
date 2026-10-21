@@ -10,7 +10,7 @@ Each plan sets:
 - **A price.** Free costs nothing; Pro and Max are billed monthly through Polar.
 - **Machine time included** in each period.
 - **Extra machine time**, past the included time, at an hourly rate, charged to the second from your Orca credit.
-- **Which models Orca credit pays for.** Any model on Pro and Max; on Free, the free model and models up to the [Free price ceiling](#the-free-price-ceiling).
+- **Which models Orca credit pays for.** The [free model](#the-free-model) on every plan, at no charge. Any other model on Pro and Max; on Free, models up to the [Free price ceiling](#the-free-price-ceiling).
 - **Sessions at once**, which is also how many sandboxes can run at once.
 - **Limits** on requests, turns, sessions, API keys and storage. See [limits per plan](#limits-per-plan).
 - **A minimum balance** for paid work.
@@ -39,12 +39,14 @@ The free model is Orca's choice: currently North Mini Code from Cohere, served t
 
 - **It costs nothing.** Its calls are recorded in your usage at cost 0, whatever OpenRouter reports, and need no balance.
 - **A daily share.** Each organization can make a set number of free-model calls a day, and so can each person, counted across every organization they create or work in.
-- **A shared daily capacity.** All Free organizations together share one daily capacity, which can run out before the reset.
+- **A shared daily capacity.** All organizations, on every plan, together share one daily capacity, which can run out before the reset.
 - **Both reset at 00:00 UTC.** The share and the capacity are on the [pricing page](https://orcapods.ai/pricing). The wallet shows your organization's calls today.
 - **A set number of calls a turn.** A turn on the free model, its subagents included, makes at most the number of calls on the pricing page. A turn starts only when that many calls are left in your share and in the day's capacity, so the daily limits never cut a turn off halfway. A turn that reaches its last call ends `completed` with the event `orca.free_model.turn_limit`, its work kept; send a message to continue.
 - **A few turns at once, across Orca.** When the free model is already running as many turns as Orca allows for all organizations together, a new turn is refused for a minute. See [troubleshooting](/troubleshooting#free-plan-and-limits).
-- **Web search is not free.** A web search on the free model is charged to your Orca credit like any search, so it needs your plan's minimum balance. See [what a search costs](/providers#what-a-search-costs).
-- **Free only.** Pro and Max run any model on credit and do not run the free model.
+- **Web search is not free.** A web search on the free model is charged to your Orca credit like any search, so it needs your plan's minimum balance, and it counts as one of the free model's calls. See [what a search costs](/providers#what-a-search-costs).
+- **On every plan.** Pro and Max run the free model too, at no charge and at any balance, each with its own daily share per organization and per person on the [pricing page](https://orcapods.ai/pricing), in the same daily capacity. New agents start on it on Free only; on Pro and Max, pick it in the model list, where it is marked **Free model**.
+- **A plan can have no share.** On a plan whose daily share is none, a turn on the free model is refused with HTTP 403 `model_not_in_plan`: "Orca's free model is not part of this plan. Switch this session to another model, or run it on your own OpenRouter key."
+- **Orca can turn it off.** When Orca turns the free model off, it is off on every plan at once: a turn on it, and saving an agent on it, are refused with HTTP 503 `free_model_unavailable`: "Orca's free model is off right now. Switch this session to another model, add your own OpenRouter key, or add credit." A turn already running finishes. While it is off, `GET /api/models` and `GET /api/public/plans` list no free model, and the wallet's `free_model_today.available` is `false`. Your own OpenRouter key still runs `:free` models.
 - **Your content.** The free model's calls go through OpenRouter to its provider, currently Cohere, which does not train on them and keeps them for up to 30 days.
 
 Other free models on OpenRouter, with ids ending in `:free`, run on your own OpenRouter key, not on Orca credit, on every plan.
@@ -91,7 +93,7 @@ Every plan has these limits. The numbers for each plan are on the [pricing page]
 | API keys | Active API keys in the organization, device logins included | HTTP 403 `object_limit_exceeded`; revoke one to make another |
 | Stored sessions | Sessions the organization keeps | HTTP 403 `object_limit_exceeded` on a new session; delete one to start another |
 | Storage | Files, skills and saved sandbox workspaces | HTTP 403 `storage_quota_exceeded`; delete files, skills or sessions to free space |
-| Free-model calls a day | Free only, per organization and per person; see [the free model](#the-free-model) | HTTP 429 `insufficient_quota` until 00:00 UTC |
+| Free-model calls a day | Every plan, per organization and per person; see [the free model](#the-free-model) | HTTP 429 `insufficient_quota` until 00:00 UTC |
 
 An organization already over a count when its plan's limit changes keeps what it has, and cannot add more until it is under the limit. Routes that need no key have their own limits per IP address; see [rate limits](/reference/overview#rate-limits). Every refusal and its way forward is in [troubleshooting](/troubleshooting#free-plan-and-limits).
 

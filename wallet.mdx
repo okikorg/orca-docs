@@ -15,7 +15,7 @@ Each organization has one **wallet** of Orca credit. Your balance is everything 
 
 Tokens on your own provider key (`<provider>/<id>`) are billed by that provider. Orca charges nothing for them.
 
-The [free model](/plans#the-free-model) on Free costs nothing and needs no credit. On Free, credit pays only for Orca credit models within the [Free price ceiling](/plans#the-free-price-ceiling), their web searches and the free model's, and machine time past the included time. Models above the ceiling run on Orca credit on Pro and Max only.
+The [free model](/plans#the-free-model) costs nothing and needs no credit, on every plan. On Free, credit pays only for Orca credit models within the [Free price ceiling](/plans#the-free-price-ceiling), their web searches and the free model's, and machine time past the included time. Models above the ceiling run on Orca credit on Pro and Max only.
 
 ## Where credit comes from
 
@@ -110,11 +110,11 @@ The dashboard shows this as **Out of Orca credit** on the turn, with **Add credi
 | `GET /api/usage` | Totals per meter for a period (30 days by default, or `start` and `end` in Unix seconds), a `series` over time (below), and totals grouped by `model`, `provider`, `credential`, `session`, or `agent` with `group_by`. With `group_by`, `group_costs` gives each key's cost across every meter; they add up to the period's `cost_micro_usd`. `session=<id>` narrows it to one session. |
 | `GET /api/usage/events` | The newest usage rows, each with its cost. Filter with `meter`, or `charged=true` for only the rows that cost something; page with `limit` and `after`. A row at cost 0 whose money is on another row of the same operation has `charged_on`: `call` when its call's row carries the money (a token row), `search` when the search's row does (the search's tool call, or its call when the whole cost is on the search), `late` when the operation was [charged later](#calls-charged-later) and its `late_charges` row does (every row of that call or search, its call or search row included). Any other row has none, and its own cost is what it was charged. Each row also has `charge_for`: on a `late_charges` row, the id of the row it charges; `null` on every other row. |
 
-The wallet's Free plan fields:
+The wallet's free model and Free plan fields:
 
 | Field | Meaning |
 | --- | --- |
-| `free_model` | On Free, `{calls_today, calls_per_day, available}`: your organization's free-model calls today, its share, and whether the free model can start a turn now. `null` on Pro and Max. |
+| `free_model_today` | On every plan with a free-model share, `{calls_today, calls_per_day, available}`: your organization's free-model calls today, its share, and whether the free model can start a turn now. `available` is `false` while Orca has the free model turned off. `null` on a plan with no share. (`free_model`, from the plan facts, names the free models.) |
 | `included_hours_withheld` | `true` when Orca has withheld Free's included machine time and the free model from this organization. Credit you add and your own keys still work. See [free use can be withheld](/plans#free-use-can-be-withheld). |
 | `network` | `{"off": true, "message": "Network is off on Free sandboxes until your organization has credit. Add credit, or write to us on Discord (https://discord.gg/btTYzdzvqq)."}` while a Free organization's sandboxes have no network, and `{"off": false}` once it has credit, bought or granted. `orca billing wallet` prints the same line. See [machine time on Free](/plans#machine-time-on-free). |
 | `credit_request` | On Free, `{message, url}`: "Need more to try Orca? Write to us on Discord (https://discord.gg/btTYzdzvqq)." and the Discord link. |

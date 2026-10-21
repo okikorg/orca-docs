@@ -69,13 +69,15 @@ Some settings are not available with every provider. `GET /api/providers` lists 
 
 ## Free plan and limits
 
-Each entry is a refusal or a turn end from the [Free plan](/plans#the-free-plan) or the [limits per plan](/plans#limits-per-plan), with its way forward. The numbers in the messages are your plan's, on the [pricing page](https://orcapods.ai/pricing).
+Each entry is a refusal or a turn end from the [Free plan](/plans#the-free-plan) or the [limits per plan](/plans#limits-per-plan), with its way forward. The free model's entries apply on every plan, since Pro and Max run it too. The numbers in the messages are your plan's, on the [pricing page](https://orcapods.ai/pricing).
 
 <AccordionGroup>
 <Accordion title="403 model_not_in_plan">
 "This model needs Pro or Max." On Free, Orca credit runs only the free model and models within the [Free price ceiling](/plans#the-free-price-ceiling), and this agent's model, or the model the session was switched to, is above it or has no fixed price. The turn did not start and nothing was charged.
 
 [Switch the session](/providers#switch-who-pays-for-one-session) to the free model (`orca/openrouter/cohere/north-mini-code:free`) or to a model within the ceiling (`orca models` marks the ones that need **Pro and Max**), run the model on your own provider key, or [upgrade](/plans#change-your-plan).
+
+"Orca's free model is not part of this plan. Switch this session to another model, or run it on your own OpenRouter key." On any plan, the session's model is the free model and your plan has no free-model share. [Switch the session](/providers#switch-who-pays-for-one-session) to another model, or run the model on your own OpenRouter key as `openrouter/<OpenRouter id>`.
 </Accordion>
 <Accordion title="429 insufficient_quota with param free_plan">
 "On Free, this agent's model runs on credit." The agent's model is an Orca credit model other than the free model, and your balance is under the minimum. This is common after copying a kit, since kits name models that run on credit.
@@ -88,14 +90,16 @@ Switch this session to the free model: **Switch to the free model** in the dashb
 Wait for 00:00 UTC, add your own OpenRouter key and run the model on it, or [add credit](/wallet#buy-credit) to use another model.
 </Accordion>
 <Accordion title="429 insufficient_quota with param free_model_capacity">
-"Free model capacity is used up for today. It resets at 00:00 UTC." All Free organizations together used the free model's daily capacity, before your own share ran out. A turn already running finishes on the calls it set aside when it started. Rarely, if OpenRouter refuses anyway, a running turn ends `failed` with `usage_limit_exceeded` and the same `param`, its work kept.
+"Free model capacity is used up for today. It resets at 00:00 UTC." All organizations together, on every plan, used the free model's daily capacity, before your own share ran out. A turn already running finishes on the calls it set aside when it started. Rarely, if OpenRouter refuses anyway, a running turn ends `failed` with `usage_limit_exceeded` and the same `param`, its work kept.
 
 Wait for 00:00 UTC, add your own OpenRouter key, or [upgrade](/plans#change-your-plan).
 </Accordion>
 <Accordion title="503 free_model_unavailable">
 "Orca's free model is not available right now." OpenRouter withdrew the free model or started charging for it, so Orca does not run it. You are never charged for it. Orca is told, and the pricing page names the free model once it is replaced.
 
-Add your own OpenRouter key, or [add credit](/wallet#buy-credit) to use another model.
+"Orca's free model is off right now. Switch this session to another model, add your own OpenRouter key, or add credit." Orca has turned the free model off, on every plan. Saving an agent on it is refused the same way. A turn already running finishes.
+
+On any plan: [switch the session](/providers#switch-who-pays-for-one-session) to another model, add your own OpenRouter key, or [add credit](/wallet#buy-credit) to use another model.
 </Accordion>
 <Accordion title="429 rate_limit_exceeded: the free model is busy">
 "The free model is busy. Try again in a minute, or add your own OpenRouter key." The free model is running as many turns at once as Orca allows for all organizations together. Send the message again after the `Retry-After` seconds, or run the model on your own OpenRouter key.
