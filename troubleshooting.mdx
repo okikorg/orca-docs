@@ -85,14 +85,18 @@ Each entry is a refusal or a turn end from the [Free plan](/plans#the-free-plan)
 Switch this session to the free model: **Switch to the free model** in the dashboard, or `POST /api/sessions/{session_id}/model` with `{"model": "orca/openrouter/cohere/north-mini-code:free"}` (see [switch who pays](/providers#switch-who-pays-for-one-session)). Or add your own provider key in **Settings**, **Providers**, or [add credit](/wallet#buy-credit) or [upgrade](/plans#change-your-plan).
 </Accordion>
 <Accordion title="429 insufficient_quota with param free_model_daily">
-"Your organization has used today's N free-model calls. They reset at 00:00 UTC." Your organization used its daily share of the free model, or you did across the organizations you work in. Nothing was charged.
+The message names the limit that refused. Nothing was charged.
+
+- "Your organization has used today's N free-model calls. They reset at 00:00 UTC. Add your own OpenRouter key, or add credit to use another model." Your organization used its daily share of the free model.
+- "You have used today's N free-model calls. They reset at 00:00 UTC. Add your own OpenRouter key, or add credit to use another model." You used your own daily share, counted across the organizations you work in.
+- "A free-model turn sets aside N calls, and M of today's are left. They reset at 00:00 UTC. Add your own OpenRouter key, or add credit to use another model." Neither share is used up, but fewer calls are left than a turn sets aside when it starts, counting the calls that turns already running hold.
 
 Wait for 00:00 UTC, add your own OpenRouter key and run the model on it, or [add credit](/wallet#buy-credit) to use another model.
 </Accordion>
 <Accordion title="429 insufficient_quota with param free_model_capacity">
-"Free model capacity is used up for today. It resets at 00:00 UTC." All organizations together, on every plan, used the free model's daily capacity, before your own share ran out. A turn already running finishes on the calls it set aside when it started. Rarely, if OpenRouter refuses anyway, a running turn ends `failed` with `usage_limit_exceeded` and the same `param`, its work kept.
+"Free model capacity is used up for today. It resets at 00:00 UTC. Add your own OpenRouter key, or add credit to use another model." All organizations together, on every plan, used the free model's daily capacity, before your own share ran out. A turn already running finishes on the calls it set aside when it started. Rarely, if OpenRouter refuses anyway, a running turn ends `failed` with `usage_limit_exceeded` and the same `param`, its work kept.
 
-Wait for 00:00 UTC, add your own OpenRouter key, or [upgrade](/plans#change-your-plan).
+Wait for 00:00 UTC, add your own OpenRouter key, or [add credit](/wallet#buy-credit) to use another model. Every plan shares this capacity, so upgrading does not add to it.
 </Accordion>
 <Accordion title="503 free_model_unavailable">
 "Orca's free model is not available right now." OpenRouter withdrew the free model or started charging for it, so Orca does not run it. You are never charged for it. Orca is told, and the pricing page names the free model once it is replaced.
