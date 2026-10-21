@@ -130,6 +130,11 @@ A running turn ends `failed` with `usage_limit_exceeded` and `param: "included_h
 
 [Add credit](/wallet#buy-credit) to continue now: the sandbox runs on at Free's hourly rate, charged to the second. Or wait for the 1st of the month (UTC), or [upgrade](/plans#change-your-plan). See [machine time on Free](/plans#machine-time-on-free).
 </Accordion>
+<Accordion title="A Free session started a new, empty sandbox">
+"This session has a new sandbox. The last workspace was larger than the 100 MiB Free keeps, so it was not saved." (or "This session has a new sandbox. The last workspace could not be saved."). When a Free sandbox stops because the included time or your credit ran out, or because the organization is suspended, a workspace larger than Free keeps, or one whose save failed, is not kept. The session gets the event `orca.sandbox.discarded` at once, and again before the turn of its next message, which starts a new, empty sandbox: the environment's setup runs again, and the conversation stays. Until then, `GET /api/sessions/{session_id}/sandbox` reads `state` `none` and `last_sleep.outcome` `discarded`.
+
+A sleep that saves a Free workspace at or above 80% of that size warns first, with the event `orca.sandbox.workspace_near_limit` (with `size_bytes` and `limit_bytes`) and the same message in `last_sleep.message`: "This workspace is N MiB of the 100 MiB Free keeps. Over 100 MiB it is not saved when the sandbox sleeps, and the next message starts an empty sandbox. Delete files in /workspace to stay under it." Delete files in `/workspace`, or keep what matters as [files](/guides/files-and-artifacts).
+</Accordion>
 <Accordion title="429 rate_limit_exceeded: Free machine time is busy">
 "Free machine time is busy right now. Try again in a few minutes, or upgrade." Only a few Free sandboxes run at once across all of Orca, and they are all running. Start or wake the sandbox again after the `Retry-After` seconds, use a session without a sandbox, or [upgrade](/plans#change-your-plan).
 </Accordion>
@@ -148,12 +153,14 @@ On Free, a sandbox has no network until your organization has credit, bought or 
 ```
 
 The session also gets the event `orca.network.off` when the sandbox starts, and `orca billing wallet` shows the same line. [Add credit](/wallet#buy-credit), or write to us on [Discord](https://discord.gg/btTYzdzvqq); sandboxes started after that follow the session's environment. Until then, give the agent what it needs as [files](/guides/files-and-artifacts).
+
+A sandbox already running without the network gets it after its next sleep: once your organization has credit, it goes to sleep at once if no turn is running, or when the running turn ends, and `GET /api/sessions/{session_id}/sandbox` reads `last_sleep.reason` `network_on`, with "The sandbox slept so that its next start has the network, now that your organization has credit." Its next message wakes it with the network. Until then, the wallet's `network` field counts such sandboxes and says "Your organization has credit, so the network is on. A running sandbox that started without it gets it after its next sleep."
 </Accordion>
 <Accordion title="400 on agent.model: another free model">
 "Orca credit runs only Orca's free model at no charge. Run other free models on your own OpenRouter key." Use the free model, `orca/openrouter/cohere/north-mini-code:free`, or run the other model on your own OpenRouter key as `openrouter/<OpenRouter id>`. See [which models Free can use](/providers#which-models-free-can-use).
 </Accordion>
 <Accordion title="403 organization_suspended">
-"Work for this organization is suspended. Ask on Discord: https://discord.gg/btTYzdzvqq" Orca suspended paid work, the free model and the included machine time for this organization. A running turn ends with `usage_limit_exceeded` and `param: "orca_suspended"`. Ask in **#help** on [Orca's Discord](https://discord.gg/btTYzdzvqq).
+"Work for this organization is suspended. Ask on Discord: https://discord.gg/btTYzdzvqq" Orca suspended paid work, the free model and the included machine time for this organization. Starting or waking a sandbox and uploading a file are refused with this 403. A running turn ends with `usage_limit_exceeded` and `param: "orca_suspended"`, and its sandbox goes to sleep: `GET /api/sessions/{session_id}/sandbox` reads `last_sleep.reason` `suspended`, with the same message. Ask in **#help** on [Orca's Discord](https://discord.gg/btTYzdzvqq).
 </Accordion>
 </AccordionGroup>
 
