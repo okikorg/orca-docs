@@ -140,17 +140,17 @@ A sleep that saves a Free workspace at or above 80% of that size warns first, wi
 The same code on a new API key means the organization has as many active keys as its plan allows: revoke one under **Settings**, **API keys**.
 </Accordion>
 <Accordion title="A command in my sandbox cannot reach the internet">
-"Network is off on Free sandboxes until your organization has credit. Add credit, or write to us on Discord (https://discord.gg/btTYzdzvqq)."
+"The network is off in Free sandboxes until you add credit. Agents can still run code, but can't install packages or reach the internet."
 
 On Free, a sandbox has no network until your organization has credit, bought or granted. A command that fails for lack of network, such as `pip install` or `curl`, keeps the system's own error, and its output ends with one more line:
 
 ```text
-[Orca] Network is off on Free sandboxes until your organization has credit. Add credit, or write to us on Discord (https://discord.gg/btTYzdzvqq).
+[Orca] The network is off in Free sandboxes until you add credit. Agents can still run code, but can't install packages or reach the internet.
 ```
 
 The session also gets the event `orca.network.off` when the sandbox starts, and `orca billing wallet` shows the same line. [Add credit](/wallet#buy-credit), or write to us on [Discord](https://discord.gg/btTYzdzvqq); sandboxes started after that follow the session's environment. Until then, give the agent what it needs as [files](/guides/files-and-artifacts).
 
-A sandbox already running without the network gets it after its next sleep: once your organization has credit, it goes to sleep at once if no turn is running, or when the running turn ends, and `GET /api/sessions/{session_id}/sandbox` reads `last_sleep.reason` `network_on`, with "The sandbox slept so that its next start has the network, now that your organization has credit." Its next message wakes it with the network. Until then, the wallet's `network` field counts such sandboxes and says "Your organization has credit, so the network is on. A running sandbox that started without it gets it after its next sleep."
+A sandbox already running without the network gets it after its next sleep: once your organization has credit, it goes to sleep at once if no turn is running, or when the running turn ends, and `GET /api/sessions/{session_id}/sandbox` reads `last_sleep.reason` `network_on`, with "The sandbox slept so that its next start has the network, now that your organization has credit." Its next message wakes it with the network. Until then, the wallet's `network` field counts such sandboxes and says "Your organization has credit, so the network is on. Sandboxes that started before then get it after their next sleep."
 </Accordion>
 <Accordion title="400 on agent.model: another free model">
 "Orca credit runs only Orca's free model at no charge. Run other free models on your own OpenRouter key." Use the free model, `orca/openrouter/cohere/north-mini-code:free`, or run the other model on your own OpenRouter key as `openrouter/<OpenRouter id>`. See [which models Free can use](/providers#which-models-free-can-use).
