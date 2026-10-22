@@ -26,12 +26,12 @@ Check that the URL is `https://api.orcapods.ai/v1`, spelled exactly, with `https
 "This action requires the admin role". Setting provider keys, writing vaults and credentials, buying credit, and changing the plan need an admin. Ask an admin of your organization, or have them change your role. See [organizations and roles](/organizations).
 </Accordion>
 <Accordion title="429 rate_limit_exceeded">
-"Your plan runs N sessions at once": your organization already has as many sessions with a running turn as your plan allows. Send the message again when one ends, or [upgrade](/plans#sessions-at-once). "Rate limit reached. Retry after N seconds." means too many requests in a minute; wait that long, as the `Retry-After` header says.
+"Your plan runs N sessions at once": your organization already has as many sessions with a running turn as your plan allows. Send the message again when one ends, or [upgrade](/plans#sessions-at-once). "Rate limit reached. Retry after N seconds." means too many requests in a minute for your plan, from your organization or from one key or person; wait that long, as the `Retry-After` header says. See [limits per plan](/plans#limits-per-plan). The free model, turns a day and Free sandboxes have their own 429s, under [Free plan and limits](#free-plan-and-limits).
 
 "Too many event streams open: 32 at once per key or person. Close one and retry." (or "64 at once per organization"): close streams you no longer read. See [how many streams](/guides/streaming#how-many-streams). "Too many uploads at once: 2 per organization. Retry when one finishes.": wait for an upload to finish, then send the next.
 </Accordion>
 <Accordion title="429 insufficient_quota">
-"Out of Orca credit: add credit, then continue the session". Your balance is under your plan's minimum balance, so paid work is paused: turns on Orca credit models or with a managed sandbox are refused, and a running sandbox goes to sleep with its files kept. [Add credit](/wallet#buy-credit), or use a model on your own key in a session without a sandbox.
+"Out of Orca credit: add credit, then continue the session". Your balance is under your plan's minimum balance, so paid work is paused: turns on Orca credit models or with a managed sandbox are refused, and a running sandbox goes to sleep with its files kept. [Add credit](/wallet#buy-credit), or use a model on your own key in a session without a sandbox. On Free, the free model keeps working; a 429 `insufficient_quota` with a `param` such as `free_plan` is under [Free plan and limits](#free-plan-and-limits).
 </Accordion>
 <Accordion title="503 server_busy">
 "The server is receiving too many uploads right now. Retry in a few seconds." Orca is receiving many uploads at once, from all organizations. Nothing is wrong with your file: retry after the `Retry-After` seconds.
@@ -64,6 +64,99 @@ A turn is running, or waiting for your function results. Switch once it ends.
 </Accordion>
 <Accordion title="400 on an agent setting">
 Some settings are not available with every provider. `GET /api/providers` lists each provider's `unsupported_agent_fields`. The `param` field of the error names the setting.
+</Accordion>
+</AccordionGroup>
+
+## Free plan and limits
+
+Each entry is a refusal or a turn end from the [Free plan](/plans#the-free-plan) or the [limits per plan](/plans#limits-per-plan), with its way forward. The free model's entries apply on every plan, since Pro and Max run it too. The numbers in the messages are your plan's, on the [pricing page](https://orcapods.ai/pricing).
+
+<AccordionGroup>
+<Accordion title="403 model_not_in_plan">
+"Orca's free model is not part of this plan. Switch this session to another model, or run it on your own OpenRouter key." On any plan, the session's model is the free model and your plan has no free-model share. The turn did not start and nothing was charged. [Switch the session](/providers#switch-who-pays-for-one-session) to another model, or run the model on your own OpenRouter key as `openrouter/<OpenRouter id>`.
+</Accordion>
+<Accordion title="429 insufficient_quota with param free_plan">
+"On Free, this agent's model runs on credit." The agent's model is an Orca credit model other than the free model, and your balance is under the minimum. This is common after copying a kit, since kits name models that run on credit.
+
+Switch this session to the free model: **Switch to the free model** in the dashboard, or `POST /api/sessions/{session_id}/model` with `{"model": "orca/openrouter/cohere/north-mini-code:free"}` (see [switch who pays](/providers#switch-who-pays-for-one-session)). Or add your own provider key in **Settings**, **Providers**, or [add credit](/wallet#buy-credit) or [upgrade](/plans#change-your-plan).
+</Accordion>
+<Accordion title="429 insufficient_quota with param free_model_daily">
+The message names the limit that refused. Nothing was charged.
+
+- "Your organization has used today's N free-model calls. They reset at 00:00 UTC. Add your own OpenRouter key, or add credit to use another model." Your organization used its daily share of the free model.
+- "You have used today's N free-model calls. They reset at 00:00 UTC. Add your own OpenRouter key, or add credit to use another model." You used your own daily share, counted across the organizations you work in.
+- "A free-model turn sets aside N calls, and M of today's are left. They reset at 00:00 UTC. Add your own OpenRouter key, or add credit to use another model." Neither share is used up, but fewer calls are left than a turn sets aside when it starts, counting the calls that turns already running hold.
+
+Wait for 00:00 UTC, add your own OpenRouter key and run the model on it, or [add credit](/wallet#buy-credit) to use another model.
+</Accordion>
+<Accordion title="429 insufficient_quota with param free_model_capacity">
+"Free model capacity is used up for today. It resets at 00:00 UTC. Add your own OpenRouter key, or add credit to use another model." All organizations together, on every plan, used the free model's daily capacity, before your own share ran out. A turn already running finishes on the calls it set aside when it started. Rarely, if OpenRouter refuses anyway, a running turn ends `failed` with `usage_limit_exceeded` and the same `param`, its work kept.
+
+Wait for 00:00 UTC, add your own OpenRouter key, or [add credit](/wallet#buy-credit) to use another model. Every plan shares this capacity, so upgrading does not add to it.
+</Accordion>
+<Accordion title="503 free_model_unavailable">
+"Orca's free model is not available right now." OpenRouter withdrew the free model or started charging for it, so Orca does not run it. You are never charged for it. Orca is told, and the pricing page names the free model once it is replaced.
+
+"Orca's free model is off right now. Switch this session to another model, add your own OpenRouter key, or add credit." Orca has turned the free model off, on every plan. Saving an agent on it is refused the same way. A turn already running finishes.
+
+On any plan: [switch the session](/providers#switch-who-pays-for-one-session) to another model, add your own OpenRouter key, or [add credit](/wallet#buy-credit) to use another model.
+</Accordion>
+<Accordion title="429 rate_limit_exceeded: the free model is busy">
+"The free model is busy. Try again in a minute, or add your own OpenRouter key." On every plan, it means one of two things: your organization already has a free-model turn running, since an organization runs one at a time, or the free model is running as many turns at once as Orca allows for all organizations together. Send the message again after the `Retry-After` seconds, or run the model on your own OpenRouter key.
+
+On Free, a turn in a second session while one runs is refused first by the plan's sessions at once, with "Your plan runs N sessions at once"; see [sessions at once](/plans#sessions-at-once).
+</Accordion>
+<Accordion title="A free-model turn ended after its calls">
+The turn ends `completed` with the event `orca.free_model.turn_limit`: "This turn reached the free model's N calls. Send a message to continue." A turn on the free model, its subagents included, makes at most that many model calls. Its work is kept.
+
+Send a message, such as "Continue", to start the next turn. For longer turns, use a model on your own key or on credit.
+</Accordion>
+<Accordion title="A Free turn ended after its time">
+The turn ends `completed` with the event `orca.turn.time_limit`: "This turn reached Free's N minutes. Send a message to continue." On Free, every turn has a time limit, on your own key too. Its work is kept.
+
+Send a message to continue, or [upgrade](/plans#change-your-plan): Pro and Max have no turn time limit.
+</Accordion>
+<Accordion title="429 rate_limit_exceeded: turns a day">
+"Your plan runs N turns a day. More at 00:00 UTC, or upgrade." Your organization started its plan's turns for this UTC day. `Retry-After` gives the seconds until 00:00 UTC.
+
+Wait for 00:00 UTC, or [upgrade](/plans#change-your-plan).
+</Accordion>
+<Accordion title="Free's included machine time is used up (param included_hours)">
+A running turn ends `failed` with `usage_limit_exceeded` and `param: "included_hours"`, and a new sandbox start is refused with HTTP 429 `insufficient_quota` and the same `param`: Free's included machine time for this month is used up and the organization has no credit. The sandbox stopped and its workspace is saved, unless it was larger than Free keeps; the message says which.
+
+[Add credit](/wallet#buy-credit) to continue now: the sandbox runs on at Free's hourly rate, charged to the second. Or wait for the 1st of the month (UTC), or [upgrade](/plans#change-your-plan). See [machine time on Free](/plans#machine-time-on-free).
+</Accordion>
+<Accordion title="A Free session started a new, empty sandbox">
+"This session has a new sandbox. The last workspace was larger than the L MiB Free keeps, so it was not saved." (or "This session has a new sandbox. The last workspace could not be saved."). When a Free sandbox stops because the included time or your credit ran out, or because the organization is suspended, a workspace larger than Free keeps, or one whose save failed, is not kept. The session gets the event `orca.sandbox.discarded` at once, and again before the turn of its next message, which starts a new, empty sandbox: the environment's setup runs again, and the conversation stays. Until then, `GET /api/sessions/{session_id}/sandbox` reads `state` `none` and `last_sleep.outcome` `discarded`.
+
+A sleep that saves a Free workspace at or above 80% of that size warns first, with the event `orca.sandbox.workspace_near_limit` (with `size_bytes` and `limit_bytes`) and the same message in `last_sleep.message`: "This workspace is N MiB of the L MiB Free keeps. Over L MiB it is not saved when the sandbox sleeps, and the next message starts an empty sandbox. Delete files in /workspace to stay under it." L is Free's `snapshot_max_bytes` in `GET /api/public/plans`, in MiB. Delete files in `/workspace`, or keep what matters as [files](/guides/files-and-artifacts).
+</Accordion>
+<Accordion title="429 rate_limit_exceeded: Free machine time is busy">
+"Free machine time is busy right now. Try again in a few minutes, or upgrade." Only a few Free sandboxes run at once across all of Orca, and they are all running. Start or wake the sandbox again after the `Retry-After` seconds, use a session without a sandbox, or [upgrade](/plans#change-your-plan).
+</Accordion>
+<Accordion title="403 object_limit_exceeded on a new session">
+"Your organization keeps N sessions, the most it can on Free. Delete one to start another." Your organization keeps as many sessions as its plan allows. Delete sessions you no longer need (`orca sessions delete <id>`, or `client.beta.agents.sessions.delete(session_id)`), or [upgrade](/plans#change-your-plan). Deleting a session deletes its artifacts.
+
+The same code on a new API key means the organization has as many active keys as its plan allows: revoke one under **Settings**, **API keys**.
+</Accordion>
+<Accordion title="A command in my sandbox cannot reach the internet">
+"Network is off on Free sandboxes until your organization has credit. Add credit, or write to us on Discord (https://discord.gg/btTYzdzvqq)."
+
+On Free, a sandbox has no network until your organization has credit, bought or granted. A command that fails for lack of network, such as `pip install` or `curl`, keeps the system's own error, and its output ends with one more line:
+
+```text
+[Orca] Network is off on Free sandboxes until your organization has credit. Add credit, or write to us on Discord (https://discord.gg/btTYzdzvqq).
+```
+
+The session also gets the event `orca.network.off` when the sandbox starts, and `orca billing wallet` shows the same line. [Add credit](/wallet#buy-credit), or write to us on [Discord](https://discord.gg/btTYzdzvqq); sandboxes started after that follow the session's environment. Until then, give the agent what it needs as [files](/guides/files-and-artifacts).
+
+A sandbox already running without the network gets it after its next sleep: once your organization has credit, it goes to sleep at once if no turn is running, or when the running turn ends, and `GET /api/sessions/{session_id}/sandbox` reads `last_sleep.reason` `network_on`, with "The sandbox slept so that its next start has the network, now that your organization has credit." Its next message wakes it with the network. Until then, the wallet's `network` field counts such sandboxes and says "Your organization has credit, so the network is on. A running sandbox that started without it gets it after its next sleep."
+</Accordion>
+<Accordion title="400 on agent.model: another free model">
+"Orca credit runs only Orca's free model at no charge. Run other free models on your own OpenRouter key." Use the free model, `orca/openrouter/cohere/north-mini-code:free`, or run the other model on your own OpenRouter key as `openrouter/<OpenRouter id>`. See [which models Free can use](/providers#which-models-free-can-use).
+</Accordion>
+<Accordion title="403 organization_suspended">
+"Work for this organization is suspended. Ask on Discord: https://discord.gg/btTYzdzvqq" Orca suspended paid work, the free model and the included machine time for this organization. Starting or waking a sandbox and uploading a file are refused with this 403. A running turn ends with `usage_limit_exceeded` and `param: "orca_suspended"`, and its sandbox goes to sleep: `GET /api/sessions/{session_id}/sandbox` reads `last_sleep.reason` `suspended`, with the same message. Ask in **#help** on [Orca's Discord](https://discord.gg/btTYzdzvqq).
 </Accordion>
 </AccordionGroup>
 
@@ -109,10 +202,7 @@ On hosted Orca, `self_hosted` environments are coming soon, and `network.access:
 Only with an Orca server you run yourself. `workspace_directory` must be an absolute path with no symbolic links in it. On macOS `/tmp` is a symlink; use the real path.
 </Accordion>
 <Accordion title="Creating a session with a sandbox is refused">
-HTTP 429 `insufficient_quota` means the sandbox could not run a minute: your balance is below the [minimum](/plans#paid-work-needs-a-minimum-balance), or on Free the included machine time is used up. HTTP 429 `rate_limit_exceeded` means your plan's [sandboxes at once](/plans#sandboxes-at-once) are running: wait for an idle one to go to sleep, put one to sleep now with `orca sessions sleep <id>`, or delete a session you no longer need. HTTP 403 `storage_quota_exceeded` means your organization is at its [storage limit](/plans#storage): delete files, skills or sessions.
-</Accordion>
-<Accordion title="A turn fails with usage_limit_exceeded and no param">
-"This plan's included machine hours for this period are used up": a Free plan has used its included machine time (on the [pricing page](https://orcapods.ai/pricing)). Upgrade to Pro or Max, or wait for the next month. See [plans](/plans#machine-time).
+HTTP 429 `insufficient_quota` means the sandbox could not run a minute: your balance is below the [minimum](/plans#paid-work-needs-a-minimum-balance), or on Free the included machine time is used up and the organization has no credit (`param` `included_hours`, under [Free plan and limits](#free-plan-and-limits)). HTTP 429 `rate_limit_exceeded` means your plan's [sandboxes at once](/plans#sandboxes-at-once) are running: wait for an idle one to go to sleep, put one to sleep now with `orca sessions sleep <id>`, or delete a session you no longer need. HTTP 403 `storage_quota_exceeded` means your organization is at its [storage limit](/plans#storage): delete files, skills or sessions.
 </Accordion>
 </AccordionGroup>
 

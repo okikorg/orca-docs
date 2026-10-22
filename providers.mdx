@@ -9,7 +9,7 @@ Every agent needs a model, and its `model` field says where the model runs and w
 | --- | --- | --- |
 | **`model` looks like** | `orca/openrouter/<OpenRouter id>`, such as `orca/openrouter/anthropic/claude-sonnet-4.5` | `<provider>/<id>`, such as `anthropic/claude-sonnet-4-5` or `openrouter/anthropic/claude-sonnet-4.5` |
 | **Runs on** | OpenRouter, with Orca's key | That provider, with your key |
-| **Who pays** | Your Orca credit: OpenRouter's price plus [their fee](https://orcapods.ai/pricing), with no Orca markup | You, at that provider |
+| **Who pays** | Your Orca credit: OpenRouter's price plus [their fee](https://orcapods.ai/pricing), with no Orca markup. On Free, the [free model](#which-models-free-can-use) costs nothing. | You, at that provider |
 | **Setup** | None | Store your provider key in Orca once |
 | **Find model names** | `client.models.list()` | That provider's catalog |
 
@@ -38,12 +38,15 @@ for model in client.models.list().data:
     {"payer": "orca_credit", "provider": "openrouter", "label": "Orca credit", "available": true,
      "models": [{"id": "orca/openrouter/openai/gpt-5.6-luna", "name": "OpenAI: GPT-5.6 Luna",
                  "context_length": 400000,
-                 "input_micro_usd_per_million": 200000, "output_micro_usd_per_million": 1200000}]},
+                 "input_micro_usd_per_million": 200000, "output_micro_usd_per_million": 1200000,
+                 "plan": "within_ceiling"}]},
     {"payer": "own_key", "provider": "openai", "label": "OpenAI", "available": true,
      "models": [{"id": "openai/gpt-5.6-luna"}]}
   ]
 }
 ```
+
+Each Orca credit model's `plan` says whether your organization's plan can run it; see [which models Free can use](#which-models-free-can-use).
 
 Prices are in micro-USD (millionths of a dollar) per million tokens, as OpenRouter publishes them, and `null` where OpenRouter has no fixed price. They are shown for choosing a model; the charge is always what OpenRouter reports for the call. When a call ends without OpenRouter reporting its cost, such as a call you cancel, a stream cut short or a restart on Orca's side, Orca charges it later from OpenRouter's own record of that call, usually within minutes, never from an estimate. Web search on Orca credit is charged the same way. Orca reads each list at most every 10 minutes and keeps the last good copy; a group whose list cannot be read has `available: false` and no models.
 
@@ -52,6 +55,30 @@ Prices are in micro-USD (millionths of a dollar) per million tokens, as OpenRout
 Each call on Orca credit is charged what OpenRouter charges for it, including its cache and reasoning tokens, plus [their fee](https://orcapods.ai/pricing), with no Orca markup. Orca keeps no price list: the price is OpenRouter's at the time of the call. Your usage shows each call's cost, the provider's cost and the fee.
 
 A web search on an Orca credit model is charged too; see [what a search costs](#what-a-search-costs).
+
+## Which models Free can use
+
+On the [Free plan](/plans#the-free-plan), an organization runs:
+
+| Model | On Free | On Pro and Max |
+| --- | --- | --- |
+| Orca's free model, `orca/openrouter/cohere/north-mini-code:free` | At no charge, at any balance, within a [daily share](/plans#the-free-model) | The same |
+| Any model on your own provider key, `<provider>/<id>` | Yes, at any price | Yes |
+| Any paid Orca credit model | On credit you add | Yes |
+| Any other free model on Orca credit (an `orca/openrouter/` id ending in `:free`, or `orca/openrouter/openrouter/free`) | No | No |
+
+Bring your own provider key to run a model without Orca credit: every `:free` model on OpenRouter runs on your own OpenRouter key under its OpenRouter id, such as `openrouter/cohere/north-mini-code:free`.
+
+`GET /api/models` gives each Orca credit model a `plan`, for your organization's plan:
+
+| `plan` | Meaning |
+| --- | --- |
+| `free` | The free model, at no charge, on every plan with a daily share. While Orca has it turned off, no model is marked `free`. |
+| `within_ceiling` | Every other Orca credit model: runs on Orca credit on every plan. |
+
+Free models other than Orca's are left out of the Orca credit group. `orca models` shows **free model** beside Orca's free model, and so does the dashboard's model picker. On Free, the dashboard's new agent form picks the free model for you, and `orca agents create` with no model offers it first.
+
+An agent or a kit can name a model your plan does not run, such as a kit made with `orca/openrouter/openai/gpt-5.6-luna`, which runs on credit. On Free with no credit, its first message is refused with the ways on: [switch that session](#switch-who-pays-for-one-session) to the free model or to a model on your own key, add a key, or add credit or upgrade. See [troubleshooting](/troubleshooting#free-plan-and-limits).
 
 ## Connect a provider
 
@@ -104,11 +131,12 @@ Every save checks the model: creating or updating an agent (HTTP 400 on `model`)
 - the name has no provider part, or uses `orca/` with any provider but OpenRouter;
 - it names your own key for a provider where you have none: "Add your Anthropic key in Settings, Providers, or choose an Orca credit model". When OpenRouter offers the same name, the message gives its Orca credit name instead: "Add your Anthropic key in Settings, Providers, or use orca/openrouter/anthropic/claude-sonnet-4.5 for Orca credit";
 - the provider does not list the model: "Anthropic does not offer the model …";
+- it is a free model on Orca credit other than Orca's free model: "Orca credit runs only Orca's free model at no charge. Run other free models on your own OpenRouter key.";
 - with your key saved, it is OpenRouter's name for a model the provider lists under another id, such as `anthropic/claude-sonnet-4.5`: the message names `orca/openrouter/anthropic/claude-sonnet-4.5` for Orca credit, `openrouter/anthropic/claude-sonnet-4.5` with your OpenRouter key, or the provider's own id with its key.
 
 When a provider's list cannot be read, the agent is saved unchecked and the response carries an `Orca-Warning` header saying so. Nothing else changes in the response.
 
-A turn checks your key again when it starts. Nothing ever falls back from your key to Orca credit, or from Orca credit to your key.
+A turn checks your key again when it starts, and on Free it checks the model against the [Free plan](/plans#the-free-plan) too. Nothing ever falls back from your key to Orca credit, or from Orca credit to your key.
 
 ## Check capability limits
 
@@ -125,7 +153,7 @@ A turn checks your key again when it starts. Nothing ever falls back from your k
 
 | Model | How it searches | Who pays |
 | --- | --- | --- |
-| `orca/openrouter/<id>` | OpenRouter's web plugin | Your Orca credit |
+| `orca/openrouter/<id>` | OpenRouter's web plugin | Your Orca credit, on the free model too |
 | `openrouter/<id>` | OpenRouter's web plugin | You, on your OpenRouter key |
 | `openai/<id>` | OpenAI's Responses web search | You, on your OpenAI key |
 | `anthropic/<id>` | Anthropic's web search tool | You, on your Anthropic key |

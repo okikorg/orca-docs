@@ -13,15 +13,15 @@ When a request fails, Orca returns an HTTP error status and a JSON body in the s
 | --- | --- | --- |
 | `400 Bad Request` | Invalid field, unsupported configuration, malformed event input or cursor; agent `instructions` or `tools` over [256 KiB](/plans#how-many-you-can-keep) | `invalid_request` |
 | `401 Unauthorized` | Missing, invalid, or revoked bearer key | `invalid_api_key` |
-| `403 Forbidden` | Your role does not allow this ("This action requires the admin role"), or a dashboard request has no organization; your organization is at its plan's [storage limit](/plans#storage), or keeps [the most it can](/plans#how-many-you-can-keep) of a kind | `permission_denied`, `organization_required`, `storage_quota_exceeded`, `object_limit_exceeded` |
+| `403 Forbidden` | Your role does not allow this ("This action requires the admin role"), or a dashboard request has no organization; on any plan with no free-model share, the [free model](/plans#the-free-model) ("Orca's free model is not part of this plan."); your organization is at its plan's [storage limit](/plans#storage), or keeps [the most it can](/plans#how-many-you-can-keep) of a kind, or its plan's count of [stored sessions or API keys](/plans#limits-per-plan); your organization is suspended, on a sandbox start or an upload too ("Work for this organization is suspended. Ask on Discord: https://discord.gg/btTYzdzvqq") | `permission_denied`, `organization_required`, `model_not_in_plan`, `storage_quota_exceeded`, `object_limit_exceeded`, `organization_suspended` |
 | `404 Not Found` | Missing resource (including resources outside the caller's scope) | `not_found` |
 | `409 Conflict` | Conflicting state or incompatible environment use; a kit copy whose name is taken, or whose kit changed since its review | `conflict`, `name_taken`, `kit_changed` |
 | `410 Gone` | A withdrawn kit, or a route from Orca 1.x ("This CLI is too old for Orca. Run orca update.") | `kit_withdrawn`, `cli_outdated` |
 | `413 Payload Too Large` | Request exceeds a supported size limit, such as an upload over 512 MiB ("File exceeds 512 MiB") | `invalid_request` |
-| `429 Too Many Requests` | Too many requests a minute, too many [event streams or uploads open at once](/reference/overview#rate-limits), or your plan's [sessions](/plans#sessions-at-once) or [sandboxes at once](/plans#sandboxes-at-once) are all running; out of Orca credit, which also stops new sandboxes and uploads | `rate_limit_exceeded`, `insufficient_quota` |
+| `429 Too Many Requests` | Too many requests a minute or turns a day for your [plan](/plans#limits-per-plan), too many [event streams or uploads open at once](/reference/overview#rate-limits), your plan's [sessions](/plans#sessions-at-once) or [sandboxes at once](/plans#sandboxes-at-once) are all running, or the free model or Free sandboxes are busy across Orca (retry after `Retry-After`); out of Orca credit, which also stops new sandboxes and uploads, or a [Free plan](/plans#the-free-plan) refusal with a `param`: `free_plan`, `free_model_daily`, `free_model_capacity` or `included_hours` | `rate_limit_exceeded`, `insufficient_quota` |
 | `500 Internal Server Error` | Operation could not be completed | `server_error` |
 | `502 Bad Gateway` | Downstream failure | `server_error` |
-| `503 Service Unavailable` | Sandbox capacity is full, your balance could not be read ("Orca could not read your credit balance. Try again in a moment."), Orca is receiving too many uploads, Orca's storage is nearly full ("Orca's storage is nearly full. Try again later."), or too many CLI sign-ins are waiting. Retry after `Retry-After`. | `sandbox_capacity`, `balance_unavailable`, `server_busy`, `storage_unavailable`, `device_login_unavailable` |
+| `503 Service Unavailable` | Orca's free model is not available right now, or Orca has turned it off on every plan ("Orca's free model is off right now.") (`free_model_unavailable`), sandbox capacity is full, your balance could not be read ("Orca could not read your credit balance. Try again in a moment."), Orca is receiving too many uploads, Orca's storage is nearly full ("Orca's storage is nearly full. Try again later."), or too many CLI sign-ins are waiting. Retry after `Retry-After`. | `free_model_unavailable`, `sandbox_capacity`, `balance_unavailable`, `server_busy`, `storage_unavailable`, `device_login_unavailable` |
 
 The envelope uses `type: "server_error"` for 5xx and `type: "invalid_request_error"` for client errors. `param` can identify an invalid request field; do not parse English messages as stable machine codes. Framework-level errors are normalized to the same envelope but may use generic codes. Other HTTP failures can occur; inspect the actual status and body. Do not automatically retry a validation error. For uncertain mutation outcomes, use an `Idempotency-Key` (one nonempty value, at most 512 bytes) and retry with the same request; the server supports idempotency on mutations, including session event submission. A mismatched replay can conflict.
 
@@ -29,16 +29,20 @@ An established [SSE stream](/reference/events) can carry an `error` event instea
 
 ## Turn errors
 
-A turn that fails carries `error.code` and `error.message`, and, when credit ran out, `error.param` naming whose:
+A turn that fails carries `error.code` and `error.message`, and, when a credit or a plan limit ran out, `error.param` naming which:
 
 | `code` | `param` | Meaning |
 | --- | --- | --- |
 | `usage_limit_exceeded` | `orca_credit` | Your Orca credit ran out. Add credit, then continue the session. |
 | `usage_limit_exceeded` | `provider_quota` | Your own provider account is out of credits or over its billing limit. |
-| `usage_limit_exceeded` | none | "This plan's included machine hours for this period are used up" (Free plan). See [plans](/plans#machine-time). |
+| `usage_limit_exceeded` | `included_hours` | Free's included machine time for this month is used up and the organization has no credit. The workspace is saved. Add credit, or wait for the next month. See [machine time on Free](/plans#machine-time-on-free). |
+| `usage_limit_exceeded` | `free_model_capacity` | The free model's daily capacity across Orca ran out during the turn. It resets at 00:00 UTC. |
+| `usage_limit_exceeded` | `orca_suspended` | Work for this organization is suspended. Ask on [Orca's Discord](https://discord.gg/btTYzdzvqq). |
 | `server_error` | none | "Orca credit is temporarily unavailable": Orca's own OpenRouter account refused the call. Retry later. |
 | `internal_error` | none | "Orca could not read your credit balance. Try again in a moment." Orca could not check your balance before a call on Orca credit. Send the message again in a moment; your credit is not the problem. |
 | `request_timeout` | none | "Model request failed: no response from the provider for 10 minutes". Send the message again. |
+
+Two Free plan turn ends are not failures: a turn ends `completed` with the event `orca.free_model.turn_limit` at the free model's calls for a turn, or `orca.turn.time_limit` at Free's turn time. See [Free plan and limits](/troubleshooting#free-plan-and-limits).
 
 Nothing switches who pays on its own. A message refused at admission for lack of credit is HTTP 429 `insufficient_quota`: "Out of Orca credit: add credit, then continue the session". See [when credit runs low](/wallet#when-credit-runs-low).
 

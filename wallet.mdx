@@ -3,7 +3,7 @@ title: "Wallet and credit"
 description: "What Orca credit pays for, how to buy it, what happens when it runs low, and how to read your usage."
 ---
 
-Each organization has one **wallet** of Orca credit. Your balance is everything credited minus everything charged. Credit never expires.
+Each organization has one **wallet** of Orca credit. Your balance is everything credited minus everything charged. Credit you buy never expires; credit Orca grants does, on a date set when it is granted. See [granted credit and paid credit](#granted-credit-and-paid-credit).
 
 ## What credit pays for
 
@@ -15,12 +15,48 @@ Each organization has one **wallet** of Orca credit. Your balance is everything 
 
 Tokens on your own provider key (`<provider>/<id>`) are billed by that provider. Orca charges nothing for them.
 
+The [free model](/plans#the-free-model) costs nothing and needs no credit, on every plan. On Free, credit pays for Orca credit models, as on Pro and Max, their web searches and the free model's, and machine time past the included time.
+
 ## Where credit comes from
 
-- **Signup credit.** A new account starts with the signup credit on the [pricing page](https://orcapods.ai/pricing). It is given once per person: a second organization you create starts with none.
-- **Credit packs.** An admin buys a pack. Each pack's processing fee is taken from the pack; the [pricing page](https://orcapods.ai/pricing) gives the fee and what a pack adds after it. The packs on sale, with the credit each adds and its fee, are listed on the dashboard's **Wallet** page and by `orca billing wallet`.
+- **Credit packs.** Paid credit: it never expires. An admin buys a pack. Each pack's processing fee is taken from the pack; the [pricing page](https://orcapods.ai/pricing) gives the fee and what a pack adds after it. The packs on sale, with the credit each adds and its fee, are listed on the dashboard's **Wallet** page and by `orca billing wallet`.
 
-Plans do not add credit. A plan's included machine time is not a second balance.
+On Free: "Need more to try Orca? Write to us on Discord (https://discord.gg/btTYzdzvqq)." Whether Orca grants credit, how much and for how long is at its discretion, under section 6 of the [Terms of Service](https://orcapods.ai/terms).
+
+No account starts with credit, and plans do not add credit. A plan's included machine time is not a second balance. Signup credit that earlier accounts were given pays under the same rules and expires as [granted credit](#granted-credit-and-paid-credit).
+
+## Granted credit and paid credit
+
+Your balance has two parts:
+
+- **Paid credit** is credit you bought. It never expires.
+- **Granted credit** is credit Orca added at no charge, at its discretion under section 6 of the [Terms of Service](https://orcapods.ai/terms). Each grant has an expiry date, set when it is granted and never moved. The date comes from the grant's reason, by default (`grant_expiry_months` in `GET /api/public/plans`), or is set for that grant. You can use a grant until the end of the day before its `expires_at` (UTC).
+
+How they are spent:
+
+- **Granted credit is used first**, the grant that expires soonest first, so your paid credit is kept. A [late charge](#calls-charged-later) follows the same order at the moment it is written.
+- **At expiry, whatever is left of a grant is removed.** It shows in the wallet as `expired_micro_usd`. Paid credit is never touched.
+- **An email goes to your organization's admins 15 days before** a grant expires, once per grant, with the amount left. None is sent when nothing is left.
+
+Granted credit pays for the same things as paid credit, on every plan.
+
+Signup credit that earlier accounts received is treated as granted credit: it expires 2 months after this change went live, with the same email 15 days before, and appears in the wallet's granted credit list.
+
+The wallet shows each grant with the amount left and its date. In the dashboard, **Wallet** shows the **Granted credit** and **Paid credit** figures and lists each grant. `orca billing wallet` prints one line per grant and one for paid credit:
+
+```text
+granted credit  $12.40 left of $20.00, expires 4 Dec 2026
+paid credit     $18.20 (never expires)
+```
+
+`GET /api/billing/wallet` returns:
+
+| Field | Meaning |
+| --- | --- |
+| `granted_credit_micro_usd` | Granted credit left now |
+| `paid_credit_micro_usd` | Paid credit: the balance minus granted credit. It never expires. |
+| `granted_credit` | Each grant with something left, soonest expiry first: `[{kind, grant_reason, granted_micro_usd, left_micro_usd, granted_at, expires_at}]`, times in Unix seconds. `kind` is `grant`, or `signup` for signup credit an earlier account received. |
+| `expired_micro_usd` | Granted credit removed at expiry, in total |
 
 ## Buy credit
 
@@ -51,12 +87,13 @@ curl --fail-with-body -X POST "$ORCA_ORIGIN/api/billing/checkout" \
 
 ## When credit runs low
 
-Orca pauses **paid work** when your balance is below your plan's **minimum balance**, on the [pricing page](https://orcapods.ai/pricing) and in the wallet as `min_balance_micro_usd`. Paid work is model calls and web searches on Orca credit, and managed sandboxes, including their included machine time.
+Orca pauses **paid work** when your balance is below your plan's **minimum balance**, on the [pricing page](https://orcapods.ai/pricing) and in the wallet as `min_balance_micro_usd`. Paid work is model calls and web searches on Orca credit, and managed sandboxes, including their included machine time on Pro and Max. On Free, the free model and the included machine time are not paid work: they run at any balance.
 
 - **A new message** that needs paid work is refused with HTTP 429 `insufficient_quota`: "Out of Orca credit: add credit, then continue the session".
 - **A new sandbox**, or waking one that is asleep, is refused the same way, and so is a file or skill upload: "Out of Orca credit: add credit to upload files".
 - **A running turn** that reaches the minimum ends `failed` with `usage_limit_exceeded` and `param: "orca_credit"`. The conversation is saved. A managed sandbox goes to sleep with its files kept.
 - **Turns on your own provider key** in a session without a sandbox keep working.
+- **On Free**, a message to an agent whose model runs on credit is refused with HTTP 429 `insufficient_quota` and `param: "free_plan"`: "On Free, this agent's model runs on credit." The message offers three ways on: switch the session to the free model, add your own provider key in **Settings**, **Providers**, or add credit or upgrade.
 
 A call on Orca credit whose cost OpenRouter did not report when it ended, such as a call you cancel, a session deleted mid-reply, a stream cut short or a restart on Orca's side, is charged later from OpenRouter's own record of that call, usually within minutes and at most an hour after it, never from an estimate. Its charge is dated by the call and shows in your usage as **Charged later**. Until it arrives, the call still counts among the paid calls your organization can have running at once, so with several calls cancelled in a row a new call may wait a moment for its turn. Because the charge arrives after the call, it can take your balance below the minimum or below zero; paid work is then paused until credit brings the balance back to the minimum, and a top-up pays what is below zero first.
 
@@ -68,10 +105,21 @@ The dashboard shows this as **Out of Orca credit** on the turn, with **Add credi
 
 | Route | Returns |
 | --- | --- |
-| `GET /api/billing/wallet` | Balance, total credited and charged, the minimum balance, `paid_work_paused`, your plan and period, included and used machine time, and every field of `GET /api/public/plans` |
-| `GET /api/public/plans` | Every plan fact, with no key needed: each plan's price, included machine time, extra machine time rate, sessions at once, minimum balance and storage limit (`stored_bytes`); the signup credit; OpenRouter's fee (`openrouter_fee_bps`); the processing fee and the packs on sale; the machine; and `idle_seconds`, how long a sandbox idles before it goes to sleep. The pricing page is built from it. |
+| `GET /api/billing/wallet` | Balance, total credited and charged, the minimum balance, `paid_work_paused`, your plan and period, included and used machine time, the fields below, and every field of `GET /api/public/plans` |
+| `GET /api/public/plans` | Every plan fact, with no key needed: each plan's price, included machine time, extra machine time rate, sessions at once, minimum balance and storage limit (`stored_bytes`); the [limits per plan](/plans#limits-per-plan); the free model with its share and daily capacity (`free_model`); OpenRouter's fee (`openrouter_fee_bps`); the processing fee and the packs on sale; the machine; and `idle_seconds`, how long a sandbox idles before it goes to sleep. The pricing page is built from it. |
 | `GET /api/usage` | Totals per meter for a period (30 days by default, or `start` and `end` in Unix seconds), a `series` over time (below), and totals grouped by `model`, `provider`, `credential`, `session`, or `agent` with `group_by`. With `group_by`, `group_costs` gives each key's cost across every meter; they add up to the period's `cost_micro_usd`. `session=<id>` narrows it to one session. |
 | `GET /api/usage/events` | The newest usage rows, each with its cost. Filter with `meter`, or `charged=true` for only the rows that cost something; page with `limit` and `after`. A row at cost 0 whose money is on another row of the same operation has `charged_on`: `call` when its call's row carries the money (a token row), `search` when the search's row does (the search's tool call, or its call when the whole cost is on the search), `late` when the operation was [charged later](#calls-charged-later) and its `late_charges` row does (every row of that call or search, its call or search row included). Any other row has none, and its own cost is what it was charged. Each row also has `charge_for`: on a `late_charges` row, the id of the row it charges; `null` on every other row. |
+
+The wallet's free model and Free plan fields:
+
+| Field | Meaning |
+| --- | --- |
+| `free_model_today` | On every plan with a free-model share, `{calls_today, calls_per_day, available}`: your organization's free-model calls today, its share, and whether the free model can start a turn now. `available` is `false` while Orca has the free model turned off. `null` on a plan with no share. (`free_model`, from the plan facts, names the free models.) |
+| `included_hours_withheld` | `true` when Orca has withheld Free's included machine time and the free model from this organization. Credit you add and your own keys still work. See [free use can be withheld](/plans#free-use-can-be-withheld). |
+| `network` | `{"off": true, "message": "Network is off on Free sandboxes until your organization has credit. Add credit, or write to us on Discord (https://discord.gg/btTYzdzvqq)."}` while a Free organization's sandboxes have no network, and `{"off": false}` once it has credit, bought or granted. While a sandbox that started without the network is still running, `{"off": false, "sandboxes_without_network": 1, "message": "Your organization has credit, so the network is on. A running sandbox that started without it gets it after its next sleep."}`, with the count of such sandboxes. `orca billing wallet` prints the message. See [machine time on Free](/plans#machine-time-on-free). |
+| `credit_request` | On Free, `{message, url}`: "Need more to try Orca? Write to us on Discord (https://discord.gg/btTYzdzvqq)." and the Discord link. |
+
+`signup_credit_micro_usd` in `GET /api/public/plans` is always 0 and will be removed. Do not read it.
 
 Money is in micro-USD (millionths of a dollar). Every member can read the wallet and usage. `balance_micro_usd` can be negative after a [late charge](#calls-charged-later); paid work stays paused until credit brings it back to `min_balance_micro_usd`.
 

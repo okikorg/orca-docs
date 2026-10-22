@@ -71,7 +71,7 @@ Orca implements the OpenAI Agents API. The [OpenAI Agent API quickstart](https:/
 
 ## Rate limits
 
-Each key can make 300 requests a minute, and each organization 600. Past that, requests return HTTP 429 `rate_limit_exceeded`, "Rate limit reached. Retry after N seconds.", with a `Retry-After` header. Your plan also limits how many [sessions run at once](/plans#sessions-at-once).
+Each plan sets how many requests a minute an organization can make, and each key or signed-in person in it; the numbers are on the [pricing page](https://orcapods.ai/pricing). Past that, requests return HTTP 429 `rate_limit_exceeded`, "Rate limit reached. Retry after N seconds.", with a `Retry-After` header. Your plan also limits [turns a day, sessions at once, API keys and stored sessions](/plans#limits-per-plan).
 
 Routes that need no key, such as the public plans and kits pages and `orca login`, allow 120 requests a minute from one IP address. An IPv6 address counts with the rest of its `/64`.
 
@@ -132,9 +132,9 @@ These routes are Orca's own, outside the OpenAI Agents API. They live at `https:
 | `state` | `awake`, `going_to_sleep`, `asleep`, `waking`, or `none` when the session has no managed sandbox (no environment, a self-hosted one, or one that failed to start). |
 | `environment_id` | The session's environment, `null` when `state` is `none`. On `/v1` its `status` reads `disconnected` while asleep and `pending` while waking. |
 | `last_sleep` | The last time the sandbox went to sleep, or tried to, since it last woke; `null` if it has not. |
-| `last_sleep.reason` | Why it went to sleep: `requested` (someone put it to sleep), `idle` (the idle time passed), or `out_of_credit`, `hours_used_up` or `unpriced` (Orca stopped its machine time; see [when credit runs low](/wallet#when-credit-runs-low)). More reasons may be added; show one you do not know as asleep. |
-| `last_sleep.outcome` | `null` while going to sleep, then `asleep`, or why it stayed awake: `too_large` (its files are too large to save), `failed` or `interrupted` (a message or a file request reached it first, or the server restarted). |
-| `last_sleep.message` | For an outcome other than `asleep`, a message to show the user. |
+| `last_sleep.reason` | Why it went to sleep: `requested` (someone put it to sleep), `idle` (the idle time passed), `out_of_credit`, `hours_used_up` or `unpriced` (Orca stopped its machine time; see [when credit runs low](/wallet#when-credit-runs-low)), `suspended` (Orca suspended work for the organization: "Work for this organization is suspended. Ask on Discord: https://discord.gg/btTYzdzvqq"), or `network_on` (a Free sandbox that started without the network, now that its organization has credit, so that its next start has it; see [machine time on Free](/plans#machine-time-on-free)). More reasons may be added; show one you do not know as asleep. |
+| `last_sleep.outcome` | `null` while going to sleep, then `asleep`, or why it stayed awake: `too_large` (its files are too large to save), `failed` or `interrupted` (a message or a file request reached it first, or the server restarted); or, on Free, `discarded`: a workspace Orca could not save when it stopped the sandbox was not kept, `state` reads `none`, and the next message starts a new, empty sandbox. |
+| `last_sleep.message` | A message to show the user: for an outcome other than `asleep`, for a `suspended` or `network_on` sleep, and for a Free workspace saved near the size Free keeps. |
 
 The POST takes an empty body or `{}`. It returns as soon as the sandbox starts going to sleep; poll the GET to see it finish.
 

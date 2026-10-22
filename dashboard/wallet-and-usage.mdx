@@ -5,14 +5,20 @@ description: "Check your balance and machine time, buy credit, change your plan,
 
 ## Check your balance
 
-Open **Wallet**. It shows your plan and the current period, and four figures:
+Open **Wallet**. It shows your plan and the current period, and these figures:
 
 | Figure | Meaning |
 | --- | --- |
 | **Balance** | Everything credited minus everything charged. It says "Paid work paused" when the balance is under your plan's minimum. It can be below zero, for example `-$1.50`, after a call [charged later](/wallet#calls-charged-later). |
-| **Credited** | Purchases, grants, and signup credit |
+| **Credited** | Purchases and grants, and signup credit for accounts given it before it ended |
+| **Granted credit** | Credit Orca granted that is left now, with when it expires: "Expires 4 Dec 2026", or "First $5.00 expires 4 Dec 2026" when grants have several dates. It is used before paid credit. |
+| **Paid credit** | Credit you bought that is left now: "Never expires" |
 | **Charged** | Platform usage, all time |
 | **Machine time** | Time used this period, out of what your plan includes |
+
+Under **Granted credit**, the page lists each grant with something left: the amount left of the amount granted, the day it was granted, and the day it expires. Whatever is left of a grant at expiry is removed, and your organization's admins get an email 15 days before. See [granted credit and paid credit](/wallet#granted-credit-and-paid-credit).
+
+On every plan with a [free-model](/plans#the-free-model) share, the page shows "Free model today:" with your organization's free-model calls today out of its share, except while Orca has the free model turned off.
 
 When the balance is under your plan's minimum balance, the page says "Paid work is paused" and asks you to add credit. When it is below zero, the page adds "Your balance is below zero. Paid work resumes when credit brings it to `<minimum>`.", with your plan's minimum balance as the amount. See [when credit runs low](/wallet#when-credit-runs-low).
 
