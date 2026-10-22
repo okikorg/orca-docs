@@ -73,11 +73,7 @@ Each entry is a refusal or a turn end from the [Free plan](/plans#the-free-plan)
 
 <AccordionGroup>
 <Accordion title="403 model_not_in_plan">
-"This model needs Pro or Max." On Free, Orca credit runs only the free model and models within the [Free price ceiling](/plans#the-free-price-ceiling), and this agent's model, or the model the session was switched to, is above it or has no fixed price. The turn did not start and nothing was charged.
-
-[Switch the session](/providers#switch-who-pays-for-one-session) to the free model (`orca/openrouter/cohere/north-mini-code:free`) or to a model within the ceiling (`orca models` marks the ones that need **Pro and Max**), run the model on your own provider key, or [upgrade](/plans#change-your-plan).
-
-"Orca's free model is not part of this plan. Switch this session to another model, or run it on your own OpenRouter key." On any plan, the session's model is the free model and your plan has no free-model share. [Switch the session](/providers#switch-who-pays-for-one-session) to another model, or run the model on your own OpenRouter key as `openrouter/<OpenRouter id>`.
+"Orca's free model is not part of this plan. Switch this session to another model, or run it on your own OpenRouter key." On any plan, the session's model is the free model and your plan has no free-model share. The turn did not start and nothing was charged. [Switch the session](/providers#switch-who-pays-for-one-session) to another model, or run the model on your own OpenRouter key as `openrouter/<OpenRouter id>`.
 </Accordion>
 <Accordion title="429 insufficient_quota with param free_plan">
 "On Free, this agent's model runs on credit." The agent's model is an Orca credit model other than the free model, and your balance is under the minimum. This is common after copying a kit, since kits name models that run on credit.

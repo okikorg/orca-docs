@@ -3,14 +3,14 @@ title: "Plans and machine time"
 description: "What Free, Pro, and Max include, the Free plan's free model, the limits on each plan, how machine time is counted, and what happens at a limit."
 ---
 
-Every organization is on one plan. The plan sets how much sandbox time is included each period, which models Orca credit can pay for, and the limits on requests, turns, sessions, keys and storage. Model tokens are not part of the plan: they are paid from your [Orca credit or your own provider key](/providers).
+Every organization is on one plan. The plan sets how much sandbox time is included each period, the free model's daily share, and the limits on requests, turns, sessions, keys and storage. Model tokens are not part of the plan: they are paid from your [Orca credit or your own provider key](/providers).
 
 Each plan sets:
 
 - **A price.** Free costs nothing; Pro and Max are billed monthly through Polar.
 - **Machine time included** in each period.
 - **Extra machine time**, past the included time, at an hourly rate, charged to the second from your Orca credit.
-- **Which models Orca credit pays for.** The [free model](#the-free-model) on every plan, at no charge. Any other model on Pro and Max; on Free, models up to the [Free price ceiling](#the-free-price-ceiling).
+- **The free model's daily share.** The [free model](#the-free-model) runs on every plan at no charge, within a daily share.
 - **Sessions at once**, which is also how many sandboxes can run at once.
 - **Limits** on requests, turns, sessions, API keys and storage. See [limits per plan](#limits-per-plan).
 - **A minimum balance** for paid work.
@@ -27,9 +27,9 @@ Free needs no card. It runs agents three ways:
 | --- | --- | --- |
 | **The free model** | Orca's free model, `orca/openrouter/cohere/north-mini-code:free` | Nobody. It runs on Orca credit at no charge, at any balance, within a daily share. |
 | **Your own provider key** | Any model your OpenAI, Anthropic, OpenRouter, Vercel AI Gateway or CheaperInference key can run, at any price | You, at that provider. Orca charges nothing for the tokens. |
-| **Credit you add** | Orca credit models up to the [Free price ceiling](#the-free-price-ceiling) | Your Orca credit, as on any plan |
+| **Credit you add** | Any Orca credit model | Your Orca credit, as on any plan |
 
-The most expensive models, such as Claude Fable, every Claude Opus and models priced like them, run on Orca credit on Pro and Max only, even when a Free organization has credit. On Free they run on your own key.
+With credit, a Free organization runs the same Orca credit models as Pro and Max. What Free limits is machine time, sessions and turns, the network and the free model's share: see [limits per plan](#limits-per-plan).
 
 On Free, the dashboard's new agent form picks the free model for you, and `orca agents create` with no model offers it first.
 
@@ -51,14 +51,6 @@ The free model is Orca's choice: currently North Mini Code from Cohere, served t
 - **Your content.** The free model's calls go through OpenRouter to its provider, currently Cohere, which does not train on them and keeps them for up to 30 days.
 
 Other free models on OpenRouter, with ids ending in `:free`, run on your own OpenRouter key, not on Orca credit, on every plan.
-
-### The Free price ceiling
-
-On Free, Orca credit pays for a model only when its highest input price and its highest output price per million tokens are both at or under the Free price ceiling on the [pricing page](https://orcapods.ai/pricing). Highest means over every price OpenRouter lists for the model, such as a higher price for long prompts; reasoning tokens count as output, and cache prices are not compared. A model with no fixed price, such as the router `openrouter/auto`, is above the ceiling. Most mid-priced models are within it; the most expensive class is not.
-
-`GET /api/models` marks each Orca credit model with `plan`, and `orca models` and the dashboard's model picker show it. See [which models Free can use](/providers#which-models-free-can-use). The ceiling is checked when a turn starts, and a model above it is refused with HTTP 403 `model_not_in_plan`.
-
-Your own provider keys are not limited by the ceiling.
 
 ### Machine time on Free
 

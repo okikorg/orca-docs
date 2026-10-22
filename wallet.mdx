@@ -15,7 +15,7 @@ Each organization has one **wallet** of Orca credit. Your balance is everything 
 
 Tokens on your own provider key (`<provider>/<id>`) are billed by that provider. Orca charges nothing for them.
 
-The [free model](/plans#the-free-model) costs nothing and needs no credit, on every plan. On Free, credit pays only for Orca credit models within the [Free price ceiling](/plans#the-free-price-ceiling), their web searches and the free model's, and machine time past the included time. Models above the ceiling run on Orca credit on Pro and Max only.
+The [free model](/plans#the-free-model) costs nothing and needs no credit, on every plan. On Free, credit pays for Orca credit models, as on Pro and Max, their web searches and the free model's, and machine time past the included time.
 
 ## Where credit comes from
 
@@ -23,7 +23,7 @@ The [free model](/plans#the-free-model) costs nothing and needs no credit, on ev
 
 On Free: "Need more to try Orca? Write to us on Discord (https://discord.gg/btTYzdzvqq)." Whether Orca grants credit, how much and for how long is at its discretion, under section 6 of the [Terms of Service](https://orcapods.ai/terms).
 
-No account starts with credit, and plans do not add credit. A plan's included machine time is not a second balance. Signup credit that earlier accounts were given pays under the same rules, including the Free price ceiling, and expires as [granted credit](#granted-credit-and-paid-credit).
+No account starts with credit, and plans do not add credit. A plan's included machine time is not a second balance. Signup credit that earlier accounts were given pays under the same rules and expires as [granted credit](#granted-credit-and-paid-credit).
 
 ## Granted credit and paid credit
 
@@ -38,7 +38,7 @@ How they are spent:
 - **At expiry, whatever is left of a grant is removed.** It shows in the wallet as `expired_micro_usd`. Paid credit is never touched.
 - **An email goes to your organization's admins 15 days before** a grant expires, once per grant, with the amount left. None is sent when nothing is left.
 
-Granted credit pays for the same things as paid credit, on Free within the [Free price ceiling](/plans#the-free-price-ceiling).
+Granted credit pays for the same things as paid credit, on every plan.
 
 Signup credit that earlier accounts received is treated as granted credit: it expires 2 months after this change went live, with the same email 15 days before, and appears in the wallet's granted credit list.
 
@@ -106,7 +106,7 @@ The dashboard shows this as **Out of Orca credit** on the turn, with **Add credi
 | Route | Returns |
 | --- | --- |
 | `GET /api/billing/wallet` | Balance, total credited and charged, the minimum balance, `paid_work_paused`, your plan and period, included and used machine time, the fields below, and every field of `GET /api/public/plans` |
-| `GET /api/public/plans` | Every plan fact, with no key needed: each plan's price, included machine time, extra machine time rate, sessions at once, minimum balance and storage limit (`stored_bytes`); the Free price ceiling and the [limits per plan](/plans#limits-per-plan); the free model with its share and daily capacity (`free_model`); OpenRouter's fee (`openrouter_fee_bps`); the processing fee and the packs on sale; the machine; and `idle_seconds`, how long a sandbox idles before it goes to sleep. The pricing page is built from it. |
+| `GET /api/public/plans` | Every plan fact, with no key needed: each plan's price, included machine time, extra machine time rate, sessions at once, minimum balance and storage limit (`stored_bytes`); the [limits per plan](/plans#limits-per-plan); the free model with its share and daily capacity (`free_model`); OpenRouter's fee (`openrouter_fee_bps`); the processing fee and the packs on sale; the machine; and `idle_seconds`, how long a sandbox idles before it goes to sleep. The pricing page is built from it. |
 | `GET /api/usage` | Totals per meter for a period (30 days by default, or `start` and `end` in Unix seconds), a `series` over time (below), and totals grouped by `model`, `provider`, `credential`, `session`, or `agent` with `group_by`. With `group_by`, `group_costs` gives each key's cost across every meter; they add up to the period's `cost_micro_usd`. `session=<id>` narrows it to one session. |
 | `GET /api/usage/events` | The newest usage rows, each with its cost. Filter with `meter`, or `charged=true` for only the rows that cost something; page with `limit` and `after`. A row at cost 0 whose money is on another row of the same operation has `charged_on`: `call` when its call's row carries the money (a token row), `search` when the search's row does (the search's tool call, or its call when the whole cost is on the search), `late` when the operation was [charged later](#calls-charged-later) and its `late_charges` row does (every row of that call or search, its call or search row included). Any other row has none, and its own cost is what it was charged. Each row also has `charge_for`: on a `late_charges` row, the id of the row it charges; `null` on every other row. |
 
