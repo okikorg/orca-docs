@@ -26,7 +26,7 @@ for model in client.models.list().data:
     print(model.id)  # orca/openrouter/<OpenRouter id>
 ```
 
-`GET /v1/models` lists OpenRouter's catalog as Orca credit models. A listed model is not a promise that every agent setting or tool works with it.
+`GET /v1/models` lists the Orca credit models your organization can run now: on Free with a balance under the minimum, only the free model; on Free with credit, the models within Free's price ceiling; on Pro and Max, every one. A listed model is not a promise that every agent setting or tool works with it.
 
 `GET /api/models` (an Orca extension, outside `/v1`) lists every model you can pick, grouped by who pays: an Orca credit group with OpenRouter's input and output price per million tokens, then one group per provider you have a key for, billed by that provider. It also returns the OpenRouter credit fee in effect:
 
@@ -64,7 +64,8 @@ On the [Free plan](/plans#the-free-plan), an organization runs:
 | --- | --- | --- |
 | Orca's free model, `orca/openrouter/cohere/north-mini-code:free` | At no charge, at any balance, within a [daily share](/plans#the-free-model) | The same |
 | Any model on your own provider key, `<provider>/<id>` | Yes, at any price | Yes |
-| Any paid Orca credit model | On credit you add | Yes |
+| A paid Orca credit model within Free's price ceiling, on the [pricing page](https://orcapods.ai/pricing) | On credit you add | Yes |
+| A paid Orca credit model above Free's price ceiling, the most expensive ones | No: Pro and Max only | Yes |
 | Any other free model on Orca credit (an `orca/openrouter/` id ending in `:free`, or `orca/openrouter/openrouter/free`) | No | No |
 
 Bring your own provider key to run a model without Orca credit: every `:free` model on OpenRouter runs on your own OpenRouter key under its OpenRouter id, such as `openrouter/cohere/north-mini-code:free`.
@@ -74,9 +75,12 @@ Bring your own provider key to run a model without Orca credit: every `:free` mo
 | `plan` | Meaning |
 | --- | --- |
 | `free` | The free model, at no charge, on every plan with a daily share. While Orca has it turned off, no model is marked `free`. |
-| `within_ceiling` | Every other Orca credit model: runs on Orca credit on every plan. |
+| `within_ceiling` | Within your plan's price ceiling: runs on Orca credit. Pro and Max have no ceiling, so every paid model is `within_ceiling` there. |
+| `pro_and_max` | Above Free's price ceiling: listed on Free with credit so you can see it, marked **Pro and Max**, and refused at turn start on Free. |
 
-Free models other than Orca's are left out of the Orca credit group. `orca models` shows **free model** beside Orca's free model, and so does the dashboard's model picker. On Free, the dashboard's new agent form picks the free model for you, and `orca agents create` with no model offers it first.
+On Free with a balance under the [minimum](/plans#paid-work-needs-a-minimum-balance), the Orca credit group lists only the free model and has `"needs_credit": true`: add credit to list the others. Your own provider keys list every model the provider lists, on every plan.
+
+Free models other than Orca's are left out of the Orca credit group. `orca models` shows **free model** beside Orca's free model and **Pro and Max** beside a model above Free's price ceiling, and so does the dashboard's model picker, where a **Pro and Max** model is greyed out and cannot be picked on Free. On Free, the dashboard's new agent form picks the free model for you, and `orca agents create` with no model offers it first.
 
 An agent or a kit can name a model your plan does not run, such as a kit made with `orca/openrouter/openai/gpt-5.6-luna`, which runs on credit. On Free with no credit, its first message is refused with the ways on: [switch that session](#switch-who-pays-for-one-session) to the free model or to a model on your own key, add a key, or add credit or upgrade. See [troubleshooting](/troubleshooting#free-plan-and-limits).
 
