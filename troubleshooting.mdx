@@ -74,6 +74,8 @@ Each entry is a refusal or a turn end from the [Free plan](/plans#the-free-plan)
 <AccordionGroup>
 <Accordion title="403 model_not_in_plan">
 "Orca's free model is not part of this plan. Switch this session to another model, or run it on your own OpenRouter key." On any plan, the session's model is the free model and your plan has no free-model share. The turn did not start and nothing was charged. [Switch the session](/providers#switch-who-pays-for-one-session) to another model, or run the model on your own OpenRouter key as `openrouter/<OpenRouter id>`.
+
+"This model needs Pro or Max." On Free, the session's model is an Orca credit model above Free's price ceiling, on the [pricing page](https://orcapods.ai/pricing). The turn did not start and nothing was charged. Switch the session to the free model or to a model within the ceiling, run the model on your own provider key, or [upgrade](/plans#change-your-plan).
 </Accordion>
 <Accordion title="429 insufficient_quota with param free_plan">
 "On Free, this agent's model runs on credit." The agent's model is an Orca credit model other than the free model, and your balance is under the minimum. This is common after copying a kit, since kits name models that run on credit.
