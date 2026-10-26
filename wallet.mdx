@@ -55,7 +55,7 @@ paid credit     $18.20 (never expires)
 | --- | --- |
 | `granted_credit_micro_usd` | Granted credit left now |
 | `paid_credit_micro_usd` | Paid credit: the balance minus granted credit. It never expires. |
-| `granted_credit` | Each grant with something left, soonest expiry first: `[{kind, grant_reason, granted_micro_usd, left_micro_usd, granted_at, expires_at}]`, times in Unix seconds. `kind` is `grant`, or `signup` for signup credit an earlier account received. |
+| `granted_credit` | Each grant with something left, soonest expiry first: `[{kind, grant_reason, granted_micro_usd, left_micro_usd, granted_at, expires_at}]`, times in Unix seconds. `kind` is `grant`, `signup` for signup credit an earlier account received, or `opening` for credit carried over from Orca 1.x that has a last day. |
 | `expired_micro_usd` | Granted credit removed at expiry, in total |
 
 ## Buy credit
