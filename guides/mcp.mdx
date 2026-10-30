@@ -19,8 +19,15 @@ Hosted Orca connects only to these origins:
 | --- | --- |
 | `https://docs.orcapods.ai` | The Orca docs' own MCP server |
 | `https://mcp.dataforseo.com` | DataForSEO's hosted MCP server. It takes your DataForSEO API login and password: add them as a [login and password credential](/guides/credentials#a-login-and-password). |
+| `https://mcp.apollo.io` | Apollo's hosted MCP server. It signs you in with OAuth: add the credential with `scripts/connect_mcp_oauth.py` from [orca-kits](https://github.com/okikorg/orca-kits), asking only for Apollo's read-only scopes: `--server https://mcp.apollo.io/mcp --vault apollo --scope "read_user_profile organizations_enrich organizations_bulk_enrich organizations_search mixed_companies_search organizations_job_posting mixed_people_api_search people_match people_bulk_match contacts_search contact_read"` |
+| `https://connect.composio.dev` | Composio Connect, in front of the apps you connect in your own Composio account. See [connect apps with Composio](/guides/connect-apps-composio). |
+| `https://login.composio.dev` | Composio's sign-in server. Orca calls it only to refresh a Composio Connect token. |
 
 An origin is a scheme, host, and port, so any path on that host is allowed, and nothing else: `https://mcp.dataforseo.com` does not open `api.dataforseo.com` or another port. To ask for another server, post in **#help** on [Orca's Discord](https://discord.gg/btTYzdzvqq).
+
+<Note>
+**On Free:** MCP servers outside Orca are off on Free until you add credit. Until your organization has credit, a session whose agent names any server above other than `https://docs.orcapods.ai` is refused with HTTP 400 on `tools`. See [the Free plan](/plans#machine-time-on-free).
+</Note>
 
 ## How it fits together
 
@@ -119,6 +126,7 @@ Put tokens in a vault, never in the agent. Orca rejects agents whose MCP `header
 | Symptom | Check |
 | --- | --- |
 | Session creation fails with "Destination is not enabled in the server egress policy" | The server is not on the [allowed list](#allowed-servers). Only unlisted servers are refused, so compare the URL's scheme, host, and port with the list. |
+| Session creation, or a message, fails with "MCP servers outside Orca are off on Free until you add credit." | Your organization is on Free with no credit, and the agent names a remote MCP server other than Orca's docs server. [Add credit](/wallet#buy-credit), then try again. |
 | Session creation fails with "No credential in the attached vaults for https://..." | The server refused a request without credentials, and no attached vault holds a credential for that exact URL (watch for trailing slashes and paths). Add one (`orca vaults credentials add`, the dashboard's Vaults page, or the API), then pass its vault in `vault_ids`. |
 | Session creation fails mentioning the MCP URL | The URL is not HTTPS, or the server is unreachable. |
 | The model never calls the tool | The tool is missing from `allowed_tools`, or its description does not make clear when to use it. |
