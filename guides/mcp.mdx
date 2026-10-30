@@ -19,7 +19,7 @@ Hosted Orca connects only to these origins:
 | --- | --- |
 | `https://docs.orcapods.ai` | The Orca docs' own MCP server |
 | `https://mcp.dataforseo.com` | DataForSEO's hosted MCP server. It takes your DataForSEO API login and password: add them as a [login and password credential](/guides/credentials#a-login-and-password). |
-| `https://mcp.apollo.io` | Apollo's hosted MCP server. It signs you in with OAuth: add the credential with the connect script in [orca-kits](https://github.com/okikorg/orca-kits), `scripts/connect_mcp_oauth.py`. |
+| `https://mcp.apollo.io` | Apollo's hosted MCP server. It signs you in with OAuth: add the credential with `scripts/connect_mcp_oauth.py` from [orca-kits](https://github.com/okikorg/orca-kits), asking only for Apollo's read-only scopes: `--server https://mcp.apollo.io/mcp --vault apollo --scope "read_user_profile organizations_enrich organizations_bulk_enrich organizations_search mixed_companies_search organizations_job_posting mixed_people_api_search people_match people_bulk_match contacts_search contact_read"` |
 | `https://connect.composio.dev` | Composio Connect, in front of the apps you connect in your own Composio account. See [connect apps with Composio](/guides/connect-apps-composio). |
 | `https://login.composio.dev` | Composio's sign-in server. Orca calls it only to refresh a Composio Connect token. |
 
