@@ -1,0 +1,113 @@
+---
+title: Connect apps with Composio
+description: Give your agent Gmail, Slack, GitHub and the other apps you connect in your own Composio account, through Composio Connect's MCP server.
+---
+
+[Composio Connect](https://docs.composio.dev/docs/composio-connect) is one MCP server, `https://connect.composio.dev/mcp`, in front of the apps you connect in your Composio account. Your agent uses it as an ordinary [MCP tool](/guides/mcp): it searches the apps' actions, reads their schemas, and runs them.
+
+You bring your own Composio account and plan. Orca holds no Composio key and does not charge for app calls; Composio bills them under your plan with Composio.
+
+<Note>
+**On Free:** MCP servers outside Orca are off on Free until you add credit. Until your organization has credit, a session whose agent has the Composio tool is refused with HTTP 400 on `tools`. [Add credit](/wallet#buy-credit) first; see [the Free plan](/plans#machine-time-on-free).
+</Note>
+
+## Before you start
+
+- A [Composio](https://composio.dev) account.
+- An admin's Orca API key, or `orca auth login` as an admin. Only admins add credentials.
+- Python 3 and a copy of [orca-kits](https://github.com/okikorg/orca-kits), for the connect script in step 2.
+
+## 1. Connect your apps in Composio
+
+In Composio's dashboard, open **Connect Apps**, pick an app, and choose **Connect** ([Composio's guide](https://docs.composio.dev/kb/guide/dashboard-for-you-navigation)). Connect every app here: the agent below has no tool for connecting new apps itself.
+
+## 2. Add the credential to a vault
+
+Composio Connect signs you in with OAuth, and `orca vaults credentials add` takes only a token or a login and password, so use the connect script from orca-kits. Composio's docs also show a key sent in a header for other MCP clients; Orca's vaults send only an `Authorization` header, so use the sign-in instead.
+
+```bash
+git clone https://github.com/okikorg/orca-kits
+cd orca-kits
+python3 scripts/connect_mcp_oauth.py --server https://connect.composio.dev/mcp --vault composio
+```
+
+The script:
+
+1. Shows which Orca organization it will write to, and stops unless your key is an admin's.
+2. Opens your browser to sign in to Composio, and takes the reply once on `127.0.0.1`.
+3. Creates an `mcp_oauth` credential in the vault `composio` (creating the vault if needed), bound to `https://connect.composio.dev/mcp`. Orca refreshes its token itself, and the model never sees it.
+
+It reads your Orca key from `ORCA_API_KEY`, else from `orca auth login`, else from a hidden prompt, never from an argument. It prints only ids and writes nothing to disk. Run it again to sign in again: the new credential replaces the old one in that vault.
+
+## 3. Give an agent the Composio tool
+
+Examples on this page assume `client` is an `OpenAI` client configured as in [Build with the API](/build-with-the-api).
+
+```python
+import os
+
+agent = client.beta.agents.create(
+    model=os.environ["ORCA_MODEL"],
+    name="apps",
+    tools=[
+        {
+            "type": "mcp",
+            "server_label": "composio",
+            "transport": {"type": "http", "server_url": "https://connect.composio.dev/mcp"},
+            "allowed_tools": [
+                "COMPOSIO_SEARCH_TOOLS",
+                "COMPOSIO_GET_TOOL_SCHEMAS",
+                "COMPOSIO_MULTI_EXECUTE_TOOL",
+            ],
+        }
+    ],
+)
+```
+
+`server_url` must be exactly the URL the credential is bound to. `allowed_tools` keeps these three of Composio Connect's tools:
+
+| Tool | What it does |
+| --- | --- |
+| `COMPOSIO_SEARCH_TOOLS` | Finds the app actions that fit the task |
+| `COMPOSIO_GET_TOOL_SCHEMAS` | Reads an action's inputs |
+| `COMPOSIO_MULTI_EXECUTE_TOOL` | Runs actions on your connected apps |
+
+Leave the others out: the two that manage connections (connect apps in step 1 instead), and Composio's remote Python and bash, which would run code on Composio's machines.
+
+## 4. Start a session with the vault
+
+From the CLI:
+
+```bash
+orca chat apps --vault composio "Find the latest email in my inbox about invoices and summarize it."
+```
+
+Or from the API, with the vault id the script printed:
+
+```python
+session = client.beta.agents.sessions.create(
+    agent_id=agent.id,
+    environment={"type": "none"},
+    vault_ids=[os.environ["COMPOSIO_VAULT_ID"]],
+    input="Find the latest email in my inbox about invoices and summarize it.",
+)
+```
+
+Each Composio call is an `mcp_call` item in the session's history, with its arguments and result.
+
+## Keep it safe
+
+Your agent can do anything the apps you connect allow, including sending and deleting. For read only, use Composio's read-only settings where Composio offers them, or connect an account that only has read access in that app.
+
+- **Composio keeps your calls.** Composio keeps every call's inputs and results for up to a year unless you buy zero data retention ([data retention](https://docs.composio.dev/docs/security/data-retention), [zero data retention](https://docs.composio.dev/docs/security/zero-data-retention)).
+- **Everyone in your organization can use it.** Every member of your organization can use the credential and read what it returns, so connect a shared work account, never a personal one.
+- **App content is untrusted.** An email or a document can hold text that tries to give your agent new instructions. Be careful giving an agent that reads app content other tools that send data out, such as web search or another MCP server. See [keep it safe](/guides/mcp#keep-it-safe).
+
+## Cut access off
+
+Do both:
+
+1. **Delete the Orca credential**, on the dashboard's Vaults page, through the API, or with `orca vaults credentials delete <vault id> <credential id>`, using the ids the script printed (`orca vaults credentials list composio` shows them again).
+2. **Disconnect the app at Composio.** Deleting a connection at Composio doesn't revoke it at the app unless you ask Composio to revoke it ([Composio's changelog, 12 May 2026](https://docs.composio.dev/reference/changelog#2026-05-12)).
+
+Questions: post in **#help** on [Orca's Discord](https://discord.gg/btTYzdzvqq).
